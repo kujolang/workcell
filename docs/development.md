@@ -10,7 +10,7 @@ export KUJO=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kuj
 ./tests/run.sh
 ```
 
-The offline suite checks every `.kujo` file, runs 51 policy/validation/path/redaction contract assertions, and runs a 7-assertion workspace patch/change-report contract without Docker, plus path-safety, dry-run lifecycle, example-definition, and CLI smoke scripts. Docker integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
+The offline suite checks every `.kujo` file, runs 53 policy/validation/path/redaction contract assertions, and runs an 8-assertion workspace patch/change-report contract without Docker, plus path-safety, dry-run lifecycle, example-definition, and CLI smoke scripts. Docker integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
 
 Kujo lint exits successfully but currently emits noisy reachability warnings for valid imported modules. Kujo format --check is not a safe gate yet: the current formatter's write mode can alter operators and string literals. Keep source formatting reviewed manually, and use Kujo check, lint review, tests, and git diff --check until the Kujo formatter is corrected.
 

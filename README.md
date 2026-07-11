@@ -4,7 +4,15 @@ Workcell is a Kujo-native, local Docker-backed execution sandbox for AI agents a
 
 > The sandbox defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
 
-Workcell complements Kujo trust and policy controls; it does not replace them. The initial release is a local Docker MVP, not a hosted service or a custom container runtime.
+Workcell complements Kujo trust and policy controls; it does not replace them. The current release is a release-gated local Docker MVP, not a hosted service or a custom container runtime. Enterprise deployments still need an appropriately trusted Docker host, rootless/VM boundary, egress controls, image governance, and retention policy.
+
+## Why use Workcell?
+
+- Give an agent a disposable Git workspace instead of the real repository.
+- Run commands with explicit CPU, memory, PID, timeout, network, filesystem, and secret policy.
+- Export only declared artifacts, patches, logs, and structured evidence.
+- Keep Docker-specific behavior behind a runtime boundary that can support stronger backends later.
+- Use a practical Kujo example for structured process execution, validation, lifecycle modeling, and safety-oriented testing.
 
 ## Requirements
 
@@ -37,6 +45,15 @@ $KUJO check main.kujo
 
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
+After a run, inspect the evidence directly:
+
+```bash
+jq . .workcell/runs/<run-id>/receipt.json
+less .workcell/runs/<run-id>/changes.patch
+cat .workcell/runs/<run-id>/stdout.log
+cat .workcell/runs/<run-id>/stderr.log
+```
+
 ## CLI
 
 | Command | Purpose |
@@ -54,7 +71,7 @@ Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`
 
 The default `contained-standard` profile uses Docker with network `none`, a non-root UID, a read-only root filesystem, bounded CPU/memory/PIDs/time, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted from captured logs.
 
-Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, pin `runtime.image_digest` to a reviewed `sha256:` digest. See [docs/security-model.md](docs/security-model.md).
+Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, pin `runtime.image_digest` to a reviewed `sha256:` digest and use `runtime.signature_key` when your organization verifies images with cosign. See [docs/security-model.md](docs/security-model.md) and [docs/enterprise-deployment.md](docs/enterprise-deployment.md).
 
 ## Output
 
@@ -92,6 +109,7 @@ Docker integration tests are opt-in because the local daemon may not be availabl
 - [Lifecycle](docs/runtime-lifecycle.md)
 - [Development](docs/development.md)
 - [Roadmap](docs/roadmap.md)
+- [Next hardening backlog](docs/next-hardening-backlog.md)
 - [Repository conventions](docs/repository-conventions.md)
 
 The runtime boundary leaves room for Podman, gVisor-compatible Docker runtimes, remote execution, and microVMs later. Only Docker is implemented now.

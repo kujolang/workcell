@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "kujo-project-check",
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-base:local", "build_context": ""},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "kujo check main.kujo > kujo-check.log"],
+  "environment": {"allow": ["KUJO"], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 2, "memory": "1g", "pids": 128, "timeout_ms": 300000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["kujo-check.log"]},
+  "cleanup": {"keep_failed": true},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

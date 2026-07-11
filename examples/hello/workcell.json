@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "hello-workcell",
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-base:local", "build_context": ""},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "printf 'hello from Workcell\\n' > hello.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["hello.txt"]},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

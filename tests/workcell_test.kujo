@@ -1,0 +1,74 @@
+# Offline Workcell contract tests. These tests do not require Docker.
+
+from src.artifacts.exporter import export_declared
+from src.domain.definition import default_definition, validate_definition
+from src.policy.policy import build_policy
+from src.util import normalized_relative, redact, write_text
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+        failed = failed + 1
+        print("FAIL " + label)
+    }
+}
+
+func with_network(definition, mode) {
+    network := definition["network"]
+    network["mode"] := mode
+    definition["network"] := network
+    return definition
+}
+
+func with_artifact(definition, path) {
+    artifacts := definition["artifacts"]
+    artifacts["export"] := [path]
+    definition["artifacts"] := artifacts
+    return definition
+}
+
+func with_image(definition, image) {
+    runtime := definition["runtime"]
+    runtime["image"] := image
+    definition["runtime"] := runtime
+    return definition
+}
+
+definition := default_definition()
+valid := validate_definition(definition)
+expect("default definition validates", valid["ok"])
+expect("host networking rejected", validate_definition(with_network(definition, "host"))["ok"] == false)
+expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
+expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
+expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
+
+policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
+args := policy["docker_args"]
+expect("policy includes network mode", contains(to_string(args), "none") == 1)
+expect("policy includes read-only root", contains(to_string(args), "--read-only") == 1)
+expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
+expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
+expect("policy never mounts Docker socket", contains(to_string(args), "docker.sock") == 0)
+expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=true") == 1)
+
+expect("relative path normalizes", normalized_relative("build/output.txt")["ok"])
+expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)
+expect("absolute path rejected", normalized_relative("/tmp/output.txt")["ok"] == false)
+expect("secret redaction replaces values", redact("token=abc", ["abc"]) == "token=[REDACTED]")
+
+fixture := "/tmp/workcell-contract-fixture.txt"
+write_text(fixture, "fixture")
+expect("fixture write is readable by exporter", file_exists(fixture))
+delete_file(fixture)
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {
+    exit(1)
+}
+exit(0)

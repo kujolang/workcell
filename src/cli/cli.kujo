@@ -229,6 +229,9 @@ func run_exit_code(result) {
         return 2
     }
     if status == "preparing" {
+        if contains(get_or(result, "error", ""), "docker") == 1 {
+            return 4
+        }
         return 3
     }
     if status == "starting" {

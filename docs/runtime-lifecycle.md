@@ -25,7 +25,8 @@ Timeouts are distinct from ordinary workload failures. The process API attempts 
 | --- | --- |
 | 0 | Workcell completed and cleanup succeeded. |
 | 2 | Usage or definition validation failure. |
-| 3 | Missing Git/source dependency or preparation failure. |
+| 3 | Missing Git/source dependency or workspace preparation failure. |
+| 4 | Docker/image preparation failure. |
 | 5 | Container startup failure. |
 | 6 | Timeout. |
 | 7 | Workload command exited non-zero. |

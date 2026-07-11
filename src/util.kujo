@@ -38,6 +38,20 @@ export func run_id() {
     return "wc-" + replace(uuid_v4(), "-", "")
 }
 
+export func valid_run_id(value) {
+    if type(value) != "string" || len(value) != 35 || substring(value, 0, 3) != "wc-" {
+        return false
+    }
+    mut i := 3
+    while i < len(value) {
+        if contains("0123456789abcdefABCDEF", substring(value, i, i + 1)) == 0 {
+            return false
+        }
+        i = i + 1
+    }
+    return true
+}
+
 export func lines_of(text) {
     raw := split(text, "\n")
     mut out := []

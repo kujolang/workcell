@@ -5,7 +5,7 @@ from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
 from src.policy.policy import inspect_policy
 from src.runtime.docker import clean_owned_resources
-from src.util import ensure_dir, get_or, save_json, write_text
+from src.util import get_or, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository
 
 VERSION := "0.1.0"

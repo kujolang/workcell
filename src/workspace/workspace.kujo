@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, run_argv, save_json, write_text
+from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, read_text, run_argv, save_json, valid_run_id, write_text
 
 export func temp_root() {
     candidate := env("TMPDIR")
@@ -173,13 +173,16 @@ func change_details(workspace) {
     }
     lines := lines_of(trim(proc_stdout(status_result)))
     mut files := []
+    mut known_paths := {}
     mut i := 0
     while i < len(lines) {
         line := trim(lines[i])
         if line != "" {
             columns := split(line, "\t")
             letter := substring(columns[0], 0, 1)
-            files = push(files, {"path": columns[len(columns) - 1], "status": status_name(letter), "binary": false})
+            path := columns[len(columns) - 1]
+            files = push(files, {"path": path, "status": status_name(letter), "binary": false})
+            known_paths[path] := true
         }
         i = i + 1
     }
@@ -190,15 +193,7 @@ func change_details(workspace) {
         while j < len(untracked) {
             item := trim(untracked[j])
             if item != "" {
-                exists := false
-                mut k := 0
-                while k < len(files) {
-                    if files[k]["path"] == item {
-                        exists = true
-                    }
-                    k = k + 1
-                }
-                if exists == false {
+                if has_key_safe(known_paths, item) == false {
                     binary := false
                     untracked_numstat := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "--no-index", "--", "/dev/null", item], 30000)
                     if proc_exitcode(untracked_numstat) == 1 {
@@ -208,6 +203,7 @@ func change_details(workspace) {
                         }
                     }
                     files = push(files, {"path": item, "status": "added", "binary": binary})
+                    known_paths[item] := true
                 }
             }
             j = j + 1
@@ -309,7 +305,14 @@ export func cleanup_workspace(workspace, preserve) {
         return {"ok": false, "error": "refusing to remove workspace outside Workcell temporary root: " + path}
     }
     owner_path := path + ".owner"
-    if file_exists(owner_path) == false {
+    run_name := base_of(path)
+    run_prefix := "kujo-workcell-"
+    if starts_with(run_name, run_prefix) == false || valid_run_id(substring(run_name, len(run_prefix), len(run_name))) == false {
+        return {"ok": false, "error": "refusing to remove a workspace with an invalid Workcell run ID: " + path}
+    }
+    owner := read_text(owner_path)
+    expected_owner := "workcell-run-id=" + substring(run_name, len(run_prefix), len(run_name)) + "\n"
+    if owner["ok"] == false || owner["text"] != expected_owner {
         return {"ok": false, "error": "refusing to remove an unowned Workcell temporary path: " + path}
     }
     mut result := null
@@ -342,13 +345,23 @@ export func clean_stale_workspaces() {
         if starts_with(name, "kujo-workcell-") && ends_with(name, ".owner") == false {
             path := root + "/" + name
             owner_path := path + ".owner"
-            if file_exists(owner_path) && path_is_symlink(path) == false && path_is_dir(path) {
-                result := run_argv(["rm", "-rf", path], 60000)
-                if process_ok(result) {
-                    run_argv(["rm", "-f", owner_path], 30000)
-                    removed = push(removed, path)
+            run_prefix := "kujo-workcell-"
+            run_value := substring(name, len(run_prefix), len(name))
+            if valid_run_id(run_value) == false {
+                skipped = push(skipped, path + ": invalid Workcell run ID")
+            } else if file_exists(owner_path) && path_is_symlink(path) == false && path_is_dir(path) {
+                owner := read_text(owner_path)
+                expected_owner := "workcell-run-id=" + run_value + "\n"
+                if owner["ok"] == false || owner["text"] != expected_owner {
+                    skipped = push(skipped, path + ": ownership marker does not match run ID")
                 } else {
-                    skipped = push(skipped, path + ": " + trim(proc_stderr(result)))
+                    result := run_argv(["rm", "-rf", path], 60000)
+                    if process_ok(result) {
+                        run_argv(["rm", "-f", owner_path], 30000)
+                        removed = push(removed, path)
+                    } else {
+                        skipped = push(skipped, path + ": " + trim(proc_stderr(result)))
+                    }
                 }
             } else if starts_with(name, "kujo-workcell-") && path_is_dir(path) {
                 skipped = push(skipped, path + ": ownership marker missing or path is a symlink")

@@ -1,6 +1,6 @@
 # Workcell definition loading and semantic validation.
 
-from src.util import get_or, has_key_safe, host_control_env_names, load_json, normalized_relative, safe_mount_path, truthy
+from src.util import get_or, has_key_safe, host_control_env_names, load_json, normalized_relative
 
 export func default_definition() {
     return {
@@ -266,6 +266,20 @@ func validate_string_array(value, label) {
     return {"ok": true}
 }
 
+func validate_unique_strings(value, label) {
+    mut seen := {}
+    mut i := 0
+    while i < len(value) {
+        item := value[i]
+        if has_key_safe(seen, item) {
+            return {"ok": false, "error": label + " contains duplicate entry: " + item}
+        }
+        seen[item] := true
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
 export func validate_definition(raw) {
     if type(raw) != "dict" {
         return {"ok": false, "error": "Workcell definition must be a JSON object"}
@@ -352,6 +366,10 @@ export func validate_definition(raw) {
     if allow_check["ok"] == false {
         return allow_check
     }
+    allow_unique := validate_unique_strings(get_or(environment, "allow", []), "environment.allow")
+    if allow_unique["ok"] == false {
+        return allow_unique
+    }
     allow_names := get_or(environment, "allow", [])
     mut allow_i := 0
     while allow_i < len(allow_names) {
@@ -389,6 +407,10 @@ export func validate_definition(raw) {
     secret_check := validate_env_names(get_or(raw, "secrets", []), "secrets")
     if secret_check["ok"] == false {
         return secret_check
+    }
+    secret_unique := validate_unique_strings(get_or(raw, "secrets", []), "secrets")
+    if secret_unique["ok"] == false {
+        return secret_unique
     }
     mut secret_i := 0
     while secret_i < len(get_or(raw, "secrets", [])) {
@@ -453,6 +475,10 @@ export func validate_definition(raw) {
     if tmpfs_check["ok"] == false {
         return tmpfs_check
     }
+    tmpfs_unique := validate_unique_strings(get_or(filesystem, "tmpfs", []), "filesystem.tmpfs")
+    if tmpfs_unique["ok"] == false {
+        return tmpfs_unique
+    }
     seccomp_profile := get_or(filesystem, "seccomp_profile", "")
     if seccomp_profile != "" {
         seccomp_check := valid_security_profile(seccomp_profile, "filesystem.seccomp_profile")
@@ -480,6 +506,10 @@ export func validate_definition(raw) {
     artifact_check := validate_string_array(get_or(artifacts, "export", []), "artifacts.export")
     if artifact_check["ok"] == false {
         return artifact_check
+    }
+    artifact_unique := validate_unique_strings(get_or(artifacts, "export", []), "artifacts.export")
+    if artifact_unique["ok"] == false {
+        return artifact_unique
     }
     mut artifact_i := 0
     while artifact_i < len(get_or(artifacts, "export", [])) {

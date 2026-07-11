@@ -1,7 +1,7 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
 from src.util import ensure_dir, load_json, read_text, run_argv, run_id, write_text
-from src.workspace.workspace import cleanup_workspace, create_workspace, inspect_repository, make_patch, write_change_report
+from src.workspace.workspace import cleanup_workspace, clean_stale_workspaces, create_workspace, inspect_repository, make_patch, temp_root, write_change_report
 
 mut passed := 0
 mut failed := 0
@@ -46,6 +46,13 @@ if workspace["ok"] {
     expect("worktree cleanup succeeded", cleanup["ok"])
 }
 run_argv(["rm", "-rf", repo], 30000)
+
+spoof := temp_root() + "/kujo-workcell-not-a-real-run"
+ensure_dir(spoof)
+write_text(spoof + ".owner", "workcell-run-id=not-a-real-run\n")
+stale := clean_stale_workspaces()
+expect("spoofed workspace marker is not removed", file_exists(spoof) && contains(to_string(stale["skipped"]), spoof) == 1)
+run_argv(["rm", "-rf", spoof, spoof + ".owner"], 30000)
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

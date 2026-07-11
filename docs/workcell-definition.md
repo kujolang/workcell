@@ -25,7 +25,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 
 - `version`: required integer `1`.
 - `name`: required non-empty project name.
-- `runtime.backend`: required `docker`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory.
+- `runtime.backend`: required `docker`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch.
 - `workspace.strategy`: `git-worktree` (default) or `isolated-clone`; `mount_path` must be a safe absolute container path and defaults to `/workspace`.
 - `command`: required non-empty argv array. Arguments may begin with `-`; host-side Workcell commands never use shell interpolation.
 - `environment.allow`: host environment names explicitly passed into the container with Docker's `--env NAME` form. Host-control variables such as `PATH`, `HOME`, `DOCKER_HOST`, and credential selectors are rejected.

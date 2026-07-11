@@ -13,7 +13,7 @@ success
 
 ## Verification
 
-- passed: Kujo checks, 35 policy assertions, 7 workspace assertions, path-safety, dry-run, example validation, CLI smoke, Docker integration, Docker/Colima doctor, ShipCheck gate, Fence check with zero violations/warnings, ChangeBucket budget, diff check, and cleanup verification.
+- passed: Kujo checks, 39 policy assertions, 7 workspace assertions, path-safety, dry-run, example validation, CLI smoke, Docker integration, Docker/Colima doctor, Kennel manifest validation, ShipCheck gate with zero warnings, Fence check with zero violations/warnings, ChangeBucket budget, diff check, and cleanup verification.
 - blocked: none
 - failed: none
 
@@ -24,7 +24,7 @@ success
 
 ## Remaining
 
-- ShipCheck reports three non-blocking warnings: no CI configuration, no `kennel.toml`, and no detected entry point. These are release-review items, not integration blockers.
+- CI, `kennel.toml`, and an explicit `main.kujo` entry point are now present; ShipCheck reports zero warnings.
 
 ## External Blockers
 

@@ -8,5 +8,6 @@
 - The MVP supports `network: none|default`, not domain allowlists or a proxy.
 - Secrets are redacted from known exact values in logs, not from arbitrary derived output or artifact contents.
 - Verification records policy/artifact-boundary checks and command success; it does not automatically run ShipCheck or project tests inside every definition.
-- Docker integration, timeout, failure, and cleanup behavior must be run on a host with Docker before release.
+- Docker integration, timeout, failure, and cleanup behavior run in CI on a clean Docker host; local daemon validation remains recommended before release.
 - RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, PackWrite, and Muzzle are documented integration points; the current runtime keeps them optional and standalone.
+- Digest pinning is supported through `runtime.image_digest`; registry signature verification remains outside the MVP.

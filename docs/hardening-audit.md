@@ -14,8 +14,8 @@ Additional hardening completed in this pass:
 - Nested default filling is centralized in one helper instead of repeating field-by-field logic at each call site.
 - Host-control environment policy is centralized and now rejects proxy, Git credential-helper, GitHub, npm-token, and existing Docker/cloud control variables.
 - Binary change classification indexes Git's binary paths before updating file metadata, avoiding the previous nested file/numstat scan for tracked changes.
-- Offline contracts cover partial defaults, empty-secret logs, and binary change metadata; CLI smoke covers the preparation exit-code contract.
+- Offline contracts cover partial defaults, empty-secret logs, binary change metadata, digest validation, namespace policy, and null process output; CLI smoke covers the preparation exit-code contract.
 
-Verification on the local Docker/Colima daemon passed the full offline suite and `tests/docker_integration.sh`. The integration run covered successful execution, declared artifacts, controlled edits, workload failure, timeout cleanup, symlink rejection, and ownership-scoped cleanup. The Docker build still emits a legacy-builder warning because this daemon does not provide the `buildx` plugin; this is a tooling upgrade item, not a Workcell test failure.
+Verification on the local Docker/Colima daemon passed the full offline suite and `tests/docker_integration.sh`. The integration run covered successful execution, declared artifacts, controlled edits, runtime image builds, digest verification and mismatch failure, workload failure, timeout cleanup, symlink rejection, and ownership-scoped cleanup. Docker buildx 0.35.0 is installed locally and the integration suite now exercises BuildKit.
 
-Remaining enterprise-grade recommendations are image signature/policy verification, digest-pinned definitions rather than mutable tags, a rootless or isolated daemon, a controlled egress proxy, seccomp/AppArmor policy selection, CI execution on a clean Docker runner, and streaming secret redaction.
+Remaining enterprise-grade recommendations are image signature verification beyond digest pinning, a rootless or isolated daemon, a controlled egress proxy, seccomp/AppArmor policy selection, and streaming/derived-secret redaction. CI now runs on a clean Docker runner, and BuildKit is required in CI with a local legacy-builder fallback.

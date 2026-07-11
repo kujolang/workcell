@@ -14,7 +14,7 @@ Kujo, PackWrite, RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, Muzzle, Ag
 - Fence validated `fence.toml` and checked 10 files / 24 imports with 0 violations and 0 warnings.
 - CaseFile captured the Docker-unavailable failure as `.casefile/2026-07-10-214039-dockerunavailable/` (ignored generated evidence).
 - The Docker integration script passed against the local Colima daemon, with the run logs retained outside Git under `.workcell/review/2026-07-11-full-run`.
-- The final offline suite passed 35 definition/policy assertions and 7 workspace patch/change-report assertions; example definitions and CLI smoke fixtures also passed.
+- The final offline suite passed 39 definition/policy assertions and 7 workspace patch/change-report assertions; example definitions and CLI smoke fixtures also passed.
 
 ## Integration gaps
 

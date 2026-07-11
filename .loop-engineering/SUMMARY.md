@@ -6,31 +6,30 @@ success
 
 ## Completed
 
-- configured loop run completed through iteration 1
+- Docker CLI 29.6.1 installed with Colima 0.10.3 and QEMU 11.0.2; daemon verified through the `colima` context.
+- Fixed artifact containment checks for paths that do not exist yet.
+- Added a credential-free pinned local-source Kujo image build helper and verified the Kujo project-check example.
+- Pushed commits `3d33f3a` and `0afa2f8` to `origin/main`.
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, diff_check
-- latest hardening: 32 definition/policy assertions, 7 workspace patch/change-report assertions, path-safety, dry-run, example-definition, and CLI smoke tests, ShipCheck gate, Fence check, ChangeBucket check, and Docker-unavailable evidence capture passed or were recorded.
+- passed: Kujo checks, 32 policy assertions, 7 workspace assertions, path-safety, dry-run, example validation, CLI smoke, Docker integration, Docker/Colima doctor, project-check example, ShipCheck gate, Fence check, ChangeBucket budget, diff check, and cleanup verification.
 - blocked: none
 - failed: none
 
 ## Commits
 
-- Loop engineering: Build and verify the Kujo-native Workcell Docker-backed local execution MVP from the attached specification.
+- `3d33f3a` — fix: validate artifact paths before containment checks
+- `0afa2f8` — docs: build the Kujo example image from pinned local source
 
 ## Remaining
 
-- none
+- ShipCheck reports three non-blocking warnings: no CI configuration, no `kennel.toml`, and no detected entry point. These are release-review items, not integration blockers.
 
 ## External Blockers
 
-- remote-ssh-unavailable: Restore SSH/Git remote access.
+- none
 
 ## Next Start
 
-- success: required gates passed
-
-## Push Blocker
-
-- git push origin HEAD failed; see blockers.md for normalized evidence.
+- success: Docker-backed integration and final ecosystem gates passed; pushed `main` to `origin/main`.

@@ -32,6 +32,14 @@ eval_gates:
     command: "git diff --check"
     required: true
 
+  - id: docker_integration
+    command: "TMPDIR=/var/folders/... KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh"
+    required: true
+
+  - id: doctor
+    command: "TMPDIR=/var/folders/... KUJO=../kujo/target/release/kujo ./bin/workcell doctor --json"
+    required: true
+
 commit:
   enabled: true
   strategy: small_meaningful

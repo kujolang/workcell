@@ -1,7 +1,6 @@
 # Convert a validated definition into an explicit Docker security policy.
 
-from src.util import get_or, has_key_safe, join_path_safe, truthy
-from src.domain.definition import runtime_env_deny_names
+from src.util import get_or, has_key_safe, join_path_safe, runtime_env_deny_names, truthy
 
 func add_flag(args, flag) {
     return push(args, flag)

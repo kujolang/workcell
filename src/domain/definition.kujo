@@ -1,6 +1,6 @@
 # Workcell definition loading and semantic validation.
 
-from src.util import get_or, has_key_safe, load_json, normalized_relative, safe_mount_path, truthy
+from src.util import get_or, has_key_safe, host_control_env_names, load_json, normalized_relative, safe_mount_path, truthy
 
 export func default_definition() {
     return {
@@ -154,19 +154,6 @@ func validate_env_names(value, label) {
         i = i + 1
     }
     return {"ok": true}
-}
-
-export func host_control_env_names() {
-    names := runtime_env_deny_names()
-    return push(names, "PATH")
-}
-
-export func runtime_env_deny_names() {
-    return [
-        "HOME", "SSH_AUTH_SOCK", "DOCKER_HOST", "DOCKER_CONFIG", "KUBECONFIG",
-        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
-        "GIT_ASKPASS", "GIT_SSH_COMMAND", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN", "NPM_CONFIG_USERCONFIG"
-    ]
 }
 
 func host_control_env_name(name) {

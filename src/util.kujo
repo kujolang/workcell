@@ -285,6 +285,19 @@ export func contains_text(text, needle) {
     return contains(text, needle) == 1
 }
 
+export func runtime_env_deny_names() {
+    return [
+        "HOME", "SSH_AUTH_SOCK", "DOCKER_HOST", "DOCKER_CONFIG", "KUBECONFIG",
+        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+        "GIT_ASKPASS", "GIT_SSH_COMMAND", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN", "NPM_CONFIG_USERCONFIG"
+    ]
+}
+
+export func host_control_env_names() {
+    names := runtime_env_deny_names()
+    return push(names, "PATH")
+}
+
 export func redact(text, secrets) {
     mut output := text
     mut i := 0

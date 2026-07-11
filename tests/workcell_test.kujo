@@ -25,6 +25,14 @@ func with_network(definition, mode) {
     return definition
 }
 
+func with_custom_network(definition, name) {
+    network := definition["network"]
+    network["mode"] := "custom"
+    network["name"] := name
+    definition["network"] := network
+    return definition
+}
+
 func with_artifact(definition, path) {
     artifacts := definition["artifacts"]
     artifacts["export"] := [path]
@@ -107,6 +115,14 @@ func with_tmpfs(definition, path) {
     return definition
 }
 
+func with_security_profiles(definition, seccomp, apparmor) {
+    filesystem := definition["filesystem"]
+    filesystem["seccomp_profile"] := seccomp
+    filesystem["apparmor_profile"] := apparmor
+    definition["filesystem"] := filesystem
+    return definition
+}
+
 func with_mount_path(definition, path) {
     workspace := definition["workspace"]
     workspace["mount_path"] := path
@@ -120,6 +136,8 @@ expect("default definition validates", valid["ok"])
 partial := resolve_definition({"network": {}})
 expect("partial sections receive nested defaults", partial["ok"] && validate_definition(partial["definition"])["ok"] && definition_summary(partial["definition"])["network_mode"] == "none")
 expect("host networking rejected", validate_definition(with_network(definition, "host"))["ok"] == false)
+expect("custom internal network accepted", validate_definition(with_custom_network(definition, "workcell-internal"))["ok"])
+expect("custom network requires a name", validate_definition(with_custom_network(definition, ""))["ok"] == false)
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
@@ -132,6 +150,8 @@ expect("invalid timeout rejected", validate_definition(with_timeout(definition, 
 expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)
 expect("repository build context is allowed", validate_definition(with_build_context(definition, "."))["ok"])
 expect("tmpfs outside /tmp rejected", validate_definition(with_tmpfs(definition, "/etc"))["ok"] == false)
+expect("custom security profiles accepted", validate_definition(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"))["ok"])
+expect("unconfined security profile rejected", validate_definition(with_security_profiles(definition, "unconfined", ""))["ok"] == false)
 expect("workspace mount outside /workspace rejected", validate_definition(with_mount_path(definition, "/etc"))["ok"] == false)
 expect("secret assignment rejected", validate_definition(with_secret(definition, "TOKEN=leak"))["ok"] == false)
 expect("CPU limit is bounded", validate_definition(with_resource(definition, "cpus", 65))["ok"] == false)
@@ -149,12 +169,16 @@ expect("secret is passed by name only", contains(to_string(secret_policy["docker
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
+custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
+expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1 && custom_policy["network_mode"] == "workcell-internal")
 expect("policy includes read-only root", contains(to_string(args), "--read-only") == 1)
 expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
 expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
 expect("policy never mounts Docker socket", contains(to_string(args), "docker.sock") == 0)
 expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=true") == 1)
 expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1 && contains(to_string(args), "private") == 1)
+profile_policy := build_policy(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"), "test-security-profiles", "/tmp/workcell-test-workspace")
+expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1 && contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
 
 expect("relative path normalizes", normalized_relative("build/output.txt")["ok"])
 expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)

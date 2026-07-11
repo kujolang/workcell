@@ -62,9 +62,13 @@ export func build_policy(definition, run_identifier, host_workspace) {
     mount_path := definition["workspace"]["mount_path"]
     labels := labels_for(definition, run_identifier)
     mut docker := ["docker", "run"]
+    network_mode := definition["network"]["mode"]
+    if network_mode == "custom" {
+        network_mode = definition["network"]["name"]
+    }
     docker = label_args(docker, labels)
     docker = add_pair(docker, "--name", "kujo-workcell-" + run_identifier)
-    docker = add_pair(docker, "--network", definition["network"]["mode"])
+    docker = add_pair(docker, "--network", network_mode)
     docker = add_pair(docker, "--user", "65532:65532")
     docker = push(docker, "--init")
     docker = add_pair(docker, "--ipc", "private")
@@ -74,6 +78,14 @@ export func build_policy(definition, run_identifier, host_workspace) {
     docker = add_pair(docker, "--cpus", to_string(definition["resources"]["cpus"]))
     docker = add_pair(docker, "--memory", definition["resources"]["memory"])
     docker = add_pair(docker, "--pids-limit", to_string(definition["resources"]["pids"]))
+    seccomp_profile := definition["filesystem"]["seccomp_profile"]
+    if seccomp_profile != "" {
+        docker = add_pair(docker, "--security-opt", "seccomp=" + seccomp_profile)
+    }
+    apparmor_profile := definition["filesystem"]["apparmor_profile"]
+    if apparmor_profile != "" {
+        docker = add_pair(docker, "--security-opt", "apparmor=" + apparmor_profile)
+    }
     if definition["filesystem"]["read_only_root"] == true {
         docker = push(docker, "--read-only")
     }
@@ -98,7 +110,7 @@ export func build_policy(definition, run_identifier, host_workspace) {
         "container_name": "kujo-workcell-" + run_identifier,
         "labels": labels,
         "mounts": [host_workspace + ":" + mount_path + ":rw"],
-        "network_mode": definition["network"]["mode"],
+        "network_mode": network_mode,
         "resource_limits": definition["resources"],
         "secret_names": definition["secrets"],
         "effective_security_policy": {
@@ -114,7 +126,7 @@ export func build_policy(definition, run_identifier, host_workspace) {
             "read_only_root": definition["filesystem"]["read_only_root"],
             "no_new_privileges": true,
             "capabilities_dropped": "ALL",
-            "network_mode": definition["network"]["mode"],
+            "network_mode": network_mode,
             "workspace_mount": mount_path + ":rw",
             "artifact_export_boundary": "host output directory only"
         }

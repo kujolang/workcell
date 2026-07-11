@@ -12,10 +12,12 @@ fi
 TMP_REPO="$(mktemp -d)"
 OUT_ROOT="$(mktemp -d)"
 UNRELATED_NAME=""
+INTERNAL_NETWORK="workcell-internal-$$"
 cleanup() {
   if [ -n "$UNRELATED_NAME" ]; then
     docker rm -f "$UNRELATED_NAME" >/dev/null 2>&1 || true
   fi
+  docker network rm "$INTERNAL_NETWORK" >/dev/null 2>&1 || true
   rm -rf "$TMP_REPO" "$OUT_ROOT"
 }
 trap cleanup EXIT
@@ -26,6 +28,7 @@ git -C "$TMP_REPO" config user.name Workcell
 printf '# Fixture\n' > "$TMP_REPO/README.md"
 git -C "$TMP_REPO" add README.md
 git -C "$TMP_REPO" commit -qm initial
+docker network create --internal "$INTERNAL_NETWORK" >/dev/null
 
 if docker buildx version >/dev/null 2>&1; then
   docker buildx build --load --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
@@ -54,6 +57,21 @@ SIGNATURE_MISMATCH_CODE=$?
 set -e
 test "$SIGNATURE_MISMATCH_CODE" -eq 4
 jq -e '.stage == "preparing" and (.error | contains("signature_key"))' "$OUT_ROOT/signature-mismatch.json.result" >/dev/null
+
+jq --arg network "$INTERNAL_NETWORK" '.network.mode = "custom" | .network.name = $network' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/internal-network.json"
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/internal-network.json" --repo "$TMP_REPO" --output "$OUT_ROOT/internal-network"
+
+jq '.trust_profile = "native-guarded"' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/native-guarded.json"
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/native-guarded.json" --repo "$TMP_REPO" --output "$OUT_ROOT/native-guarded" --json > "$OUT_ROOT/native-guarded.json.result"
+NATIVE_GUARDED_CODE=$?
+set -e
+if docker info --format '{{json .SecurityOptions}}' | grep -q 'rootless'; then
+  test "$NATIVE_GUARDED_CODE" -eq 0
+else
+  test "$NATIVE_GUARDED_CODE" -eq 4
+  jq -e '.stage == "preparing" and (.error | contains("native-guarded"))' "$OUT_ROOT/native-guarded.json.result" >/dev/null
+fi
 
 cp -R "$ROOT/docker" "$TMP_REPO/build-context"
 git -C "$TMP_REPO" add build-context

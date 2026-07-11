@@ -30,11 +30,14 @@ export func default_definition() {
             "timeout_ms": 300000
         },
         "network": {
-            "mode": "none"
+            "mode": "none",
+            "name": ""
         },
         "filesystem": {
             "read_only_root": true,
-            "tmpfs": ["/tmp"]
+            "tmpfs": ["/tmp"],
+            "seccomp_profile": "",
+            "apparmor_profile": ""
         },
         "artifacts": {
             "export": []
@@ -131,6 +134,34 @@ func valid_image_digest(value, label) {
     while i < len(value) {
         if contains("0123456789abcdefABCDEF", substring(value, i, i + 1)) == 0 {
             return {"ok": false, "error": label + " must be a sha256 digest"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func valid_network_name(value, label) {
+    if type(value) != "string" || trim(value) == "" || len(value) > 63 {
+        return {"ok": false, "error": label + " must be a Docker network name"}
+    }
+    mut i := 0
+    while i < len(value) {
+        if contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.", substring(value, i, i + 1)) == 0 {
+            return {"ok": false, "error": label + " contains unsafe characters"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func valid_security_profile(value, label) {
+    if type(value) != "string" || trim(value) == "" || value == "unconfined" || len(value) > 128 {
+        return {"ok": false, "error": label + " must be a bounded profile name and cannot be unconfined"}
+    }
+    mut i := 0
+    while i < len(value) {
+        if contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-", substring(value, i, i + 1)) == 0 {
+            return {"ok": false, "error": label + " contains unsafe characters"}
         }
         i = i + 1
     }
@@ -392,17 +423,26 @@ export func validate_definition(raw) {
     }
 
     network := get_or(raw, "network", {})
-    network_keys := validate_keys(network, ["mode"], "network")
+    network_keys := validate_keys(network, ["mode", "name"], "network")
     if network_keys["ok"] == false {
         return network_keys
     }
     network_mode := get_or(network, "mode", "none")
-    if network_mode != "none" && network_mode != "default" {
-        return {"ok": false, "error": "network.mode must be none or default; allowlists are not supported"}
+    if network_mode != "none" && network_mode != "default" && network_mode != "custom" {
+        return {"ok": false, "error": "network.mode must be none, default, or custom; allowlists are not supported"}
+    }
+    network_name := get_or(network, "name", "")
+    if network_mode == "custom" {
+        network_name_check := valid_network_name(network_name, "network.name")
+        if network_name_check["ok"] == false {
+            return network_name_check
+        }
+    } else if network_name != "" {
+        return {"ok": false, "error": "network.name is only allowed when network.mode is custom"}
     }
 
     filesystem := get_or(raw, "filesystem", {})
-    filesystem_keys := validate_keys(filesystem, ["read_only_root", "tmpfs"], "filesystem")
+    filesystem_keys := validate_keys(filesystem, ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"], "filesystem")
     if filesystem_keys["ok"] == false {
         return filesystem_keys
     }
@@ -412,6 +452,16 @@ export func validate_definition(raw) {
     tmpfs_check := validate_string_array(get_or(filesystem, "tmpfs", []), "filesystem.tmpfs")
     if tmpfs_check["ok"] == false {
         return tmpfs_check
+    }
+    seccomp_profile := get_or(filesystem, "seccomp_profile", "")
+    if seccomp_profile != "" {
+        seccomp_check := valid_security_profile(seccomp_profile, "filesystem.seccomp_profile")
+        if seccomp_check["ok"] == false { return seccomp_check }
+    }
+    apparmor_profile := get_or(filesystem, "apparmor_profile", "")
+    if apparmor_profile != "" {
+        apparmor_check := valid_security_profile(apparmor_profile, "filesystem.apparmor_profile")
+        if apparmor_check["ok"] == false { return apparmor_check }
     }
     mut tmp_i := 0
     while tmp_i < len(get_or(filesystem, "tmpfs", [])) {
@@ -502,8 +552,8 @@ export func resolve_definition(raw) {
     value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path"])
     value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
     value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms"])
-    value = fill_section_defaults(value, defaults, "network", ["mode"])
-    value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs"])
+    value = fill_section_defaults(value, defaults, "network", ["mode", "name"])
+    value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"])
     value = fill_section_defaults(value, defaults, "artifacts", ["export"])
     value = fill_section_defaults(value, defaults, "cleanup", ["keep_failed"])
     value = fill_section_defaults(value, defaults, "receipt", ["path"])

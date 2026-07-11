@@ -7,6 +7,21 @@ func docker_result(argv, timeout_ms) {
     return run_argv(argv, timeout_ms)
 }
 
+func verify_daemon_security(definition) {
+    result := docker_result(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "inspect Docker security profiles")}
+    }
+    options := trim(proc_stdout(result))
+    if contains(options, "seccomp") == 0 || contains(options, "apparmor") == 0 {
+        return {"ok": false, "error": "Docker daemon does not report both seccomp and AppArmor profiles"}
+    }
+    if definition["trust_profile"] == "native-guarded" && contains(options, "rootless") == 0 {
+        return {"ok": false, "error": "trust_profile native-guarded requires a rootless Docker daemon or a stronger VM/microVM runtime"}
+    }
+    return {"ok": true}
+}
+
 export func doctor_docker() {
     result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
     if proc_timed_out(result) {
@@ -76,6 +91,10 @@ func verify_image(definition, source_root, image, digest) {
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
+    daemon_security := verify_daemon_security(definition)
+    if daemon_security["ok"] == false {
+        return daemon_security
+    }
     image := definition["runtime"]["image"]
     context := definition["runtime"]["build_context"]
     if context != "" {

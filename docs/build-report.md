@@ -20,6 +20,10 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
 - Output boundary: absolute `--output` paths are limited to `TMPDIR` or the repository `.workcell` directory; traversal and arbitrary host destinations are rejected.
 - Loop gates: Kujo checks, Kujo tests, CLI smoke, and `git diff --check` passed.
 
+## Toolchain notes
+
+Kujo lint exited successfully with documented analyzer warnings. Formatter round-trip testing found kujo format --write can change semantics in valid Workcell code; no formatter rewrite was retained.
+
 ## Artifacts
 
 Run artifacts are written under `.workcell/runs/<run-id>/`. The source tree, test fixtures, docs, ADRs, and Docker image definition are included in the repository.

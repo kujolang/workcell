@@ -13,7 +13,7 @@
 
 ## Adversarial review
 
-Offline tests reject host network, parent traversal, absolute artifact paths, image shell metacharacters, privileged argument presence, and Docker socket references. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount.
+Offline tests (19 assertions) reject host network, parent traversal, absolute artifact paths, image shell metacharacters, unknown fields, invalid timeouts, undeclared secret assignments, privileged argument presence, and Docker socket references. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount. Fence reported zero boundary violations.
 
 Docker-specific adversarial runs for privileged/socket/root mounts, container collisions, timeout termination, and label-scoped cleanup could not execute because Docker is not installed in the current environment. They remain required before an MVP release claim.
 

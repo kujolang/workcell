@@ -1,5 +1,6 @@
 .workcell/
 .runledger/
+.casefile/
 .loop-engineering/evidence/
 .loop-engineering/iterations/
 target/

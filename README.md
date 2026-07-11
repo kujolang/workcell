@@ -33,7 +33,7 @@ $KUJO check main.kujo
 ./bin/workcell run --file workcell.json --repo .
 ```
 
-`workcell init` creates a restrictive JSON definition. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`.
+`workcell init` creates a restrictive JSON definition. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, failure, and timeout examples; build `docker/kujo/` for the Kujo project-check example.
 
 ## CLI
 

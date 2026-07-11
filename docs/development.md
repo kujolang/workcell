@@ -10,7 +10,14 @@ export KUJO=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kuj
 ./tests/run.sh
 ```
 
-The offline suite checks every `.kujo` file and runs 26 policy/validation/path/redaction contract assertions without Docker, plus path-safety and dry-run lifecycle scripts. Docker integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
+The offline suite checks every `.kujo` file, runs 32 policy/validation/path/redaction contract assertions, and runs a 7-assertion workspace patch/change-report contract without Docker, plus path-safety, dry-run lifecycle, example-definition, and CLI smoke scripts. Docker integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
+
+Build example images when Docker is available:
+
+```bash
+docker build --tag kujolang/workcell-base:local docker/
+docker build --tag kujolang/workcell-kujo:local docker/kujo/
+```
 
 ## Adding a runtime adapter
 

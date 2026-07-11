@@ -1,9 +1,10 @@
 # Known Limitations
 
 - Docker is the only backend and must be installed/running for `run`.
+- The Kujo example image builds Kujo from a pinned upstream commit and therefore needs network access during its one-time Docker image build.
 - The current Kujo process API has no working-directory option; Workcell uses `git -C` and Docker `--workdir` instead.
 - Dirty repositories are rejected rather than snapshotting uncommitted changes.
-- Patch generation is Git diff based; untracked files are reported and exported only when declared, but are not synthesized into a unified patch.
+- Patch generation is Git diff based and now includes untracked files through Git's binary no-index diff; rename detection remains Git's responsibility.
 - The MVP supports `network: none|default`, not domain allowlists or a proxy.
 - Secrets are redacted from known exact values in logs, not from arbitrary derived output or artifact contents.
 - Verification records policy/artifact-boundary checks and command success; it does not automatically run ShipCheck or project tests inside every definition.

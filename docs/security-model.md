@@ -14,6 +14,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Containers run as UID/GID `65532:65532`, with `no-new-privileges`, all capabilities dropped, bounded CPU/memory/PIDs, and a timeout. Timeout cleanup first attempts graceful stop and then force-removes only the labeled container.
 - Root filesystem is read-only by default; declared tmpfs paths are the writable scratch surface.
 - Host-side Docker/Git calls use structured argv, not shell interpolation.
+- Container environment is explicit: allowlisted host variables and runtime secrets use `--env NAME`, while configured non-secret values use `--env NAME=value`; host-control variables are rejected.
 - Artifact paths must be relative, normalized, traversal-free, and contained in the run output directory.
 - Workspace trees and output roots containing symlinks are rejected or preserved only behind an explicit Workcell ownership marker.
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.

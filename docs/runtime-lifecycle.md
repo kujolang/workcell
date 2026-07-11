@@ -12,7 +12,7 @@ created → validated → preparing → prepared → starting → running
 2. **Prepare**: inspect Git, reject dirty sources, create a detached worktree or isolated clone, resolve image by build/reuse/pull.
 3. **Launch**: build explicit Docker argv and start the labeled container with the configured timeout.
 4. **Collect**: capture stdout/stderr, exit status, timing, changed files, and a Git patch.
-5. **Verify**: validate patch/artifact boundaries and record whether execution and verification succeeded separately.
+5. **Verify**: reject post-run workspace symlinks, validate patch/artifact boundaries, and record whether execution and verification succeeded separately.
 6. **Export**: copy declared artifacts only into the run directory and redact known secret values from logs.
 7. **Record**: write the structured receipt, including failure stage and diagnostics.
 8. **Clean**: remove the labeled container and ownership-marked temporary worktree. On failure, `--keep-failed` preserves only the explicitly owned temporary workspace.
@@ -34,4 +34,4 @@ Timeouts are distinct from ordinary workload failures. The process API returns a
 | 9 | Cleanup failure. |
 | 10 | Internal Workcell failure. |
 
-The workload's own exit code remains in `receipt.json`; the CLI code identifies the category of failure.
+The workload's own exit code remains in `receipt.json`; the CLI code identifies the category of failure. A Docker startup error is distinct from a workload command failure.

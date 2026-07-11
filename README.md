@@ -85,6 +85,7 @@ Docker integration tests are opt-in because the local daemon may not be availabl
 
 - [Architecture](docs/architecture.md)
 - [Security model](docs/security-model.md)
+- [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Definition reference](docs/workcell-definition.md)
 - [Lifecycle](docs/runtime-lifecycle.md)
 - [Development](docs/development.md)

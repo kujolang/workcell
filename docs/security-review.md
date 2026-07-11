@@ -15,10 +15,10 @@
 
 ## Adversarial review
 
-Offline tests (39 assertions plus 7 workspace patch/change-report assertions) reject host network, parent traversal, absolute artifact paths, unsafe tmpfs targets and mount targets, symlink artifact sources, image shell metacharacters, unknown fields, invalid timeouts, undeclared secret assignments, invalid environment names/values, unbounded resources, privileged argument presence, Docker socket references, host-control/proxy environment exposure, digest errors, namespace regressions, null process output, and partial-default regressions. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--init`, private IPC, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount. Fence reported zero boundary violations.
+Offline tests (41 assertions plus 7 workspace patch/change-report assertions) reject host network, parent traversal, absolute artifact paths, unsafe tmpfs targets and mount targets, symlink artifact sources, image shell metacharacters, unknown fields, invalid timeouts, undeclared secret assignments, invalid environment names/values, unbounded resources, privileged argument presence, Docker socket references, host-control/proxy environment exposure, digest/signature-key errors, namespace regressions, null process output, and partial-default regressions. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--init`, private IPC, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount. Fence reported zero boundary violations.
 
 Docker integration now covers timeout termination and label-scoped cleanup on the local daemon. Privileged/socket/root-mount rejection remains policy-contract coverage rather than a separate adversarial container test.
 
 ## Residual risk
 
-Docker daemon and host kernel trust, transformed secret leakage, no image signature verification beyond digest pinning, no hardened microVM, and no controlled proxy remain explicit limitations.
+Docker daemon and host kernel trust, transformed secret leakage, external cosign key lifecycle/transparency policy, no hardened microVM, and no controlled proxy remain explicit limitations.

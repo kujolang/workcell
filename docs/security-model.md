@@ -19,6 +19,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Workspace trees and output roots containing symlinks are rejected or preserved only behind an explicit Workcell ownership marker.
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.
 - Definitions may pin `runtime.image_digest`; Workcell verifies the observed Docker image digest before launch and fails closed on mismatch.
+- Definitions may set `runtime.signature_key` to a repository-relative cosign public key; missing keys, unavailable cosign, and failed verification all fail image preparation closed.
 
 ## Secrets
 

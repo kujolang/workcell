@@ -10,4 +10,4 @@
 - Verification records policy/artifact-boundary checks and command success; it does not automatically run ShipCheck or project tests inside every definition.
 - Docker integration, timeout, failure, and cleanup behavior run in CI on a clean Docker host; local daemon validation remains recommended before release.
 - RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, PackWrite, and Muzzle are documented integration points; the current runtime keeps them optional and standalone.
-- Digest pinning is supported through `runtime.image_digest`; registry signature verification remains outside the MVP.
+- Digest pinning and optional cosign public-key verification are supported through `runtime.image_digest` and `runtime.signature_key`; key lifecycle and transparency policy remain deployment responsibilities.

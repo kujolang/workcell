@@ -1,6 +1,6 @@
 # Copy only declared workspace outputs into a run-owned host directory.
 
-from src.util import ensure_dir, normalized_relative, path_has_symlink, path_within, process_error, process_ok, run_argv, write_text
+from src.util import ensure_dir, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, run_argv, write_text
 
 export func export_declared(workspace_path, output_dir, declared) {
     if path_has_symlink(output_dir) {
@@ -53,17 +53,17 @@ export func export_declared(workspace_path, output_dir, declared) {
 }
 
 export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) {
-    redacted_stdout := stdout_text
-    redacted_stderr := stderr_text
+    mut secret_values := []
     mut i := 0
     while i < len(secrets) {
         value := env(secrets[i])
         if type(value) == "string" && len(value) > 0 {
-            redacted_stdout = replace(redacted_stdout, value, "[REDACTED]")
-            redacted_stderr = replace(redacted_stderr, value, "[REDACTED]")
+            secret_values = push(secret_values, value)
         }
         i = i + 1
     }
+    redacted_stdout := redact(stdout_text, secret_values)
+    redacted_stderr := redact(stderr_text, secret_values)
     try {
         write_text(output_dir + "/stdout.log", redacted_stdout)
         write_text(output_dir + "/stderr.log", redacted_stderr)

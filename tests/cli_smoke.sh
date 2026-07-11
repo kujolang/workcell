@@ -26,6 +26,7 @@ git -C "$TMP_DIR" add workcell.json
 git -C "$TMP_DIR" commit -qm "add workcell definition fixture"
 
 "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --json | jq -e '.network_mode == "none" and (.docker_security_arguments | contains(["--read-only"]))' >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- doctor --repo "$TMP_DIR" --json | jq -e '.ok == true and .summary.blocked == 0 and ([.checks[] | select(.name == "Docker security profiles" and .status != "blocked")] | length) == 1' >/dev/null
 
 jq '.runtime.build_context="missing-build-context"' "$ROOT/examples/hello/workcell.json" > "$TMP_DIR/missing-context.json"
 git -C "$TMP_DIR" add missing-context.json

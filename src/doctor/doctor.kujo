@@ -35,6 +35,21 @@ func ecosystem_tools_check(repo_root) {
     return {"name": "Optional Kujo tooling", "status": "warning", "message": "optional sibling tools not found: " + to_string(missing), "remediation": "Install sibling tools only when their integrations are needed; core Workcell runtime does not require them"}
 }
 
+func docker_security_check() {
+    result := run_argv(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
+    if process_ok(result) == false {
+        return {"name": "Docker security profiles", "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
+    }
+    options := trim(proc_stdout(result))
+    if contains(options, "seccomp") == 0 || contains(options, "apparmor") == 0 {
+        return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
+    }
+    if contains(options, "rootless") == 1 {
+        return {"name": "Docker security profiles", "status": "passed", "message": "seccomp, AppArmor, and rootless daemon detected", "remediation": ""}
+    }
+    return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and AppArmor detected; daemon is not rootless", "remediation": "Use a rootless daemon or stronger VM/microVM boundary for multi-tenant untrusted workloads"}
+}
+
 export func report(repo_path) {
     mut checks := []
     kujo_program := env("KUJO")
@@ -45,6 +60,7 @@ export func report(repo_path) {
     checks = push(checks, command_check("git", ["--version"], "Git CLI"))
     checks = push(checks, command_check("docker", ["--version"], "Docker CLI"))
     checks = push(checks, doctor_docker())
+    checks = push(checks, docker_security_check())
     repo := inspect_repository(repo_path)
     if repo["ok"] {
         status := "passed"

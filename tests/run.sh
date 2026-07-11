@@ -19,7 +19,7 @@ if [ "${1:-}" = "--check-only" ]; then
 fi
 
 check_all
-EMPTY_SECRET="" "$KUJO" run "$ROOT/tests/workcell_test.kujo"
+EMPTY_SECRET="" LONG_SECRET="longsecret" "$KUJO" run "$ROOT/tests/workcell_test.kujo"
 "$KUJO" run "$ROOT/tests/workspace_test.kujo"
 KUJO="$KUJO" "$ROOT/tests/path_safety.sh"
 KUJO="$KUJO" "$ROOT/tests/dry_run.sh"

@@ -160,6 +160,7 @@ expect("relative path normalizes", normalized_relative("build/output.txt")["ok"]
 expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)
 expect("absolute path rejected", normalized_relative("/tmp/output.txt")["ok"] == false)
 expect("secret redaction replaces values", redact("token=abc", ["abc"]) == "token=[REDACTED]")
+expect("base64-derived secret redaction replaces values", redact("token=" + encode_base64("longsecret"), ["longsecret"]) == "token=[REDACTED]")
 expect("null process output is normalized", process_error({"exitcode": 125, "stderr": null, "timed_out": false}, "docker") == "docker exited with code 125: ")
 
 secret_log_dir := "/tmp/workcell-empty-secret-" + run_id()
@@ -169,6 +170,13 @@ secret_stdout := read_text(secret_log_dir + "/stdout.log")
 secret_stderr := read_text(secret_log_dir + "/stderr.log")
 expect("empty secret does not corrupt logs", secret_logs["ok"] && secret_stdout["text"] == "hello" && secret_stderr["text"] == "stderr")
 run_argv(["rm", "-rf", secret_log_dir], 30000)
+
+derived_log_dir := "/tmp/workcell-derived-secret-" + run_id()
+ensure_dir(derived_log_dir)
+derived_logs := write_execution_logs(derived_log_dir, encode_base64("longsecret"), "", ["LONG_SECRET"])
+derived_stdout := read_text(derived_log_dir + "/stdout.log")
+expect("base64-derived secret is redacted from execution logs", derived_logs["ok"] && derived_stdout["text"] == "[REDACTED]")
+run_argv(["rm", "-rf", derived_log_dir], 30000)
 
 fixture := "/tmp/workcell-contract-fixture.txt"
 write_text(fixture, "fixture")

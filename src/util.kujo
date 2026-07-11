@@ -305,6 +305,9 @@ export func redact(text, secrets) {
         secret := to_string(secrets[i])
         if secret != "" {
             output = replace(output, secret, "[REDACTED]")
+            if len(secret) >= 8 {
+                output = replace(output, encode_base64(secret), "[REDACTED]")
+            }
         }
         i = i + 1
     }

@@ -22,7 +22,9 @@ $KUJO check main.kujo
 ./bin/workcell doctor
 ```
 
-## Quick start
+## Usage
+
+### Quick start
 
 ```bash
 ./bin/workcell init

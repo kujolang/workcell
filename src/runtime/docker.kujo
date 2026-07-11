@@ -1,6 +1,6 @@
 # Docker runtime adapter. All host commands use structured argv.
 
-from src.util import lines_of, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
+from src.util import lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
 func docker_result(argv, timeout_ms) {
@@ -10,12 +10,12 @@ func docker_result(argv, timeout_ms) {
 export func doctor_docker() {
     result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
     if proc_timed_out(result) {
-        return {"status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
+        return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
     }
     if proc_success(result) == false {
-        return {"status": "blocked", "message": "Docker daemon is not reachable: " + trim(proc_stderr(result)), "remediation": "Start Docker Desktop or the Docker daemon"}
+        return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon is not reachable: " + trim(proc_stderr(result)), "remediation": "Start Docker Desktop or the Docker daemon"}
     }
-    return {"status": "passed", "message": "Docker daemon reachable (server " + trim(proc_stdout(result)) + ")", "remediation": ""}
+    return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(proc_stdout(result)) + ")", "remediation": ""}
 }
 
 export func image_exists(image) {
@@ -56,6 +56,9 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
         if path_is_dir(context_path) == false {
             return {"ok": false, "error": "runtime.build_context does not exist: " + context_path}
         }
+        if path_has_symlink(context_path) {
+            return {"ok": false, "error": "runtime.build_context contains a symlink and is not safe: " + context_path}
+        }
         if rebuild == false && image_exists(image) {
             return {"ok": true, "action": "reused", "digest": image_digest(image)}
         }
@@ -95,6 +98,26 @@ export func run_container(definition, policy) {
         "stderr_truncated": proc_stderr_truncated(result),
         "container_name": policy["container_name"]
     }
+}
+
+export func stop_container(container_name) {
+    result := docker_result(["docker", "stop", "--time", "10", container_name], 30000)
+    if process_ok(result) {
+        return {"ok": true, "message": "container stopped gracefully"}
+    }
+    message := trim(proc_stderr(result))
+    if contains(message, "No such container") == 1 || contains(message, "is not running") == 1 {
+        return {"ok": true, "message": message}
+    }
+    return {"ok": false, "message": message, "exit_code": proc_exitcode(result)}
+}
+
+export func container_logs(container_name) {
+    result := docker_result(["docker", "logs", container_name], 30000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "collect container logs")}
+    }
+    return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
 }
 
 export func remove_container(container_name) {

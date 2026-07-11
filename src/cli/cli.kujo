@@ -30,7 +30,7 @@ func flag(parsed, name, fallback) {
 }
 
 func parse_args(tokens) {
-    bool_flags := ["json", "keep-failed", "dry-run", "verbose", "no-pull", "rebuild", "force"]
+    bool_flags := ["json", "keep-failed", "dry-run", "no-pull", "rebuild", "force"]
     value_flags := ["file", "repo", "output"]
     mut positionals := []
     mut flags := {}
@@ -246,6 +246,9 @@ func run_exit_code(result) {
     if status == "artifact-failed" {
         return 8
     }
+    if status == "verification-failed" {
+        return 8
+    }
     if status == "cleanup-failed" {
         return 9
     }
@@ -279,12 +282,15 @@ func print_run_result(result, json_mode) {
 }
 
 func run_command(parsed) {
-    result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), {
+    mut run_flags := {
         "dry_run": has_flag(parsed, "dry-run"),
-        "keep_failed": has_flag(parsed, "keep-failed"),
         "no_pull": has_flag(parsed, "no-pull"),
         "rebuild": has_flag(parsed, "rebuild")
-    })
+    }
+    if has_flag(parsed, "keep-failed") {
+        run_flags["keep_failed"] := true
+    }
+    result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
     print_run_result(result, has_flag(parsed, "json"))
     return run_exit_code(result)
 }

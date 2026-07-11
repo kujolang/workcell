@@ -78,9 +78,6 @@ func parse_timeout(value) {
     if type(value) == "int" && value > 0 {
         return {"ok": true, "value": value}
     }
-    if type(value) == "float" && value > 0.0 {
-        return {"ok": true, "value": value}
-    }
     if type(value) != "string" {
         return {"ok": false, "error": "timeout_ms must be a positive integer or duration string"}
     }
@@ -90,8 +87,12 @@ func parse_timeout(value) {
     }
     suffix := substring(text, len(text) - 1, len(text))
     amount_text := substring(text, 0, len(text) - 1)
-    if contains("0123456789", substring(amount_text, 0, 1)) == 0 {
-        return {"ok": false, "error": "invalid timeout: " + value}
+    mut digit_i := 0
+    while digit_i < len(amount_text) {
+        if contains("0123456789", substring(amount_text, digit_i, digit_i + 1)) == 0 {
+            return {"ok": false, "error": "invalid timeout: " + value}
+        }
+        digit_i = digit_i + 1
     }
     amount := parse_int(amount_text)
     mut multiplier := 0
@@ -118,6 +119,77 @@ func valid_token(value, label) {
         return {"ok": false, "error": label + " contains prohibited characters"}
     }
     return {"ok": true}
+}
+
+func valid_env_name(value, label) {
+    if type(value) != "string" || len(value) == 0 {
+        return {"ok": false, "error": label + " must be a non-empty environment variable name"}
+    }
+    first := substring(value, 0, 1)
+    letters := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    if contains(letters, first) == 0 {
+        return {"ok": false, "error": label + " must start with a letter or underscore"}
+    }
+    allowed := letters + "0123456789"
+    mut i := 1
+    while i < len(value) {
+        if contains(allowed, substring(value, i, i + 1)) == 0 {
+            return {"ok": false, "error": label + " contains invalid environment-variable characters"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func validate_env_names(value, label) {
+    if type(value) != "array" {
+        return {"ok": false, "error": label + " must be an array"}
+    }
+    mut i := 0
+    while i < len(value) {
+        check := valid_env_name(value[i], label + "[" + to_string(i) + "]")
+        if check["ok"] == false {
+            return check
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func valid_memory(value) {
+    if type(value) != "string" {
+        return false
+    }
+    text := to_lower(trim(value))
+    if len(text) < 2 {
+        return false
+    }
+    suffix := substring(text, len(text) - 1, len(text))
+    if contains("kmgt", suffix) == 0 {
+        return false
+    }
+    amount_text := substring(text, 0, len(text) - 1)
+    if amount_text == "" {
+        return false
+    }
+    mut i := 0
+    while i < len(amount_text) {
+        if contains("0123456789", substring(amount_text, i, i + 1)) == 0 {
+            return false
+        }
+        i = i + 1
+    }
+    amount := parse_int(amount_text)
+    if amount <= 0 {
+        return false
+    }
+    if suffix == "g" && amount > 64 {
+        return false
+    }
+    if suffix == "t" || (suffix == "m" && amount > 65536) || (suffix == "k" && amount > 67108864) {
+        return false
+    }
+    return true
 }
 
 func validate_string_array(value, label) {
@@ -169,7 +241,10 @@ export func validate_definition(raw) {
     }
     build_context := get_or(runtime, "build_context", "")
     if build_context != "" {
-        build_check := normalized_relative(build_context)
+        mut build_check := {"ok": true, "path": "."}
+        if build_context != "." {
+            build_check = normalized_relative(build_context)
+        }
         if build_check["ok"] == false {
             return {"ok": false, "error": "runtime.build_context: " + build_check["error"]}
         }
@@ -200,24 +275,36 @@ export func validate_definition(raw) {
     if environment_keys["ok"] == false {
         return environment_keys
     }
-    allow_check := validate_string_array(get_or(environment, "allow", []), "environment.allow")
+    allow_check := validate_env_names(get_or(environment, "allow", []), "environment.allow")
     if allow_check["ok"] == false {
         return allow_check
     }
-    if type(get_or(environment, "set", {})) != "dict" {
+    configured_environment := get_or(environment, "set", {})
+    if type(configured_environment) != "dict" {
         return {"ok": false, "error": "environment.set must be an object"}
     }
+    configured_names := keys(configured_environment)
+    mut configured_i := 0
+    while configured_i < len(configured_names) {
+        configured_name := configured_names[configured_i]
+        configured_check := valid_env_name(configured_name, "environment.set." + configured_name)
+        if configured_check["ok"] == false {
+            return configured_check
+        }
+        configured_value := configured_environment[configured_name]
+        if type(configured_value) != "string" || contains(configured_value, "\n") == 1 || contains(configured_value, "\r") == 1 {
+            return {"ok": false, "error": "environment.set values must be single-line strings"}
+        }
+        configured_i = configured_i + 1
+    }
 
-    secret_check := validate_string_array(get_or(raw, "secrets", []), "secrets")
+    secret_check := validate_env_names(get_or(raw, "secrets", []), "secrets")
     if secret_check["ok"] == false {
         return secret_check
     }
     mut secret_i := 0
     while secret_i < len(get_or(raw, "secrets", [])) {
         secret_name := raw["secrets"][secret_i]
-        if contains(secret_name, "=") == 1 || contains(secret_name, " ") == 1 {
-            return {"ok": false, "error": "secret names must be environment variable names"}
-        }
         secret_i = secret_i + 1
     }
 
@@ -226,19 +313,22 @@ export func validate_definition(raw) {
     if resources_keys["ok"] == false {
         return resources_keys
     }
-    if type(get_or(resources, "cpus", 0)) != "int" || resources["cpus"] <= 0 {
-        return {"ok": false, "error": "resources.cpus must be a positive integer"}
+    if type(get_or(resources, "cpus", 0)) != "int" || resources["cpus"] <= 0 || resources["cpus"] > 64 {
+        return {"ok": false, "error": "resources.cpus must be an integer from 1 through 64"}
     }
     memory := get_or(resources, "memory", "")
-    if type(memory) != "string" || trim(memory) == "" || starts_with(memory, "-") {
-        return {"ok": false, "error": "resources.memory must be a positive Docker memory value"}
+    if valid_memory(memory) == false {
+        return {"ok": false, "error": "resources.memory must be a bounded Docker value such as 256m or 4g (maximum 64g)"}
     }
-    if type(get_or(resources, "pids", 0)) != "int" || resources["pids"] <= 0 {
-        return {"ok": false, "error": "resources.pids must be a positive integer"}
+    if type(get_or(resources, "pids", 0)) != "int" || resources["pids"] <= 0 || resources["pids"] > 65536 {
+        return {"ok": false, "error": "resources.pids must be an integer from 1 through 65536"}
     }
     timeout_check := parse_timeout(get_or(resources, "timeout_ms", 0))
     if timeout_check["ok"] == false {
         return timeout_check
+    }
+    if timeout_check["value"] > 86400000 {
+        return {"ok": false, "error": "resources.timeout_ms must not exceed 24 hours"}
     }
 
     network := get_or(raw, "network", {})

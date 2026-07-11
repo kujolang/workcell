@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import ensure_dir, lines_of, path_within, process_error, process_ok, proc_stderr, proc_stdout, run_argv
+from src.util import ensure_dir, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_stderr, proc_stdout, run_argv, save_json, write_text
 
 func temp_root() {
     candidate := env("TMPDIR")
@@ -41,6 +41,35 @@ export func inspect_repository(repo_path) {
     }
 }
 
+func find_symlink(root) {
+    mut queue := [root]
+    mut queue_i := 0
+    while queue_i < len(queue) {
+        current := queue[queue_i]
+        entries := list_dir(current)
+        mut entry_i := 0
+        while entry_i < len(entries) {
+            name := to_string(entries[entry_i])
+            candidate := current + "/" + name
+            mut is_link := false
+            try {
+                is_link = path_is_symlink(candidate)
+            } except err {
+                is_link = false
+            }
+            if is_link {
+                return {"ok": false, "path": candidate, "error": "symlink is not allowed in a Workcell workspace: " + candidate}
+            }
+            if path_is_dir(candidate) {
+                queue = push(queue, candidate)
+            }
+            entry_i = entry_i + 1
+        }
+        queue_i = queue_i + 1
+    }
+    return {"ok": true}
+}
+
 export func create_workspace(repo_path, strategy, run_identifier) {
     inspected := inspect_repository(repo_path)
     if inspected["ok"] == false {
@@ -73,6 +102,12 @@ export func create_workspace(repo_path, strategy, run_identifier) {
     if process_ok(result) == false {
         return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
     }
+    write_text(path + ".owner", "workcell-run-id=" + run_identifier + "\n")
+    symlinks := find_symlink(path)
+    if symlinks["ok"] == false {
+        cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
+        return {"ok": false, "stage": "preparing", "error": symlinks["error"]}
+    }
     permissions := run_argv(["chmod", "-R", "a+rwX", path], 60000)
     if process_ok(permissions) == false {
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
@@ -88,8 +123,24 @@ export func create_workspace(repo_path, strategy, run_identifier) {
     }
 }
 
-export func changed_files(workspace) {
-    status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-only", workspace["source_commit"]], 30000)
+func status_name(letter) {
+    if letter == "A" {
+        return "added"
+    }
+    if letter == "D" {
+        return "deleted"
+    }
+    if letter == "R" {
+        return "renamed"
+    }
+    if letter == "C" {
+        return "copied"
+    }
+    return "modified"
+}
+
+func change_details(workspace) {
+    status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
     if process_ok(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
     }
@@ -99,7 +150,9 @@ export func changed_files(workspace) {
     while i < len(lines) {
         line := trim(lines[i])
         if line != "" {
-            files = push(files, line)
+            columns := split(line, "\t")
+            letter := substring(columns[0], 0, 1)
+            files = push(files, {"path": columns[len(columns) - 1], "status": status_name(letter)})
         }
         i = i + 1
     }
@@ -113,19 +166,42 @@ export func changed_files(workspace) {
                 exists := false
                 mut k := 0
                 while k < len(files) {
-                    if files[k] == item {
+                    if files[k]["path"] == item {
                         exists = true
                     }
                     k = k + 1
                 }
                 if exists == false {
-                    files = push(files, item)
+                    files = push(files, {"path": item, "status": "added"})
                 }
             }
             j = j + 1
         }
     }
     return {"ok": true, "files": files}
+}
+
+export func changed_files(workspace) {
+    details := change_details(workspace)
+    if details["ok"] == false {
+        return details
+    }
+    mut paths := []
+    mut i := 0
+    while i < len(details["files"]) {
+        paths = push(paths, details["files"][i]["path"])
+        i = i + 1
+    }
+    return {"ok": true, "files": paths}
+}
+
+export func write_change_report(workspace, output_path) {
+    details := change_details(workspace)
+    if details["ok"] == false {
+        return details
+    }
+    save_json(output_path, {"source_commit": workspace["source_commit"], "files": details["files"]})
+    return {"ok": true, "path": output_path, "files": details["files"]}
 }
 
 export func make_patch(workspace, patch_path) {
@@ -148,6 +224,10 @@ export func cleanup_workspace(workspace, preserve) {
     if starts_with(path, temp_root() + "/kujo-workcell-") == false {
         return {"ok": false, "error": "refusing to remove workspace outside Workcell temporary root: " + path}
     }
+    owner_path := path + ".owner"
+    if file_exists(owner_path) == false {
+        return {"ok": false, "error": "refusing to remove an unowned Workcell temporary path: " + path}
+    }
     mut result := null
     if workspace["strategy"] == "git-worktree" {
         result = git_result(["git", "-C", workspace["source_root"], "worktree", "remove", "--force", path], 60000)
@@ -156,6 +236,10 @@ export func cleanup_workspace(workspace, preserve) {
     }
     if process_ok(result) == false && (path_is_dir(path) || file_exists(path)) {
         return {"ok": false, "error": process_error(result, "clean disposable workspace")}
+    }
+    owner_result := run_argv(["rm", "-f", owner_path], 30000)
+    if process_ok(owner_result) == false {
+        return {"ok": false, "error": process_error(owner_result, "remove Workcell ownership marker")}
     }
     return {"ok": true, "preserved": false, "path": path}
 }
@@ -168,15 +252,19 @@ export func clean_stale_workspaces() {
     mut i := 0
     while i < len(entries) {
         name := to_string(entries[i])
-        if starts_with(name, "kujo-workcell-") {
+        if starts_with(name, "kujo-workcell-") && ends_with(name, ".owner") == false {
             path := root + "/" + name
-            if path_is_dir(path) {
+            owner_path := path + ".owner"
+            if file_exists(owner_path) && path_is_symlink(path) == false && path_is_dir(path) {
                 result := run_argv(["rm", "-rf", path], 60000)
                 if process_ok(result) {
+                    run_argv(["rm", "-f", owner_path], 30000)
                     removed = push(removed, path)
                 } else {
                     skipped = push(skipped, path + ": " + trim(proc_stderr(result)))
                 }
+            } else if starts_with(name, "kujo-workcell-") && path_is_dir(path) {
+                skipped = push(skipped, path + ": ownership marker missing or path is a symlink")
             }
         }
         i = i + 1

@@ -19,3 +19,5 @@ fi
 
 check_all
 "$KUJO" run "$ROOT/tests/workcell_test.kujo"
+KUJO="$KUJO" "$ROOT/tests/path_safety.sh"
+KUJO="$KUJO" "$ROOT/tests/dry_run.sh"

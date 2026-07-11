@@ -3,9 +3,9 @@
 from src.artifacts.exporter import export_declared, write_execution_logs
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
-from src.runtime.docker import ensure_image, run_container, remove_container
-from src.util import ensure_dir, get_or, iso_now, run_id, save_json, write_text
-from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace, inspect_repository, make_patch
+from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
+from src.util import ensure_dir, get_or, iso_now, path_has_symlink, run_id, save_json, write_text
+from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace, inspect_repository, make_patch, write_change_report
 from src.policy.policy import build_policy
 
 func option(flags, name, fallback) {
@@ -62,6 +62,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": source_info["error"], "exit_code": 3}
     }
     output_root := output_root_for(source_info["root"], definition, requested_output)
+    if path_has_symlink(output_root) {
+        return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "output path contains a symlink and is not safe: " + output_root, "exit_code": 3}
+    }
     output_dir := output_root + "/" + run_identifier
     ensure_dir(output_dir)
     workspace := create_workspace(source_info["root"], definition["workspace"]["strategy"], run_identifier)
@@ -70,6 +73,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         return {"ok": false, "run_id": run_identifier, "stage": get_or(workspace, "stage", "preparing"), "error": workspace["error"], "output_dir": output_dir, "exit_code": 3}
     }
     policy := build_policy(definition, run_identifier, workspace["workspace_path"])
+    start_clock := current_timestamp()
     receipt := new_receipt(definition, definition_path, run_identifier, workspace, workspace, policy, output_dir)
     receipt = add_state(receipt, "validated")
     receipt = add_state(receipt, "preparing")
@@ -79,14 +83,17 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
 
     preserve_failed := is_true(option(flags, "keep_failed", definition["cleanup"]["keep_failed"]))
     if is_true(option(flags, "dry_run", false)) {
-        receipt = add_state(receipt, "completed")
-        receipt = finish_receipt(receipt, "dry-run", 0, false, "", [], null, [], "not-run")
-        write_receipt(receipt, receipt_path)
+        receipt = add_state(receipt, "verifying")
+        receipt = add_state(receipt, "exporting")
+        receipt = add_state(receipt, "cleaning")
         cleanup := cleanup_workspace(workspace, false)
         dry_cleanup_status := "failed"
         if get_or(cleanup, "ok", false) {
             dry_cleanup_status = "complete"
+            receipt = add_state(receipt, "cleaned")
         }
+        receipt = finish_receipt(receipt, "dry-run", 0, false, "", [], null, [], dry_cleanup_status, current_timestamp() - start_clock, false)
+        write_receipt(receipt, receipt_path)
         return final_result(run_identifier, receipt_path, output_dir, receipt, true, "completed", "", 0, false, dry_cleanup_status)
     }
 
@@ -95,6 +102,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "preparing", image["error"])
         receipt = add_state(receipt, "failed")
         logs := write_execution_logs(output_dir, get_or(image, "stdout", ""), get_or(image, "stderr", ""), definition["secrets"])
+        receipt = add_state(receipt, "cleaning")
         cleanup := cleanup_workspace(workspace, preserve_failed)
         cleanup_status := "failed"
         if cleanup["ok"] {
@@ -103,8 +111,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
             } else {
                 cleanup_status = "complete"
             }
+            receipt = add_state(receipt, "cleaned")
         }
-        receipt = finish_receipt(receipt, "failed", 4, false, "", [], null, [], cleanup_status)
+        receipt = finish_receipt(receipt, "failed", 4, false, "", [], null, [], cleanup_status, current_timestamp() - start_clock, false)
         write_receipt(receipt, receipt_path)
         return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", image["error"], 4, false, cleanup_status)
     }
@@ -115,6 +124,8 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "starting", container["error"])
         receipt = add_state(receipt, "failed")
         logs := write_execution_logs(output_dir, "", container["error"], definition["secrets"])
+        receipt = add_state(receipt, "cleaning")
+        stop_container(policy["container_name"])
         container_cleanup := remove_container(policy["container_name"])
         if container_cleanup["ok"] == false {
             receipt = add_error(receipt, "cleaning", container_cleanup["message"])
@@ -127,13 +138,32 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
             } else {
                 cleanup_status = "complete"
             }
+            if container_cleanup["ok"] {
+                receipt = add_state(receipt, "cleaned")
+            }
         }
-        receipt = finish_receipt(receipt, "failed", 5, false, receipt["container_image_digest"], [], null, [], cleanup_status)
+        receipt = finish_receipt(receipt, "failed", 5, false, receipt["container_image_digest"], [], null, [], cleanup_status, current_timestamp() - start_clock, false)
         write_receipt(receipt, receipt_path)
         return final_result(run_identifier, receipt_path, output_dir, receipt, false, "starting", container["error"], 5, false, cleanup_status)
     }
     receipt = add_state(receipt, "running")
-    logs := write_execution_logs(output_dir, container["stdout"], container["stderr"], definition["secrets"])
+    receipt["stdout_truncated"] := container["stdout_truncated"]
+    receipt["stderr_truncated"] := container["stderr_truncated"]
+    if container["stdout_truncated"] || container["stderr_truncated"] {
+        warnings := receipt["warnings"]
+        warnings = push(warnings, "captured process output exceeded the configured limit")
+        receipt["warnings"] := warnings
+    }
+    mut captured_stdout := container["stdout"]
+    mut captured_stderr := container["stderr"]
+    if container["timed_out"] {
+        timeout_logs := container_logs(container["container_name"])
+        if timeout_logs["ok"] {
+            captured_stdout = timeout_logs["stdout"]
+            captured_stderr = timeout_logs["stderr"]
+        }
+    }
+    logs := write_execution_logs(output_dir, captured_stdout, captured_stderr, definition["secrets"])
     receipt["logs_path"] := output_dir
     receipt = add_state(receipt, "collecting")
     files := changed_files(workspace)
@@ -149,13 +179,22 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "collecting", patch["error"])
         patch_path = null
     }
+    change_report_path := output_dir + "/changes.json"
+    change_report := write_change_report(workspace, change_report_path)
+    if change_report["ok"] == false {
+        receipt = add_error(receipt, "collecting", change_report["error"])
+        change_report_path = null
+    }
+    receipt["change_report_path"] := change_report_path
     receipt = add_state(receipt, "verifying")
     execution_success := container["success"] == true && container["timed_out"] == false
     if container["timed_out"] {
         receipt = add_error(receipt, "running", "container execution exceeded the configured timeout")
+    } else if container["success"] == false {
+        receipt = add_error(receipt, "running", "container exited with code " + to_string(container["exit_code"]))
     }
     verification := receipt["verification"]
-    verification["verification_succeeded"] := execution_success && patch["ok"]
+    verification["verification_succeeded"] := execution_success && patch["ok"] && change_report["ok"]
     receipt["verification"] := verification
     artifacts := export_declared(workspace["workspace_path"], output_dir + "/artifacts", definition["artifacts"]["export"])
     artifact_list := []
@@ -172,6 +211,14 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     } else {
         receipt = add_state(receipt, "failed")
     }
+    receipt = add_state(receipt, "cleaning")
+    mut stop_result := {"ok": true, "message": "not required"}
+    if container["timed_out"] {
+        stop_result = stop_container(container["container_name"])
+        if stop_result["ok"] == false {
+            receipt = add_error(receipt, "cleaning", stop_result["message"])
+        }
+    }
     container_cleanup := remove_container(container["container_name"])
     if container_cleanup["ok"] == false {
         receipt = add_error(receipt, "cleaning", container_cleanup["message"])
@@ -187,12 +234,15 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     } else {
         receipt = add_error(receipt, "cleaning", cleanup["error"])
     }
-    if container_cleanup["ok"] == false {
+    if stop_result["ok"] == false || container_cleanup["ok"] == false {
         cleanup_status = "failed"
+    }
+    if cleanup["ok"] && stop_result["ok"] && container_cleanup["ok"] {
+        receipt = add_state(receipt, "cleaned")
     }
     exit_code := container["exit_code"]
     final_status := "completed"
-    final_ok := execution_success && artifacts["ok"] && cleanup["ok"] && container_cleanup["ok"]
+    final_ok := execution_success && artifacts["ok"] && patch["ok"] && change_report["ok"] && cleanup["ok"] && stop_result["ok"] && container_cleanup["ok"]
     if container["timed_out"] {
         exit_code = 6
         final_status = "timeout"
@@ -200,16 +250,20 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     } else if container["success"] == false {
         final_status = "workload-failed"
         final_ok = false
+    } else if patch["ok"] == false || change_report["ok"] == false {
+        exit_code = 8
+        final_status = "verification-failed"
+        final_ok = false
     } else if artifacts["ok"] == false {
-        exit_code = 7
+        exit_code = 8
         final_status = "artifact-failed"
         final_ok = false
-    } else if cleanup["ok"] == false || container_cleanup["ok"] == false {
-        exit_code = 8
+    } else if cleanup["ok"] == false || stop_result["ok"] == false || container_cleanup["ok"] == false {
+        exit_code = 9
         final_status = "cleanup-failed"
         final_ok = false
     }
-    receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"], receipt["container_image_digest"], changed, patch_path, artifact_list, cleanup_status)
+    receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"], receipt["container_image_digest"], changed, patch_path, artifact_list, cleanup_status, current_timestamp() - start_clock, execution_success)
     write_receipt(receipt, receipt_path)
     return final_result(run_identifier, receipt_path, output_dir, receipt, final_ok, final_status, "", exit_code, container["timed_out"], cleanup_status)
 }

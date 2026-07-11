@@ -35,7 +35,7 @@ export func iso_now() {
 }
 
 export func run_id() {
-    return "wc-" + format_date(now(), "YYYYMMDDHHmmss") + "-" + to_string(random_int(1000, 9999))
+    return "wc-" + replace(uuid_v4(), "-", "")
 }
 
 export func lines_of(text) {
@@ -198,6 +198,42 @@ export func path_within(root, candidate) {
         return true
     }
     return starts_with(candidate_abs, root_abs + "/")
+}
+
+export func path_has_symlink(path) {
+    mut absolute := replace(path, "\\", "/")
+    if starts_with(absolute, "/") == false {
+        absolute = os_getcwd() + "/" + absolute
+    }
+    parts := split(absolute, "/")
+    mut current := ""
+    if starts_with(absolute, "/") {
+        current = "/"
+    }
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part != "" && part != "." {
+            if current == "" {
+                current = part
+            } else if current == "/" {
+                current = current + part
+            } else {
+                current = current + "/" + part
+            }
+            mut is_link := false
+            try {
+                is_link = path_is_symlink(current)
+            } except err {
+                is_link = false
+            }
+            if is_link && current != "/var" && current != "/tmp" {
+                return true
+            }
+        }
+        i = i + 1
+    }
+    return false
 }
 
 export func safe_mount_path(path) {

@@ -1,8 +1,11 @@
 # Copy only declared workspace outputs into a run-owned host directory.
 
-from src.util import ensure_dir, normalized_relative, path_within, process_error, process_ok, run_argv, write_text
+from src.util import ensure_dir, normalized_relative, path_has_symlink, path_within, process_error, process_ok, run_argv, write_text
 
 export func export_declared(workspace_path, output_dir, declared) {
+    if path_has_symlink(output_dir) {
+        return {"ok": false, "error": "artifact output path contains a symlink: " + output_dir}
+    }
     ensure_dir(output_dir)
     mut exported := []
     mut i := 0
@@ -28,6 +31,9 @@ export func export_declared(workspace_path, output_dir, declared) {
                 break
             }
             slash = slash - 1
+        }
+        if path_has_symlink(parent) {
+            return {"ok": false, "error": "artifact destination contains a symlink: " + destination}
         }
         ensure_dir(parent)
         if file_exists(destination) || path_is_dir(destination) {

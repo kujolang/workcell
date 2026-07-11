@@ -56,6 +56,29 @@ func with_secret(definition, secret_name) {
     return definition
 }
 
+func with_resource(definition, key, value) {
+    resources := definition["resources"]
+    resources[key] := value
+    definition["resources"] := resources
+    return definition
+}
+
+func with_environment_set(definition, key, value) {
+    environment := definition["environment"]
+    configured := environment["set"]
+    configured[key] := value
+    environment["set"] := configured
+    definition["environment"] := environment
+    return definition
+}
+
+func with_build_context(definition, context) {
+    runtime := definition["runtime"]
+    runtime["build_context"] := context
+    definition["runtime"] := runtime
+    return definition
+}
+
 definition := default_definition()
 valid := validate_definition(definition)
 expect("default definition validates", valid["ok"])
@@ -65,7 +88,14 @@ expect("absolute artifact rejected", validate_definition(with_artifact(definitio
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
 expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
 expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
+expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)
+expect("repository build context is allowed", validate_definition(with_build_context(definition, "."))["ok"])
 expect("secret assignment rejected", validate_definition(with_secret(definition, "TOKEN=leak"))["ok"] == false)
+expect("CPU limit is bounded", validate_definition(with_resource(definition, "cpus", 65))["ok"] == false)
+expect("memory limit is bounded", validate_definition(with_resource(definition, "memory", "128g"))["ok"] == false)
+expect("PID limit is bounded", validate_definition(with_resource(definition, "pids", 70000))["ok"] == false)
+expect("environment names are validated", validate_definition(with_environment_set(definition, "BAD-NAME", "x"))["ok"] == false)
+expect("environment values are strings", validate_definition(with_environment_set(definition, "GOOD_NAME", 7))["ok"] == false)
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]

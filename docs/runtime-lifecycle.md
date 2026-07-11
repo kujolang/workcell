@@ -8,16 +8,16 @@ created → validated → preparing → prepared → starting → running
                                       ↘ failed
 ```
 
-1. **Validate**: load JSON, apply safe defaults, reject unknown fields and unsafe paths/options.
+1. **Validate**: load JSON, apply safe defaults, reject unknown fields, unsafe paths/options, symlinks, and unbounded resource values.
 2. **Prepare**: inspect Git, reject dirty sources, create a detached worktree or isolated clone, resolve image by build/reuse/pull.
 3. **Launch**: build explicit Docker argv and start the labeled container with the configured timeout.
 4. **Collect**: capture stdout/stderr, exit status, timing, changed files, and a Git patch.
 5. **Verify**: validate patch/artifact boundaries and record whether execution and verification succeeded separately.
 6. **Export**: copy declared artifacts only into the run directory and redact known secret values from logs.
 7. **Record**: write the structured receipt, including failure stage and diagnostics.
-8. **Clean**: remove the labeled container and temporary worktree. On failure, `--keep-failed` preserves only the temporary workspace.
+8. **Clean**: remove the labeled container and ownership-marked temporary worktree. On failure, `--keep-failed` preserves only the explicitly owned temporary workspace.
 
-Timeouts are distinct from ordinary workload failures. The process API attempts termination and returns a timeout result; the receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.
+Timeouts are distinct from ordinary workload failures. The process API returns a timeout result; Workcell retrieves available container logs, attempts `docker stop --time 10`, then escalates to labeled `docker rm -f`. The receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.
 
 ## Exit codes
 

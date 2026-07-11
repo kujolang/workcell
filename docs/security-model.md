@@ -11,10 +11,11 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Only a temporary Git worktree or isolated clone is mounted.
 - Network defaults to `none`; `default` requires explicit configuration.
 - `--privileged`, Docker socket mounts, host root/home/SSH/cloud credential mounts, host namespaces, devices, and unbounded resources are not represented by the policy builder.
-- Containers run as UID/GID `65532:65532`, with `no-new-privileges`, all capabilities dropped, bounded CPU/memory/PIDs, and a timeout.
+- Containers run as UID/GID `65532:65532`, with `no-new-privileges`, all capabilities dropped, bounded CPU/memory/PIDs, and a timeout. Timeout cleanup first attempts graceful stop and then force-removes only the labeled container.
 - Root filesystem is read-only by default; declared tmpfs paths are the writable scratch surface.
 - Host-side Docker/Git calls use structured argv, not shell interpolation.
 - Artifact paths must be relative, normalized, traversal-free, and contained in the run output directory.
+- Workspace trees and output roots containing symlinks are rejected or preserved only behind an explicit Workcell ownership marker.
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.
 
 ## Secrets

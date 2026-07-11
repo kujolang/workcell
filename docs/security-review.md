@@ -10,10 +10,12 @@
 - Artifact paths are normalized and contained; only declared outputs are copied.
 - Secret names are explicit, values are runtime-only, and known values are redacted from captured logs and excluded from receipts.
 - Cleanup filters Docker resources by Workcell ownership labels.
+- Source workspaces are scanned for symlinks, output roots reject symlink components, and temporary workspace deletion requires a Workcell ownership marker.
+- Resource values are bounded (CPU, memory, PIDs, and a 24-hour timeout maximum); duration parsing rejects non-integer amounts.
 
 ## Adversarial review
 
-Offline tests (19 assertions) reject host network, parent traversal, absolute artifact paths, image shell metacharacters, unknown fields, invalid timeouts, undeclared secret assignments, privileged argument presence, and Docker socket references. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount. Fence reported zero boundary violations.
+Offline tests (26 assertions) reject host network, parent traversal, absolute artifact paths, image shell metacharacters, unknown fields, invalid timeouts, undeclared secret assignments, invalid environment names/values, unbounded resources, privileged argument presence, and Docker socket references. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, labels, bounded resources, and only the workspace mount. Fence reported zero boundary violations.
 
 Docker-specific adversarial runs for privileged/socket/root mounts, container collisions, timeout termination, and label-scoped cleanup could not execute because Docker is not installed in the current environment. They remain required before an MVP release claim.
 

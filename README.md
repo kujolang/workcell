@@ -62,6 +62,7 @@ Each run produces, when the lifecycle reaches the relevant stage:
 ├── stdout.log
 ├── stderr.log
 ├── changes.patch
+├── changes.json
 └── artifacts/
 ```
 

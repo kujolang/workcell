@@ -1,0 +1,180 @@
+# Convert a validated definition into an explicit Docker security policy.
+
+from src.util import get_or, has_key_safe, join_path_safe, truthy
+
+func add_flag(args, flag) {
+    return push(args, flag)
+}
+
+func add_pair(args, flag, value) {
+    mut out := push(args, flag)
+    out = push(out, value)
+    return out
+}
+
+func label_args(args, labels) {
+    names := keys(labels)
+    mut out := args
+    mut i := 0
+    while i < len(names) {
+        name := names[i]
+        out = add_pair(out, "--label", name + "=" + to_string(labels[name]))
+        i = i + 1
+    }
+    return out
+}
+
+export func labels_for(definition, run_identifier) {
+    return {
+        "dev.kujo.workcell": "true",
+        "dev.kujo.workcell.run_id": run_identifier,
+        "dev.kujo.workcell.project": definition["name"],
+        "dev.kujo.workcell.version": to_string(definition["version"])
+    }
+}
+
+export func build_policy(definition, run_identifier, host_workspace) {
+    mount_path := definition["workspace"]["mount_path"]
+    labels := labels_for(definition, run_identifier)
+    mut docker := ["docker", "run"]
+    docker = label_args(docker, labels)
+    docker = add_pair(docker, "--name", "kujo-workcell-" + run_identifier)
+    docker = add_pair(docker, "--network", definition["network"]["mode"])
+    docker = add_pair(docker, "--user", "65532:65532")
+    docker = add_flag(docker, "--cap-drop")
+    docker = push(docker, "ALL")
+    docker = add_pair(docker, "--security-opt", "no-new-privileges:true")
+    docker = add_pair(docker, "--cpus", to_string(definition["resources"]["cpus"]))
+    docker = add_pair(docker, "--memory", definition["resources"]["memory"])
+    docker = add_pair(docker, "--pids-limit", to_string(definition["resources"]["pids"]))
+    if definition["filesystem"]["read_only_root"] == true {
+        docker = push(docker, "--read-only")
+    }
+    tmpfs := definition["filesystem"]["tmpfs"]
+    mut tmp_i := 0
+    while tmp_i < len(tmpfs) {
+        docker = add_pair(docker, "--tmpfs", tmpfs[tmp_i] + ":rw,noexec,nosuid,nodev")
+        tmp_i = tmp_i + 1
+    }
+    docker = add_pair(docker, "--volume", host_workspace + ":" + mount_path + ":rw")
+    docker = add_pair(docker, "--workdir", mount_path)
+    docker = push(docker, definition["runtime"]["image"])
+    command := definition["command"]
+    mut command_i := 0
+    while command_i < len(command) {
+        docker = push(docker, command[command_i])
+        command_i = command_i + 1
+    }
+    return {
+        "docker_args": docker,
+        "container_name": "kujo-workcell-" + run_identifier,
+        "labels": labels,
+        "mounts": [host_workspace + ":" + mount_path + ":rw"],
+        "network_mode": definition["network"]["mode"],
+        "resource_limits": definition["resources"],
+        "secret_names": definition["secrets"],
+        "effective_security_policy": {
+            "privileged": false,
+            "docker_socket": false,
+            "host_root_mount": false,
+            "host_home_mount": false,
+            "host_pid": false,
+            "host_ipc": false,
+            "host_user_namespace": false,
+            "devices": false,
+            "non_root_user": "65532:65532",
+            "read_only_root": definition["filesystem"]["read_only_root"],
+            "no_new_privileges": true,
+            "capabilities_dropped": "ALL",
+            "network_mode": definition["network"]["mode"],
+            "workspace_mount": mount_path + ":rw",
+            "artifact_export_boundary": "host output directory only"
+        }
+    }
+}
+
+export func spawn_options(definition) {
+    path_value := env("PATH")
+    mut environment := {"PATH": path_value}
+    allow := definition["environment"]["allow"]
+    mut allow_keys := ["PATH"]
+    mut i := 0
+    while i < len(allow) {
+        name := allow[i]
+        value := env(name)
+        if type(value) == "null" {
+            return {"ok": false, "error": "allowed environment variable is not set: " + name}
+        }
+        environment[name] := value
+        allow_keys = push(allow_keys, name)
+        i = i + 1
+    }
+    configured := definition["environment"]["set"]
+    config_names := keys(configured)
+    mut config_i := 0
+    while config_i < len(config_names) {
+        name := config_names[config_i]
+        environment[name] := configured[name]
+        config_i = config_i + 1
+    }
+    secrets := definition["secrets"]
+    mut secret_i := 0
+    while secret_i < len(secrets) {
+        name := secrets[secret_i]
+        value := env(name)
+        if type(value) == "null" {
+            return {"ok": false, "error": "declared secret is not set: " + name}
+        }
+        environment[name] := value
+        allow_keys = push(allow_keys, name)
+        secret_i = secret_i + 1
+    }
+    return {
+        "ok": true,
+        "options": {
+            "inherit_env": false,
+            "env_allow": allow_keys,
+            "env_deny": ["HOME", "SSH_AUTH_SOCK", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DOCKER_HOST"],
+            "env": environment,
+            "timeout_ms": definition["resources"]["timeout_ms"],
+            "max_output_bytes": 4000000
+        }
+    }
+}
+
+export func inspect_policy(definition, run_identifier, host_workspace, output_root) {
+    policy := build_policy(definition, run_identifier, host_workspace)
+    configured_names := keys(definition["environment"]["set"])
+    return {
+        "definition": {
+            "name": definition["name"],
+            "version": definition["version"],
+            "runtime": definition["runtime"],
+            "workspace": definition["workspace"],
+            "command": definition["command"],
+            "environment_allow": definition["environment"]["allow"],
+            "environment_set_names": configured_names,
+            "secret_names": definition["secrets"],
+            "resources": definition["resources"],
+            "network": definition["network"],
+            "filesystem": definition["filesystem"],
+            "artifacts": definition["artifacts"],
+            "cleanup": definition["cleanup"],
+            "trust_profile": definition["trust_profile"],
+            "receipt": definition["receipt"]
+        },
+        "run_id": run_identifier,
+        "runtime_backend": "docker",
+        "source_workspace": host_workspace,
+        "output_root": output_root,
+        "container_name": policy["container_name"],
+        "mounts": policy["mounts"],
+        "network_mode": policy["network_mode"],
+        "resource_limits": policy["resource_limits"],
+        "secret_names": policy["secret_names"],
+        "docker_security_arguments": policy["docker_args"],
+        "effective_security_policy": policy["effective_security_policy"],
+        "cleanup": definition["cleanup"],
+        "receipt_destination": join_path_safe(output_root, "receipt.json")
+    }
+}

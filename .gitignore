@@ -1,0 +1,6 @@
+.workcell/
+.runledger/
+.loop-engineering/evidence/
+.loop-engineering/iterations/
+target/
+.DS_Store

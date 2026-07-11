@@ -1,0 +1,62 @@
+# Environment diagnostics for Workcell.
+
+from src.runtime.docker import doctor_docker
+from src.util import ensure_dir, process_ok, run_argv
+from src.workspace.workspace import inspect_repository
+
+func command_check(program, arguments, label) {
+    result := run_argv(push([program], arguments), 10000)
+    if process_ok(result) {
+        return {"name": label, "status": "passed", "message": trim(result.stdout), "remediation": ""}
+    }
+    return {"name": label, "status": "blocked", "message": trim(result.stderr), "remediation": "Install or expose " + program + " on PATH"}
+}
+
+export func report(repo_path) {
+    mut checks := []
+    kujo_program := env("KUJO")
+    if type(kujo_program) != "string" || trim(kujo_program) == "" {
+        kujo_program = "kujo"
+    }
+    checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
+    checks = push(checks, command_check("git", ["--version"], "Git CLI"))
+    checks = push(checks, doctor_docker())
+    repo := inspect_repository(repo_path)
+    if repo["ok"] {
+        status := "passed"
+        message := "Git repository: " + repo["root"]
+        if repo["clean"] == false {
+            status = "warning"
+            message = message + " (dirty; Workcell run rejects dirty sources by default)"
+        }
+        checks = push(checks, {"name": "Source repository", "status": status, "message": message, "remediation": "Commit or otherwise preserve source changes before running Workcell"})
+    } else {
+        checks = push(checks, {"name": "Source repository", "status": "blocked", "message": repo["error"], "remediation": "Run Workcell from a Git repository or pass --repo <path>"})
+    }
+    tmp := env("TMPDIR")
+    if type(tmp) != "string" || trim(tmp) == "" {
+        tmp = "/tmp"
+    }
+    tmp_status := "blocked"
+    if path_is_dir(tmp) {
+        tmp_status = "passed"
+    }
+    checks = push(checks, {"name": "Temporary directory", "status": tmp_status, "message": tmp, "remediation": "Provide a writable temporary directory"})
+    docker_host := env("DOCKER_HOST")
+    if type(docker_host) == "string" && trim(docker_host) != "" {
+        checks = push(checks, {"name": "Docker host override", "status": "warning", "message": "DOCKER_HOST is set; review daemon trust before running", "remediation": "Use a trusted local Docker daemon"})
+    }
+    mut blocking := 0
+    mut warnings := 0
+    mut i := 0
+    while i < len(checks) {
+        if checks[i]["status"] == "blocked" {
+            blocking = blocking + 1
+        }
+        if checks[i]["status"] == "warning" {
+            warnings = warnings + 1
+        }
+        i = i + 1
+    }
+    return {"ok": blocking == 0, "checks": checks, "summary": {"passed": len(checks) - blocking - warnings, "warnings": warnings, "blocked": blocking}}
+}

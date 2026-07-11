@@ -1,0 +1,256 @@
+# Workcell shared helpers.
+
+export func truthy(value) {
+    if type(value) == "bool" {
+        return value
+    }
+    if type(value) == "int" {
+        return value != 0
+    }
+    if type(value) == "null" {
+        return false
+    }
+    if type(value) == "string" {
+        return trim(value) != ""
+    }
+    return true
+}
+
+export func has_key_safe(value, key) {
+    if type(value) != "dict" {
+        return false
+    }
+    return has_key(value, key) == 1
+}
+
+export func get_or(value, key, fallback) {
+    if has_key_safe(value, key) {
+        return value[key]
+    }
+    return fallback
+}
+
+export func iso_now() {
+    return format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
+}
+
+export func run_id() {
+    return "wc-" + format_date(now(), "YYYYMMDDHHmmss") + "-" + to_string(random_int(1000, 9999))
+}
+
+export func lines_of(text) {
+    raw := split(text, "\n")
+    mut out := []
+    mut i := 0
+    while i < len(raw) {
+        line := raw[i]
+        if ends_with(line, "\r") {
+            out = push(out, substring(line, 0, len(line) - 1))
+        } else {
+            out = push(out, line)
+        }
+        i = i + 1
+    }
+    return out
+}
+
+export func ensure_dir(path) {
+    if path == "" || path == "." || path_is_dir(path) {
+        return true
+    }
+    parts := split(replace(path, "\\", "/"), "/")
+    mut current := ""
+    if starts_with(path, "/") {
+        current = "/"
+    }
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part != "" && part != "." {
+            if current == "" {
+                current = part
+            } else if current == "/" {
+                current = current + part
+            } else {
+                current = current + "/" + part
+            }
+            if path_is_dir(current) == false {
+                create_dir(current)
+            }
+        }
+        i = i + 1
+    }
+    return path_is_dir(path)
+}
+
+export func write_text(path, content) {
+    parent := parent_of(path)
+    if parent != "" {
+        ensure_dir(parent)
+    }
+    if file_exists(path) {
+        delete_file(path)
+    }
+    write_file(path, content)
+    return true
+}
+
+export func read_text(path) {
+    if file_exists(path) == false {
+        return {"ok": false, "error": "file not found: " + path}
+    }
+    if path_is_dir(path) {
+        return {"ok": false, "error": "path is a directory: " + path}
+    }
+    return {"ok": true, "text": read_file(path)}
+}
+
+export func load_json(path) {
+    read_result := read_text(path)
+    if read_result["ok"] == false {
+        return read_result
+    }
+    try {
+        value := parse_json(read_result["text"])
+        return {"ok": true, "value": value}
+    } except err {
+        return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
+    }
+}
+
+export func save_json(path, value) {
+    return write_text(path, to_json_pretty(value))
+}
+
+export func parent_of(path) {
+    normalized := replace(path, "\\", "/")
+    mut i := len(normalized) - 1
+    while i >= 0 {
+        if substring(normalized, i, i + 1) == "/" {
+            return substring(normalized, 0, i)
+        }
+        i = i - 1
+    }
+    return ""
+}
+
+export func base_of(path) {
+    normalized := replace(path, "\\", "/")
+    mut i := len(normalized) - 1
+    while i >= 0 {
+        if substring(normalized, i, i + 1) == "/" {
+            return substring(normalized, i + 1, len(normalized))
+        }
+        i = i - 1
+    }
+    return normalized
+}
+
+export func join_path_safe(left, right) {
+    if left == "" {
+        return right
+    }
+    if right == "" {
+        return left
+    }
+    if ends_with(left, "/") {
+        return left + right
+    }
+    return left + "/" + right
+}
+
+export func normalized_relative(path) {
+    value := replace(trim(path), "\\", "/")
+    if value == "" || starts_with(value, "/") || contains(value, ":") == 1 {
+        return {"ok": false, "error": "path must be a non-empty relative path: " + path}
+    }
+    parts := split(value, "/")
+    mut clean := []
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part == ".." {
+            return {"ok": false, "error": "parent traversal is not allowed: " + path}
+        }
+        if part == "." || part == "" {
+            i = i + 1
+            continue
+        }
+        clean = push(clean, part)
+        i = i + 1
+    }
+    if len(clean) == 0 {
+        return {"ok": false, "error": "path resolves to an empty path: " + path}
+    }
+    mut output := clean[0]
+    i = 1
+    while i < len(clean) {
+        output = output + "/" + clean[i]
+        i = i + 1
+    }
+    return {"ok": true, "path": output}
+}
+
+export func path_within(root, candidate) {
+    root_abs := path_absolute(root)
+    candidate_abs := path_absolute(candidate)
+    if candidate_abs == root_abs {
+        return true
+    }
+    return starts_with(candidate_abs, root_abs + "/")
+}
+
+export func safe_mount_path(path) {
+    value := replace(trim(path), "\\", "/")
+    lower := to_lower(value)
+    if value == "/" || starts_with(value, "~/") || contains(lower, "/.ssh") == 1 || contains(lower, "/.aws") == 1 || contains(lower, "/.config/gcloud") == 1 || contains(lower, "docker.sock") == 1 {
+        return false
+    }
+    return true
+}
+
+export func contains_text(text, needle) {
+    return contains(text, needle) == 1
+}
+
+export func redact(text, secrets) {
+    mut output := text
+    mut i := 0
+    while i < len(secrets) {
+        secret := to_string(secrets[i])
+        if secret != "" {
+            output = replace(output, secret, "[REDACTED]")
+        }
+        i = i + 1
+    }
+    return output
+}
+
+export func process_ok(result) {
+    if type(result) != "struct" {
+        return false
+    }
+    return result.success == true && result.timed_out == false
+}
+
+export func process_error(result, operation) {
+    if type(result) != "struct" {
+        return operation + ": process did not return a ProcessResult"
+    }
+    if result.timed_out {
+        return operation + ": timed out"
+    }
+    return operation + " exited with code " + to_string(result.exitcode) + ": " + trim(result.stderr)
+}
+
+export func run_argv(argv, timeout_ms) {
+    return spawn_process(argv, {"timeout_ms": timeout_ms, "max_output_bytes": 4000000})
+}
+
+export func first_line(text) {
+    lines := split(text, "\n")
+    if len(lines) == 0 {
+        return ""
+    }
+    return trim(lines[0])
+}

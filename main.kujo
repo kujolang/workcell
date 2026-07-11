@@ -1,0 +1,6 @@
+# Workcell entrypoint. Application logic lives under src/.
+
+from src.cli.cli import main
+
+code := main(args())
+exit(code)

@@ -1,0 +1,81 @@
+# Structured Workcell execution receipts.
+
+from src.util import iso_now, save_json
+
+export func new_receipt(definition, definition_path, run_identifier, source, workspace, policy, output_dir) {
+    return {
+        "run_id": run_identifier,
+        "workcell_name": definition["name"],
+        "workcell_version": definition["version"],
+        "workcell_definition_path": definition_path,
+        "workcell_definition_hash": sha256_file(definition_path),
+        "source_repository": source["source_root"],
+        "source_commit": source["source_commit"],
+        "workspace_strategy": workspace["strategy"],
+        "runtime_backend": "docker",
+        "container_image": definition["runtime"]["image"],
+        "container_image_digest": "",
+        "command": definition["command"],
+        "start_time": iso_now(),
+        "end_time": null,
+        "elapsed_ms": null,
+        "exit_code": null,
+        "timeout": false,
+        "network_mode": policy["network_mode"],
+        "resource_limits": policy["resource_limits"],
+        "secret_names": policy["secret_names"],
+        "mounts": policy["mounts"],
+        "effective_security_policy": policy["effective_security_policy"],
+        "exported_artifacts": [],
+        "changed_files": [],
+        "patch_path": null,
+        "logs_path": output_dir,
+        "cleanup_status": "pending",
+        "final_status": "created",
+        "verification": {
+            "execution_succeeded": false,
+            "verification_succeeded": false,
+            "artifacts_exported": false,
+            "cleanup_succeeded": false
+        },
+        "errors": [],
+        "warnings": [],
+        "lifecycle": ["created"]
+    }
+}
+
+export func add_state(receipt, state) {
+    receipt["lifecycle"] := push(receipt["lifecycle"], state)
+    receipt["final_status"] := state
+    return receipt
+}
+
+export func add_error(receipt, stage, message) {
+    errors := receipt["errors"]
+    errors = push(errors, {"stage": stage, "message": message})
+    receipt["errors"] := errors
+    return receipt
+}
+
+export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status) {
+    receipt["end_time"] := iso_now()
+    receipt["exit_code"] := exit_code
+    receipt["timeout"] := timed_out
+    receipt["container_image_digest"] := image_digest
+    receipt["changed_files"] := changed
+    receipt["patch_path"] := patch_path
+    receipt["exported_artifacts"] := artifacts
+    receipt["cleanup_status"] := cleanup_status
+    receipt["final_status"] := final_status
+    verification := receipt["verification"]
+    verification["execution_succeeded"] := exit_code == 0 && timed_out == false
+    verification["artifacts_exported"] := type(artifacts) == "array"
+    verification["cleanup_succeeded"] := cleanup_status == "complete" || cleanup_status == "preserved"
+    receipt["verification"] := verification
+    return receipt
+}
+
+export func write_receipt(receipt, output_path) {
+    save_json(output_path, receipt)
+    return {"ok": true, "path": output_path}
+}

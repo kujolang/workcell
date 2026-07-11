@@ -1,0 +1,48 @@
+{
+  "artifacts": {
+    "export": []
+  },
+  "cleanup": {
+    "keep_failed": false
+  },
+  "command": [
+    "sh",
+    "-lc",
+    "printf 'Workcell ready\\n'"
+  ],
+  "environment": {
+    "allow": [],
+    "set": {}
+  },
+  "filesystem": {
+    "read_only_root": true,
+    "tmpfs": [
+      "/tmp"
+    ]
+  },
+  "name": "workcell-project-check",
+  "network": {
+    "mode": "none"
+  },
+  "receipt": {
+    "path": ".workcell/runs"
+  },
+  "resources": {
+    "cpus": 2,
+    "memory": "1g",
+    "pids": 256,
+    "timeout_ms": 300000
+  },
+  "runtime": {
+    "backend": "docker",
+    "build_context": "",
+    "image": "kujolang/workcell-base:local"
+  },
+  "secrets": [],
+  "trust_profile": "contained-standard",
+  "version": 1,
+  "workspace": {
+    "mount_path": "/workspace",
+    "strategy": "git-worktree"
+  }
+}

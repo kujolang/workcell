@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Thin Workcell launcher; the application is implemented in Kujo.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in
+    /*) ;;
+    *) SOURCE="$DIR/$SOURCE" ;;
+  esac
+done
+PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
+KUJO="${KUJO:-kujo}"
+
+if ! command -v "$KUJO" >/dev/null 2>&1 && [ ! -x "$KUJO" ]; then
+  echo "workcell: cannot find the Kujo runtime ('$KUJO')." >&2
+  echo "Set KUJO to /path/to/kujo/target/release/kujo." >&2
+  exit 127
+fi
+
+exec "$KUJO" run "$PROJECT_DIR/main.kujo" -- "$@"

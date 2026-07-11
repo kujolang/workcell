@@ -1,0 +1,176 @@
+# Disposable Git workspace management.
+
+from src.util import ensure_dir, lines_of, path_within, process_error, process_ok, run_argv
+
+func temp_root() {
+    candidate := env("TMPDIR")
+    if type(candidate) != "string" || trim(candidate) == "" {
+        return "/tmp"
+    }
+    return candidate
+}
+
+func git_result(args, timeout_ms) {
+    return run_argv(args, timeout_ms)
+}
+
+export func inspect_repository(repo_path) {
+    root_result := git_result(["git", "-C", repo_path, "rev-parse", "--show-toplevel"], 10000)
+    if process_ok(root_result) == false {
+        return {"ok": false, "error": "not a Git repository: " + repo_path}
+    }
+    root := trim(root_result.stdout)
+    commit_result := git_result(["git", "-C", root, "rev-parse", "HEAD"], 10000)
+    if process_ok(commit_result) == false {
+        return {"ok": false, "error": process_error(commit_result, "resolve source commit")}
+    }
+    status_result := git_result(["git", "-C", root, "status", "--porcelain", "--untracked-files=all"], 10000)
+    if process_ok(status_result) == false {
+        return {"ok": false, "error": process_error(status_result, "inspect repository status")}
+    }
+    return {
+        "ok": true,
+        "root": root,
+        "commit": trim(commit_result.stdout),
+        "status": trim(status_result.stdout),
+        "clean": trim(status_result.stdout) == ""
+    }
+}
+
+export func create_workspace(repo_path, strategy, run_identifier) {
+    inspected := inspect_repository(repo_path)
+    if inspected["ok"] == false {
+        return inspected
+    }
+    if inspected["clean"] == false {
+        return {"ok": false, "stage": "preparing", "error": "source repository is dirty; Workcell rejects dirty repositories by default to avoid omitting user changes", "status": inspected["status"]}
+    }
+    root := inspected["root"]
+    path := temp_root() + "/kujo-workcell-" + run_identifier
+    if path_is_dir(path) || file_exists(path) {
+        return {"ok": false, "stage": "preparing", "error": "temporary workspace already exists: " + path}
+    }
+    parent := path
+    mut slash := len(parent) - 1
+    while slash >= 0 {
+        if substring(parent, slash, slash + 1) == "/" {
+            parent = substring(parent, 0, slash)
+            break
+        }
+        slash = slash - 1
+    }
+    ensure_dir(parent)
+    mut result := null
+    if strategy == "git-worktree" {
+        result = git_result(["git", "-C", root, "worktree", "add", "--detach", path, inspected["commit"]], 60000)
+    } else {
+        result = git_result(["git", "clone", "--no-local", root, path], 120000)
+    }
+    if process_ok(result) == false {
+        return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": result.stdout, "stderr": result.stderr}
+    }
+    return {
+        "ok": true,
+        "source_root": root,
+        "source_commit": inspected["commit"],
+        "workspace_path": path,
+        "strategy": strategy,
+        "source_clean": true
+    }
+}
+
+export func changed_files(workspace) {
+    status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-only", workspace["source_commit"]], 30000)
+    if process_ok(status_result) == false {
+        return {"ok": false, "error": process_error(status_result, "collect changed files")}
+    }
+    lines := lines_of(trim(status_result.stdout))
+    mut files := []
+    mut i := 0
+    while i < len(lines) {
+        line := trim(lines[i])
+        if line != "" {
+            files = push(files, line)
+        }
+        i = i + 1
+    }
+    untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
+    if process_ok(untracked_result) {
+        untracked := lines_of(trim(untracked_result.stdout))
+        mut j := 0
+        while j < len(untracked) {
+            item := trim(untracked[j])
+            if item != "" {
+                exists := false
+                mut k := 0
+                while k < len(files) {
+                    if files[k] == item {
+                        exists = true
+                    }
+                    k = k + 1
+                }
+                if exists == false {
+                    files = push(files, item)
+                }
+            }
+            j = j + 1
+        }
+    }
+    return {"ok": true, "files": files}
+}
+
+export func make_patch(workspace, patch_path) {
+    result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "generate Git patch")}
+    }
+    if file_exists(patch_path) {
+        delete_file(patch_path)
+    }
+    write_file(patch_path, result.stdout)
+    return {"ok": true, "path": patch_path, "bytes": len(result.stdout)}
+}
+
+export func cleanup_workspace(workspace, preserve) {
+    if preserve {
+        return {"ok": true, "preserved": true, "path": workspace["workspace_path"], "message": "failed workspace preserved by policy"}
+    }
+    path := workspace["workspace_path"]
+    if starts_with(path, temp_root() + "/kujo-workcell-") == false {
+        return {"ok": false, "error": "refusing to remove workspace outside Workcell temporary root: " + path}
+    }
+    mut result := null
+    if workspace["strategy"] == "git-worktree" {
+        result = git_result(["git", "-C", workspace["source_root"], "worktree", "remove", "--force", path], 60000)
+    } else {
+        result = run_argv(["rm", "-rf", "--", path], 60000)
+    }
+    if process_ok(result) == false && (path_is_dir(path) || file_exists(path)) {
+        return {"ok": false, "error": process_error(result, "clean disposable workspace")}
+    }
+    return {"ok": true, "preserved": false, "path": path}
+}
+
+export func clean_stale_workspaces() {
+    root := temp_root()
+    entries := list_dir(root)
+    mut removed := []
+    mut skipped := []
+    mut i := 0
+    while i < len(entries) {
+        name := to_string(entries[i])
+        if starts_with(name, "kujo-workcell-") {
+            path := root + "/" + name
+            if path_is_dir(path) {
+                result := run_argv(["rm", "-rf", "--", path], 60000)
+                if process_ok(result) {
+                    removed = push(removed, path)
+                } else {
+                    skipped = push(skipped, path + ": " + trim(result.stderr))
+                }
+            }
+        }
+        i = i + 1
+    }
+    return {"ok": len(skipped) == 0, "removed": removed, "skipped": skipped}
+}

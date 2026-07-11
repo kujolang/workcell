@@ -1,0 +1,136 @@
+# Docker runtime adapter. All host commands use structured argv.
+
+from src.util import lines_of, process_error, process_ok, run_argv
+from src.policy.policy import spawn_options
+
+func docker_result(argv, timeout_ms) {
+    return run_argv(argv, timeout_ms)
+}
+
+export func doctor_docker() {
+    result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
+    if type(result) != "struct" {
+        return {"status": "blocked", "message": "Docker CLI did not return a process result", "remediation": "Install Docker and rerun workcell doctor"}
+    }
+    if result.timed_out {
+        return {"status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
+    }
+    if result.success == false {
+        return {"status": "blocked", "message": "Docker daemon is not reachable: " + trim(result.stderr), "remediation": "Start Docker Desktop or the Docker daemon"}
+    }
+    return {"status": "passed", "message": "Docker daemon reachable (server " + trim(result.stdout) + ")", "remediation": ""}
+}
+
+export func image_exists(image) {
+    result := docker_result(["docker", "image", "inspect", image], 15000)
+    return process_ok(result)
+}
+
+export func image_digest(image) {
+    result := docker_result(["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image], 15000)
+    if process_ok(result) == false {
+        return ""
+    }
+    return trim(result.stdout)
+}
+
+export func pull_image(image) {
+    result := docker_result(["docker", "pull", image], 600000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": result.stdout, "stderr": result.stderr}
+    }
+    return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
+}
+
+export func build_image(image, context_path, run_identifier) {
+    args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+    result := docker_result(args, 900000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "docker build"), "stdout": result.stdout, "stderr": result.stderr}
+    }
+    return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
+}
+
+export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
+    image := definition["runtime"]["image"]
+    context := definition["runtime"]["build_context"]
+    if context != "" {
+        context_path := source_root + "/" + context
+        if path_is_dir(context_path) == false {
+            return {"ok": false, "error": "runtime.build_context does not exist: " + context_path}
+        }
+        if rebuild == false && image_exists(image) {
+            return {"ok": true, "action": "reused", "digest": image_digest(image)}
+        }
+        built := build_image(image, context_path, run_identifier)
+        if built["ok"] == false {
+            return built
+        }
+        return {"ok": true, "action": "built", "digest": image_digest(image), "stdout": built["stdout"]}
+    }
+    if image_exists(image) {
+        return {"ok": true, "action": "existing", "digest": image_digest(image)}
+    }
+    if no_pull {
+        return {"ok": false, "error": "image is not available locally and --no-pull was requested: " + image}
+    }
+    pulled := pull_image(image)
+    if pulled["ok"] == false {
+        return pulled
+    }
+    return {"ok": true, "action": "pulled", "digest": image_digest(image), "stdout": pulled["stdout"]}
+}
+
+export func run_container(definition, policy) {
+    options := spawn_options(definition)
+    if options["ok"] == false {
+        return {"ok": false, "stage": "starting", "error": options["error"]}
+    }
+    result := spawn_process(policy["docker_args"], options["options"])
+    if type(result) != "struct" {
+        return {"ok": false, "stage": "starting", "error": "Docker run did not return a process result"}
+    }
+    return {
+        "ok": true,
+        "success": result.success,
+        "exit_code": result.exitcode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "timed_out": result.timed_out,
+        "stdout_truncated": result.stdout_truncated,
+        "stderr_truncated": result.stderr_truncated,
+        "container_name": policy["container_name"]
+    }
+}
+
+export func remove_container(container_name) {
+    result := docker_result(["docker", "rm", "-f", container_name], 30000)
+    if process_ok(result) {
+        return {"ok": true, "message": "container removed"}
+    }
+    return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
+}
+
+export func clean_owned_resources() {
+    listed := docker_result(["docker", "ps", "-aq", "--filter", "label=dev.kujo.workcell=true"], 30000)
+    if process_ok(listed) == false {
+        return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
+    }
+    ids := lines_of(trim(listed.stdout))
+    mut removed := 0
+    mut failed := []
+    mut i := 0
+    while i < len(ids) {
+        id := trim(ids[i])
+        if id != "" {
+            result := remove_container(id)
+            if result["ok"] {
+                removed = removed + 1
+            } else {
+                failed = push(failed, id + ": " + result["message"])
+            }
+        }
+        i = i + 1
+    }
+    return {"ok": len(failed) == 0, "removed": removed, "failed": failed}
+}

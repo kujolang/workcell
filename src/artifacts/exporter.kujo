@@ -1,0 +1,61 @@
+# Copy only declared workspace outputs into a run-owned host directory.
+
+from src.util import ensure_dir, normalized_relative, path_within, process_error, process_ok, run_argv, write_text
+
+export func export_declared(workspace_path, output_dir, declared) {
+    ensure_dir(output_dir)
+    mut exported := []
+    mut i := 0
+    while i < len(declared) {
+        checked := normalized_relative(declared[i])
+        if checked["ok"] == false {
+            return {"ok": false, "error": checked["error"]}
+        }
+        relative := checked["path"]
+        source := workspace_path + "/" + relative
+        destination := output_dir + "/" + relative
+        if path_within(workspace_path, source) == false || path_within(output_dir, destination) == false {
+            return {"ok": false, "error": "artifact escapes its allowed boundary: " + relative}
+        }
+        if file_exists(source) == false && path_is_dir(source) == false {
+            return {"ok": false, "error": "declared artifact does not exist: " + relative}
+        }
+        parent := destination
+        mut slash := len(parent) - 1
+        while slash >= 0 {
+            if substring(parent, slash, slash + 1) == "/" {
+                parent = substring(parent, 0, slash)
+                break
+            }
+            slash = slash - 1
+        }
+        ensure_dir(parent)
+        if file_exists(destination) || path_is_dir(destination) {
+            run_argv(["rm", "-rf", "--", destination], 30000)
+        }
+        result := run_argv(["cp", "-R", "--", source, destination], 60000)
+        if process_ok(result) == false {
+            return {"ok": false, "error": process_error(result, "export artifact " + relative)}
+        }
+        exported = push(exported, relative)
+        i = i + 1
+    }
+    return {"ok": true, "artifacts": exported, "output_dir": output_dir}
+}
+
+export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) {
+    redacted_stdout := stdout_text
+    redacted_stderr := stderr_text
+    mut i := 0
+    while i < len(secrets) {
+        value := env(secrets[i])
+        if type(value) == "string" {
+            redacted_stdout = replace(redacted_stdout, value, "[REDACTED]")
+            redacted_stderr = replace(redacted_stderr, value, "[REDACTED]")
+        }
+        i = i + 1
+    }
+    write_text(output_dir + "/stdout.log", redacted_stdout)
+    write_text(output_dir + "/stderr.log", redacted_stderr)
+    return {"stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
+}

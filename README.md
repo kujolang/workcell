@@ -35,6 +35,8 @@ $KUJO check main.kujo
 
 `workcell init` creates a restrictive JSON definition. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example.
 
+Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
+
 ## CLI
 
 | Command | Purpose |

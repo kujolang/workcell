@@ -156,6 +156,10 @@ func validate_env_names(value, label) {
     return {"ok": true}
 }
 
+func host_control_env_name(name) {
+    return name == "PATH" || name == "HOME" || name == "SSH_AUTH_SOCK" || name == "DOCKER_HOST" || name == "DOCKER_CONFIG" || name == "KUBECONFIG" || name == "AWS_ACCESS_KEY_ID" || name == "AWS_SECRET_ACCESS_KEY"
+}
+
 func valid_memory(value) {
     if type(value) != "string" {
         return false
@@ -259,8 +263,8 @@ export func validate_definition(raw) {
         return {"ok": false, "error": "workspace.strategy must be git-worktree or isolated-clone"}
     }
     mount_path := get_or(workspace, "mount_path", "")
-    if type(mount_path) != "string" || starts_with(mount_path, "/") == false || contains(mount_path, "..") == 1 || mount_path == "/" {
-        return {"ok": false, "error": "workspace.mount_path must be a safe absolute container path"}
+    if type(mount_path) != "string" || starts_with(mount_path, "/") == false || contains(mount_path, "..") == 1 || mount_path == "/" || (mount_path != "/workspace" && starts_with(mount_path, "/workspace/") == false) {
+        return {"ok": false, "error": "workspace.mount_path must be /workspace or a descendant beneath it"}
     }
 
     command_check := validate_string_array(get_or(raw, "command", []), "command")
@@ -279,6 +283,14 @@ export func validate_definition(raw) {
     if allow_check["ok"] == false {
         return allow_check
     }
+    allow_names := get_or(environment, "allow", [])
+    mut allow_i := 0
+    while allow_i < len(allow_names) {
+        if host_control_env_name(allow_names[allow_i]) {
+            return {"ok": false, "error": "environment.allow cannot expose host-control variable " + allow_names[allow_i]}
+        }
+        allow_i = allow_i + 1
+    }
     configured_environment := get_or(environment, "set", {})
     if type(configured_environment) != "dict" {
         return {"ok": false, "error": "environment.set must be an object"}
@@ -290,6 +302,13 @@ export func validate_definition(raw) {
         configured_check := valid_env_name(configured_name, "environment.set." + configured_name)
         if configured_check["ok"] == false {
             return configured_check
+        }
+        mut secret_name_i := 0
+        while secret_name_i < len(get_or(raw, "secrets", [])) {
+            if get_or(raw, "secrets", [])[secret_name_i] == configured_name {
+                return {"ok": false, "error": "environment.set cannot override declared secret " + configured_name}
+            }
+            secret_name_i = secret_name_i + 1
         }
         configured_value := configured_environment[configured_name]
         if type(configured_value) != "string" || contains(configured_value, "\n") == 1 || contains(configured_value, "\r") == 1 {
@@ -305,6 +324,9 @@ export func validate_definition(raw) {
     mut secret_i := 0
     while secret_i < len(get_or(raw, "secrets", [])) {
         secret_name := raw["secrets"][secret_i]
+        if host_control_env_name(secret_name) {
+            return {"ok": false, "error": "secrets cannot expose host-control variable " + secret_name}
+        }
         secret_i = secret_i + 1
     }
 
@@ -356,8 +378,8 @@ export func validate_definition(raw) {
     mut tmp_i := 0
     while tmp_i < len(get_or(filesystem, "tmpfs", [])) {
         tmp := filesystem["tmpfs"][tmp_i]
-        if starts_with(tmp, "/") == false || contains(tmp, "..") == 1 {
-            return {"ok": false, "error": "filesystem.tmpfs entries must be safe absolute paths"}
+        if starts_with(tmp, "/tmp") == false || (tmp != "/tmp" && starts_with(tmp, "/tmp/") == false) || contains(tmp, "..") == 1 {
+            return {"ok": false, "error": "filesystem.tmpfs entries must be beneath /tmp"}
         }
         tmp_i = tmp_i + 1
     }

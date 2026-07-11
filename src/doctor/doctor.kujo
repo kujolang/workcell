@@ -1,7 +1,7 @@
 # Environment diagnostics for Workcell.
 
 from src.runtime.docker import doctor_docker
-from src.util import ensure_dir, process_ok, proc_stderr, proc_stdout, run_argv, run_id, write_text
+from src.util import parent_of, process_ok, proc_stderr, proc_stdout, run_argv, run_id, write_text
 from src.workspace.workspace import inspect_repository
 
 func command_check(program, arguments, label) {
@@ -18,6 +18,23 @@ func command_check(program, arguments, label) {
     return {"name": label, "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Install or expose " + program + " on PATH"}
 }
 
+func ecosystem_tools_check(repo_root) {
+    parent := parent_of(repo_root)
+    names := ["runledger", "changebucket", "shipcheck", "fence"]
+    mut missing := []
+    mut i := 0
+    while i < len(names) {
+        if path_is_dir(parent + "/" + names[i]) == false {
+            missing = push(missing, names[i])
+        }
+        i = i + 1
+    }
+    if len(missing) == 0 {
+        return {"name": "Optional Kujo tooling", "status": "passed", "message": "RunLedger, ChangeBucket, ShipCheck, and Fence repositories detected", "remediation": ""}
+    }
+    return {"name": "Optional Kujo tooling", "status": "warning", "message": "optional sibling tools not found: " + to_string(missing), "remediation": "Install sibling tools only when their integrations are needed; core Workcell runtime does not require them"}
+}
+
 export func report(repo_path) {
     mut checks := []
     kujo_program := env("KUJO")
@@ -26,6 +43,7 @@ export func report(repo_path) {
     }
     checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
     checks = push(checks, command_check("git", ["--version"], "Git CLI"))
+    checks = push(checks, command_check("docker", ["--version"], "Docker CLI"))
     checks = push(checks, doctor_docker())
     repo := inspect_repository(repo_path)
     if repo["ok"] {
@@ -36,6 +54,7 @@ export func report(repo_path) {
             message = message + " (dirty; Workcell run rejects dirty sources by default)"
         }
         checks = push(checks, {"name": "Source repository", "status": status, "message": message, "remediation": "Commit or otherwise preserve source changes before running Workcell"})
+        checks = push(checks, ecosystem_tools_check(repo["root"]))
     } else {
         checks = push(checks, {"name": "Source repository", "status": "blocked", "message": repo["error"], "remediation": "Run Workcell from a Git repository or pass --repo <path>"})
     }
@@ -62,7 +81,17 @@ export func report(repo_path) {
         probe_message = to_string(err)
     }
     checks = push(checks, {"name": "Temporary directory write", "status": probe_status, "message": probe_message, "remediation": "Provide a writable temporary directory"})
-    checks = push(checks, command_check("uname", ["-s"], "Host platform"))
+    platform_result := run_argv(["uname", "-s"], 10000)
+    if process_ok(platform_result) == false {
+        checks = push(checks, {"name": "Host platform", "status": "blocked", "message": trim(proc_stderr(platform_result)), "remediation": "Run Workcell on a supported Docker host (Linux or macOS)"})
+    } else {
+        platform := trim(proc_stdout(platform_result))
+        if platform == "Linux" || platform == "Darwin" {
+            checks = push(checks, {"name": "Host platform", "status": "passed", "message": platform, "remediation": ""})
+        } else {
+            checks = push(checks, {"name": "Host platform", "status": "blocked", "message": "unsupported host platform: " + platform, "remediation": "Run Workcell on Linux or macOS with Docker"})
+        }
+    }
     docker_host := env("DOCKER_HOST")
     if type(docker_host) == "string" && trim(docker_host) != "" {
         checks = push(checks, {"name": "Docker host override", "status": "warning", "message": "DOCKER_HOST is set; review daemon trust before running", "remediation": "Use a trusted local Docker daemon"})

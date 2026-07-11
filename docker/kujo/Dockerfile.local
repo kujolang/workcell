@@ -1,0 +1,25 @@
+# Local-source Kujo image for the project-check example.
+# Build from a clean Kujo checkout at the pinned commit:
+#   docker/kujo/build-local.sh /path/to/kujo-source
+FROM rust:1.96.0-alpine3.22 AS builder
+
+ARG KUJO_COMMIT=48b677e8e999161a348c06cfbc7761dc52b2e5e0
+
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
+COPY . /src/kujo
+# Keep the local verification build bounded on developer laptops; the pinned
+# source and lockfile still provide reproducibility for this example image.
+ENV CARGO_PROFILE_RELEASE_LTO=off
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+RUN cd /src/kujo && cargo build --release --locked --no-default-features
+
+FROM alpine:3.22
+
+LABEL org.opencontainers.image.title="Kujo Workcell check image"
+LABEL org.opencontainers.image.description="Pinned local-source Kujo runtime for the Workcell project-check example"
+
+RUN addgroup -g 65532 workcell && adduser -D -u 65532 -G workcell workcell
+COPY --from=builder /src/kujo/target/release/kujo /usr/local/bin/kujo
+WORKDIR /workspace
+USER 65532:65532
+CMD ["kujo", "--version"]

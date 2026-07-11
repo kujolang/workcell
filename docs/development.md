@@ -16,7 +16,7 @@ Build example images when Docker is available:
 
 ```bash
 docker build --tag kujolang/workcell-base:local docker/
-docker build --tag kujolang/workcell-kujo:local docker/kujo/
+docker/kujo/build-local.sh /path/to/kujo-source
 ```
 
 ## Adding a runtime adapter

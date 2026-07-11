@@ -7,7 +7,7 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
 ## Verification run
 
 - Kujo checker: `KUJO=../kujo/target/release/kujo ./tests/run.sh --check-only` — passed for `main.kujo`, all source modules, and the test module.
-- Offline tests: `KUJO=../kujo/target/release/kujo ./tests/run.sh` — passed 43 definition/policy assertions plus 7 workspace patch/change-report assertions, including path-safety, dry-run lifecycle, partial-default, empty-secret, base64-derived-secret, binary-report, digest, signature-key, namespace, and null-output regressions.
+- Offline tests: `KUJO=../kujo/target/release/kujo ./tests/run.sh` — passed 49 definition/policy assertions plus 7 workspace patch/change-report assertions, including path-safety, dry-run lifecycle, custom-network, custom security profiles, partial-default, empty-secret, base64-derived-secret, binary-report, digest, signature-key, namespace, and null-output regressions.
 - CLI smoke: `./bin/workcell help`, `init`, `validate`, and `inspect --json` — passed.
 - Docker integration: `TMPDIR=/var/folders/... KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh` — passed against Docker server 29.5.2 through Colima, including success, edit, failure, timeout, symlink, and label-scoped cleanup scenarios.
 - Clean-repository runtime failure path: `workcell run --json` produced a receipt and complete workspace cleanup, returning stable code `4` for Docker/image preparation failure.

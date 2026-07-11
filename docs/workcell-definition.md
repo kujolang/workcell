@@ -32,11 +32,13 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 - `environment.set`: explicit non-secret container values passed as `--env NAME=value`; a configured name cannot override a declared secret.
 - `secrets`: environment-variable names read at execution time and passed into the container by name, without placing their values in Docker argv. Missing names fail the run.
 - `resources.cpus`, `memory`, `pids`, `timeout_ms`: bounded Docker resource values. CPUs range from 1–64, memory accepts integer `k`, `m`, or `g` values up to 64g, PIDs range from 1–65536, and timeouts are capped at 24 hours. Timeout strings ending in `s`, `m`, or `h` are normalized to milliseconds.
-- `network.mode`: `none` (default) or explicit `default`; other modes are rejected.
+- `network.mode`: `none` (default), explicit `default`, or `custom`; `custom` attaches to a pre-created Docker network named by `network.name`, allowing operators to enforce an internal network or egress proxy boundary outside Workcell.
+- `network.name`: required and Docker-safe when `network.mode` is `custom`; forbidden otherwise.
 - `filesystem.read_only_root`: default `true`; `tmpfs` targets must be `/tmp` or a descendant beneath `/tmp`.
+- `filesystem.seccomp_profile` and `filesystem.apparmor_profile`: optional bounded profile names installed on the Docker host; `unconfined` and unsafe names are rejected. Empty values keep Docker's built-in defaults.
 - `artifacts.export`: relative paths only; traversal, absolute paths, and escapes are rejected.
 - `cleanup.keep_failed`: default `false`; failed workspace preservation is explicit.
-- `trust_profile`: `contained-standard` (default), `contained-open`, or documented `native-guarded`.
+- `trust_profile`: `contained-standard` (default), `contained-open`, or `native-guarded`; `native-guarded` fails closed unless Docker reports seccomp, AppArmor, and a rootless daemon (or a stronger VM/microVM runtime is used).
 - `receipt.path`: relative project output root, default `.workcell/runs`.
 
 Unknown fields are rejected so misspellings do not silently weaken policy. The CLI's `inspect` command makes defaults and security arguments visible without starting Docker.

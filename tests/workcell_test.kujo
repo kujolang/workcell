@@ -39,6 +39,23 @@ func with_image(definition, image) {
     return definition
 }
 
+func with_unknown_field(definition) {
+    definition["unknown"] := true
+    return definition
+}
+
+func with_timeout(definition, timeout_value) {
+    resources := definition["resources"]
+    resources["timeout_ms"] := timeout_value
+    definition["resources"] := resources
+    return definition
+}
+
+func with_secret(definition, secret_name) {
+    definition["secrets"] := [secret_name]
+    return definition
+}
+
 definition := default_definition()
 valid := validate_definition(definition)
 expect("default definition validates", valid["ok"])
@@ -46,6 +63,9 @@ expect("host networking rejected", validate_definition(with_network(definition, 
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
+expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
+expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
+expect("secret assignment rejected", validate_definition(with_secret(definition, "TOKEN=leak"))["ok"] == false)
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]

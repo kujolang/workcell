@@ -24,7 +24,7 @@ success
 
 ## External Blockers
 
-- none
+- remote-ssh-unavailable: Restore SSH/Git remote access.
 
 ## Next Start
 

@@ -77,7 +77,10 @@ cp -R "$ROOT/docker" "$TMP_REPO/build-context"
 git -C "$TMP_REPO" add build-context
 git -C "$TMP_REPO" commit -qm "add runtime build context fixture"
 jq '.runtime.image = "kujolang/workcell-runtime-build:integration" | .runtime.build_context = "build-context" | .artifacts.export = []' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/runtime-build.json"
-KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/runtime-build.json" --repo "$TMP_REPO" --output "$OUT_ROOT/runtime-build" --no-pull
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/runtime-build.json" --repo "$TMP_REPO" --output "$OUT_ROOT/runtime-build" --no-pull --rebuild
+test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell"}}' kujolang/workcell-runtime-build:integration)" = "true"
+test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell.project"}}' kujolang/workcell-runtime-build:integration)" = "hello-workcell"
+test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "1"
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/hello"
 test -f "$OUT_ROOT/hello"/*/receipt.json

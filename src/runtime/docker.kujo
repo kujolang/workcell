@@ -54,11 +54,13 @@ export func pull_image(image) {
     return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
 }
 
-export func build_image(image, context_path, run_identifier) {
-    mut args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+export func build_image(image, context_path, run_identifier, definition) {
+    project_label := "dev.kujo.workcell.project=" + definition["name"]
+    version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
+    mut args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path]
     buildx := docker_result(["docker", "buildx", "version"], 10000)
     if process_ok(buildx) {
-        args = ["docker", "buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+        args = ["docker", "buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path]
     }
     result := docker_result(args, 900000)
     if process_ok(result) == false {
@@ -111,7 +113,7 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
             if verified["ok"] == false { return verified }
             return {"ok": true, "action": "reused", "digest": digest}
         }
-        built := build_image(image, context_path, run_identifier)
+        built := build_image(image, context_path, run_identifier, definition)
         if built["ok"] == false {
             return built
         }

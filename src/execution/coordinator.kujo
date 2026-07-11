@@ -4,8 +4,8 @@ from src.artifacts.exporter import export_declared, write_execution_logs
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
-from src.util import ensure_dir, get_or, iso_now, path_has_symlink, run_id, write_text
-from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace, find_symlink, inspect_repository, make_patch, write_change_report
+from src.util import ensure_dir, get_or, iso_now, path_has_symlink, path_within, redact_with_env, run_id, write_text
+from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace, find_symlink, inspect_repository, make_patch, temp_root, write_change_report
 from src.policy.policy import build_policy
 
 func option(flags, name, fallback) {
@@ -30,7 +30,7 @@ func output_root_for(repo_root, definition, requested) {
 }
 
 func output_request_safe(requested) {
-    if type(requested) != "string" || trim(requested) == "" || starts_with(requested, "/") {
+    if type(requested) != "string" || trim(requested) == "" {
         return true
     }
     parts := split(replace(requested, "\\", "/"), "/")
@@ -42,6 +42,13 @@ func output_request_safe(requested) {
         i = i + 1
     }
     return true
+}
+
+func absolute_output_safe(repo_root, requested) {
+    if starts_with(requested, "/") == false {
+        return true
+    }
+    return path_within(temp_root(), requested) || path_within(repo_root + "/.workcell", requested)
 }
 
 func write_failure_note(output_dir, stage, message) {
@@ -78,6 +85,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     }
     if output_request_safe(requested_output) == false {
         return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "output path parent traversal is not allowed: " + to_string(requested_output), "exit_code": 3}
+    }
+    if absolute_output_safe(source_info["root"], requested_output) == false {
+        return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "absolute output paths must be inside TMPDIR or the repository .workcell directory", "exit_code": 3}
     }
     output_root := output_root_for(source_info["root"], definition, requested_output)
     if path_has_symlink(output_root) {
@@ -151,7 +161,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         if image_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, cleanup_status)
         }
-        return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", image["error"], 4, false, cleanup_status)
+        return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", redact_with_env(image["error"], definition["secrets"]), 4, false, cleanup_status)
     }
     receipt["container_image_digest"] := get_or(image, "digest", "")
     receipt = add_state(receipt, "starting")
@@ -200,7 +210,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         if start_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, cleanup_status)
         }
-        return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_status, start_error, start_exit_code, false, cleanup_status)
+        return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_status, redact_with_env(start_error, definition["secrets"]), start_exit_code, false, cleanup_status)
     }
     receipt = add_state(receipt, "running")
     receipt["stdout_truncated"] := container["stdout_truncated"]
@@ -341,5 +351,5 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "recording", final_write["error"])
         return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", final_write["error"], 10, container["timed_out"], cleanup_status)
     }
-    return final_result(run_identifier, receipt_path, output_dir, receipt, final_ok, final_status, final_error, exit_code, container["timed_out"], cleanup_status)
+    return final_result(run_identifier, receipt_path, output_dir, receipt, final_ok, final_status, redact_with_env(final_error, definition["secrets"]), exit_code, container["timed_out"], cleanup_status)
 }

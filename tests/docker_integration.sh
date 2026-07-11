@@ -101,6 +101,21 @@ FAILED_WORKSPACE="$(jq -r '.workspace_path' "$FAILURE_RECEIPT")"
 test -d "$FAILED_WORKSPACE"
 test -f "$FAILED_WORKSPACE.owner"
 
+jq '.command = ["sh", "-lc", "exit 125"] | .cleanup.keep_failed = false' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/exit-125.json"
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/exit-125.json" --repo "$TMP_REPO" --output "$OUT_ROOT/exit-125" --json > "$OUT_ROOT/exit-125.json.result"
+EXIT_125_CODE=$?
+set -e
+test "$EXIT_125_CODE" -eq 7
+jq -e '.stage == "workload-failed" and .exit_code == 125' "$OUT_ROOT/exit-125.json.result" >/dev/null
+
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "/var/tmp/workcell-outside-$$" --json > "$OUT_ROOT/outside-output.json.result"
+OUTSIDE_OUTPUT_CODE=$?
+set -e
+test "$OUTSIDE_OUTPUT_CODE" -eq 3
+jq -e '.stage == "preparing" and (.error | contains("absolute output paths"))' "$OUT_ROOT/outside-output.json.result" >/dev/null
+
 ln -s /tmp "$OUT_ROOT/output-symlink"
 set +e
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/output-symlink"

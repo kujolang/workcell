@@ -314,6 +314,23 @@ export func redact(text, secrets) {
     return output
 }
 
+export func env_secret_values(names) {
+    mut values := []
+    mut i := 0
+    while i < len(names) {
+        value := env(names[i])
+        if type(value) == "string" && len(value) > 0 {
+            values = push(values, value)
+        }
+        i = i + 1
+    }
+    return values
+}
+
+export func redact_with_env(text, names) {
+    return redact(text, env_secret_values(names))
+}
+
 export func process_ok(result) {
     return proc_success(result) && proc_timed_out(result) == false
 }

@@ -146,6 +146,20 @@ export func run_container(definition, policy) {
     }
     result := run_argv_options(policy["docker_args"], options["options"])
     if proc_success(result) == false && proc_timed_out(result) == false && proc_exitcode(result) == 125 {
+        state_result := docker_result(["docker", "inspect", "--format", "{{.State.Status}}", policy["container_name"]], 10000)
+        if process_ok(state_result) && trim(proc_stdout(state_result)) == "exited" {
+            return {
+                "ok": true,
+                "success": false,
+                "exit_code": 125,
+                "stdout": proc_stdout(result),
+                "stderr": proc_stderr(result),
+                "timed_out": false,
+                "stdout_truncated": proc_stdout_truncated(result),
+                "stderr_truncated": proc_stderr_truncated(result),
+                "container_name": policy["container_name"]
+            }
+        }
         return {
             "ok": false,
             "stage": "starting",

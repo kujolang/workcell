@@ -2,7 +2,7 @@
 
 from src.util import ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, run_argv, save_json, write_text
 
-func temp_root() {
+export func temp_root() {
     candidate := env("TMPDIR")
     if type(candidate) != "string" || trim(candidate) == "" {
         return "/tmp"

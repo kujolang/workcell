@@ -224,15 +224,12 @@ func run_exit_code(result) {
     if result["ok"] {
         return 0
     }
-    if has_key(result, "exit_code") && type(result["exit_code"]) == "int" {
-        return result["exit_code"]
-    }
     status := get_or(result, "stage", "internal")
     if status == "validated" {
         return 2
     }
     if status == "preparing" {
-        if contains(get_or(result, "error", ""), "docker") == 1 {
+        if get_or(result, "exit_code", 3) == 4 || contains(get_or(result, "error", ""), "docker") == 1 {
             return 4
         }
         return 3

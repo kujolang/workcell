@@ -1,6 +1,16 @@
 # Structured Workcell execution receipts.
 
-from src.util import iso_now, save_json
+from src.util import iso_now, redact_with_env, save_json
+
+func redacted_command(command, secret_names) {
+    mut output := []
+    mut i := 0
+    while i < len(command) {
+        output = push(output, redact_with_env(to_string(command[i]), secret_names))
+        i = i + 1
+    }
+    return output
+}
 
 export func new_receipt(definition, definition_path, run_identifier, source, workspace, policy, output_dir) {
     return {
@@ -17,7 +27,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "container_image": definition["runtime"]["image"],
         "container_image_digest": "",
         "container_name": policy["container_name"],
-        "command": definition["command"],
+        "command": redacted_command(definition["command"], definition["secrets"]),
         "start_time": iso_now(),
         "end_time": null,
         "elapsed": null,
@@ -59,7 +69,8 @@ export func add_state(receipt, state) {
 
 export func add_error(receipt, stage, message) {
     errors := receipt["errors"]
-    errors = push(errors, {"stage": stage, "message": message})
+    safe_message := redact_with_env(to_string(message), receipt["secret_names"])
+    errors = push(errors, {"stage": stage, "message": safe_message})
     receipt["errors"] := errors
     return receipt
 }

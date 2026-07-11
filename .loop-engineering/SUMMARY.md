@@ -13,7 +13,7 @@ success
 
 ## Verification
 
-- passed: Kujo checks, 32 policy assertions, 7 workspace assertions, path-safety, dry-run, example validation, CLI smoke, Docker integration, Docker/Colima doctor, project-check example, ShipCheck gate, Fence check, ChangeBucket budget, diff check, and cleanup verification.
+- passed: Kujo checks, 35 policy assertions, 7 workspace assertions, path-safety, dry-run, example validation, CLI smoke, Docker integration, Docker/Colima doctor, ShipCheck gate, Fence check with zero violations/warnings, ChangeBucket budget, diff check, and cleanup verification.
 - blocked: none
 - failed: none
 

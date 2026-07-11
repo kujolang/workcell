@@ -9,8 +9,8 @@ Kujo, PackWrite, RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, Muzzle, Ag
 - Kujo runtime checker and VM for every Workcell source/test module.
 - RunLedger to start the engineering run `2026-07-11-codex-build-kujo-workcell-mvp-001` and preserve the run identifier.
 - Kujo loop-engineering harness to configure deterministic gates, evidence, commits, push behavior, and Strata consolidation.
-- ChangeBucket measured a clean worktree at 0 changed files and the eight-commit range at 40 files / 970 churn / high footprint risk.
-- ShipCheck scan/gate completed with 12 passed, 4 warnings, 0 error failures; the gate exited 0.
+- ChangeBucket measured a clean worktree at 0 changed files after the final commits.
+- ShipCheck scan/gate completed with 13 passed, 3 warnings, 0 error failures; the gate exited 0.
 - Fence validated `fence.toml` and checked 10 files / 24 imports with 0 violations and 0 warnings.
 - CaseFile captured the Docker-unavailable failure as `.casefile/2026-07-10-214039-dockerunavailable/` (ignored generated evidence).
 - The Docker integration script was invoked and skipped honestly because the daemon is unavailable.

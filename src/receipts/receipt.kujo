@@ -20,6 +20,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "command": definition["command"],
         "start_time": iso_now(),
         "end_time": null,
+        "elapsed": null,
         "elapsed_ms": null,
         "exit_code": null,
         "timeout": false,
@@ -34,6 +35,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "changed_files": [],
         "change_report_path": null,
         "patch_path": null,
+        "patch_bytes": 0,
         "logs_path": output_dir,
         "cleanup_status": "pending",
         "final_status": "created",
@@ -62,10 +64,11 @@ export func add_error(receipt, stage, message) {
     return receipt
 }
 
-export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status, elapsed_ms, execution_succeeded) {
+export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status, elapsed_ms, execution_succeeded, artifacts_succeeded) {
     receipt["end_time"] := iso_now()
     receipt["exit_code"] := exit_code
     receipt["timeout"] := timed_out
+    receipt["elapsed"] := elapsed_ms
     receipt["elapsed_ms"] := elapsed_ms
     receipt["container_image_digest"] := image_digest
     receipt["changed_files"] := changed
@@ -75,13 +78,17 @@ export func finish_receipt(receipt, final_status, exit_code, timed_out, image_di
     receipt["final_status"] := final_status
     verification := receipt["verification"]
     verification["execution_succeeded"] := final_status != "dry-run" && execution_succeeded && timed_out == false
-    verification["artifacts_exported"] := final_status != "dry-run" && final_status != "artifact-failed" && type(artifacts) == "array"
+    verification["artifacts_exported"] := final_status != "dry-run" && artifacts_succeeded == true
     verification["cleanup_succeeded"] := cleanup_status == "complete" || cleanup_status == "preserved"
     receipt["verification"] := verification
     return receipt
 }
 
 export func write_receipt(receipt, output_path) {
-    save_json(output_path, receipt)
-    return {"ok": true, "path": output_path}
+    try {
+        save_json(output_path, receipt)
+        return {"ok": true, "path": output_path}
+    } except err {
+        return {"ok": false, "path": output_path, "error": "could not write receipt: " + to_string(err)}
+    }
 }

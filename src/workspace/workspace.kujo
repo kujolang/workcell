@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import ensure_dir, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_stderr, proc_stdout, run_argv, save_json, write_text
+from src.util import ensure_dir, get_or, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, run_argv, save_json, write_text
 
 func temp_root() {
     candidate := env("TMPDIR")
@@ -10,6 +10,9 @@ func temp_root() {
     mut normalized := replace(candidate, "\\", "/")
     while len(normalized) > 1 && ends_with(normalized, "/") {
         normalized = substring(normalized, 0, len(normalized) - 1)
+    }
+    if starts_with(normalized, "/") == false || normalized == "/" || contains(normalized, "..") == 1 || path_has_symlink(normalized) {
+        return "/tmp"
     }
     return normalized
 }
@@ -41,7 +44,7 @@ export func inspect_repository(repo_path) {
     }
 }
 
-func find_symlink(root) {
+export func find_symlink(root) {
     mut queue := [root]
     mut queue_i := 0
     while queue_i < len(queue) {
@@ -139,6 +142,30 @@ func status_name(letter) {
     return "modified"
 }
 
+func change_summary(files) {
+    mut summary := {"total_files": len(files), "added": 0, "modified": 0, "deleted": 0, "renamed": 0, "copied": 0, "binary_files": 0}
+    mut i := 0
+    while i < len(files) {
+        status := files[i]["status"]
+        if status == "added" {
+            summary["added"] = summary["added"] + 1
+        } else if status == "modified" {
+            summary["modified"] = summary["modified"] + 1
+        } else if status == "deleted" {
+            summary["deleted"] = summary["deleted"] + 1
+        } else if status == "renamed" {
+            summary["renamed"] = summary["renamed"] + 1
+        } else if status == "copied" {
+            summary["copied"] = summary["copied"] + 1
+        }
+        if get_or(files[i], "binary", false) == true {
+            summary["binary_files"] = summary["binary_files"] + 1
+        }
+        i = i + 1
+    }
+    return summary
+}
+
 func change_details(workspace) {
     status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
     if process_ok(status_result) == false {
@@ -152,7 +179,7 @@ func change_details(workspace) {
         if line != "" {
             columns := split(line, "\t")
             letter := substring(columns[0], 0, 1)
-            files = push(files, {"path": columns[len(columns) - 1], "status": status_name(letter)})
+            files = push(files, {"path": columns[len(columns) - 1], "status": status_name(letter), "binary": false})
         }
         i = i + 1
     }
@@ -172,13 +199,32 @@ func change_details(workspace) {
                     k = k + 1
                 }
                 if exists == false {
-                    files = push(files, {"path": item, "status": "added"})
+                    files = push(files, {"path": item, "status": "added", "binary": false})
                 }
             }
             j = j + 1
         }
     }
-    return {"ok": true, "files": files}
+    numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", workspace["source_commit"]], 30000)
+    if process_ok(numstat_result) {
+        numstat_lines := lines_of(trim(proc_stdout(numstat_result)))
+        mut numstat_i := 0
+        while numstat_i < len(numstat_lines) {
+            numstat_columns := split(trim(numstat_lines[numstat_i]), "\t")
+            if len(numstat_columns) >= 3 {
+                numstat_path := numstat_columns[len(numstat_columns) - 1]
+                mut file_i := 0
+                while file_i < len(files) {
+                    if files[file_i]["path"] == numstat_path && numstat_columns[0] == "-" && numstat_columns[1] == "-" {
+                        files[file_i]["binary"] := true
+                    }
+                    file_i = file_i + 1
+                }
+            }
+            numstat_i = numstat_i + 1
+        }
+    }
+    return {"ok": true, "files": files, "summary": change_summary(files)}
 }
 
 export func changed_files(workspace) {
@@ -195,12 +241,16 @@ export func changed_files(workspace) {
     return {"ok": true, "files": paths}
 }
 
-export func write_change_report(workspace, output_path) {
+export func write_change_report(workspace, output_path, patch_bytes) {
     details := change_details(workspace)
     if details["ok"] == false {
         return details
     }
-    save_json(output_path, {"source_commit": workspace["source_commit"], "files": details["files"]})
+    try {
+        save_json(output_path, {"source_commit": workspace["source_commit"], "patch_bytes": patch_bytes, "summary": details["summary"], "files": details["files"]})
+    } except err {
+        return {"ok": false, "error": "could not write change report: " + to_string(err)}
+    }
     return {"ok": true, "path": output_path, "files": details["files"]}
 }
 
@@ -209,11 +259,33 @@ export func make_patch(workspace, patch_path) {
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "generate Git patch")}
     }
+    mut patch_text := proc_stdout(result)
+    untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
+    if process_ok(untracked_result) == false {
+        return {"ok": false, "error": process_error(untracked_result, "collect untracked files for Git patch")}
+    }
+    untracked := lines_of(trim(proc_stdout(untracked_result)))
+    mut i := 0
+    while i < len(untracked) {
+        relative := trim(untracked[i])
+        if relative != "" {
+            added := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", "--no-index", "--", "/dev/null", relative], 60000)
+            if proc_exitcode(added) != 0 && proc_exitcode(added) != 1 {
+                return {"ok": false, "error": process_error(added, "generate Git patch for " + relative)}
+            }
+            patch_text = patch_text + proc_stdout(added)
+        }
+        i = i + 1
+    }
     if file_exists(patch_path) {
         delete_file(patch_path)
     }
-    write_file(patch_path, proc_stdout(result))
-    return {"ok": true, "path": patch_path, "bytes": len(proc_stdout(result))}
+    try {
+        write_file(patch_path, patch_text)
+    } except err {
+        return {"ok": false, "error": "could not write Git patch: " + to_string(err)}
+    }
+    return {"ok": true, "path": patch_path, "bytes": len(patch_text)}
 }
 
 export func cleanup_workspace(workspace, preserve) {
@@ -246,6 +318,9 @@ export func cleanup_workspace(workspace, preserve) {
 
 export func clean_stale_workspaces() {
     root := temp_root()
+    if path_is_dir(root) == false {
+        return {"ok": true, "removed": [], "skipped": []}
+    }
     entries := list_dir(root)
     mut removed := []
     mut skipped := []

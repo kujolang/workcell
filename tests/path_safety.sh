@@ -5,7 +5,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 TMP_REPO="$(mktemp -d)"
 OUT_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TMP_REPO" "$OUT_ROOT"' EXIT
+SPACE_ROOT="$(mktemp -d)/output with spaces"
+mkdir -p "$SPACE_ROOT"
+trap 'rm -rf "$TMP_REPO" "$OUT_ROOT" "${SPACE_ROOT%/*}"' EXIT
 
 git -C "$TMP_REPO" init -q
 git -C "$TMP_REPO" config user.email workcell@example.invalid
@@ -32,5 +34,14 @@ OUTPUT_CODE=$?
 set -e
 test "$OUTPUT_CODE" -eq 3
 printf '%s' "$OUTPUT_RESULT" | jq -e '.stage == "preparing" and (.error | contains("symlink"))' >/dev/null
+
+set +e
+TRAVERSAL_RESULT="$($KUJO run "$ROOT/main.kujo" -- run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "../output-escape" --json 2>/dev/null)"
+TRAVERSAL_CODE=$?
+set -e
+test "$TRAVERSAL_CODE" -eq 3
+printf '%s' "$TRAVERSAL_RESULT" | jq -e '.stage == "preparing" and (.error | contains("parent traversal"))' >/dev/null
+
+"$KUJO" run "$ROOT/main.kujo" -- run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "$SPACE_ROOT" --dry-run --json >/dev/null
 
 echo "Path-safety tests passed"

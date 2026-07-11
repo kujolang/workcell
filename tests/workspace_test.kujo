@@ -1,0 +1,54 @@
+# Workspace contract test: untracked files must appear in generated patches.
+
+from src.util import ensure_dir, load_json, read_text, run_argv, run_id, write_text
+from src.workspace.workspace import cleanup_workspace, create_workspace, inspect_repository, make_patch, write_change_report
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+        failed = failed + 1
+        print("FAIL " + label)
+    }
+}
+
+repo := "/tmp/workcell-patch-fixture-" + run_id()
+ensure_dir(repo)
+run_argv(["git", "-C", repo, "init", "-q"], 30000)
+run_argv(["git", "-C", repo, "config", "user.email", "workcell@example.invalid"], 30000)
+run_argv(["git", "-C", repo, "config", "user.name", "Workcell"], 30000)
+write_text(repo + "/tracked.txt", "tracked\n")
+run_argv(["git", "-C", repo, "add", "tracked.txt"], 30000)
+run_argv(["git", "-C", repo, "commit", "-qm", "initial"], 30000)
+
+source := inspect_repository(repo)
+expect("fixture repository detected", source["ok"])
+workspace := create_workspace(repo, "git-worktree", run_id())
+expect("disposable worktree created", workspace["ok"])
+if workspace["ok"] {
+    write_text(workspace["workspace_path"] + "/added.txt", "added from Workcell\n")
+    patch_path := repo + "/changes.patch"
+    patch := make_patch(workspace, patch_path)
+    expect("patch generated", patch["ok"])
+    patch_text := read_text(patch_path)
+    expect("untracked file appears in patch", patch_text["ok"] && contains(patch_text["text"], "added.txt") == 1 && contains(patch_text["text"], "added from Workcell") == 1)
+    report_path := repo + "/changes.json"
+    report := write_change_report(workspace, report_path, patch["bytes"])
+    expect("structured change report generated", report["ok"])
+    report_json := load_json(report_path)
+    expect("change report summarizes patch", report_json["ok"] && report_json["value"]["summary"]["total_files"] == 1 && report_json["value"]["patch_bytes"] > 0)
+    cleanup := cleanup_workspace(workspace, false)
+    expect("worktree cleanup succeeded", cleanup["ok"])
+}
+run_argv(["rm", "-rf", repo], 30000)
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {
+    exit(1)
+}
+exit(0)

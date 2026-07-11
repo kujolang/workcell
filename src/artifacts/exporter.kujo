@@ -20,6 +20,9 @@ export func export_declared(workspace_path, output_dir, declared) {
         if path_within(workspace_path, source) == false || path_within(output_dir, destination) == false {
             return {"ok": false, "error": "artifact escapes its allowed boundary: " + relative}
         }
+        if path_has_symlink(source) {
+            return {"ok": false, "error": "declared artifact source contains a symlink: " + relative}
+        }
         if file_exists(source) == false && path_is_dir(source) == false {
             return {"ok": false, "error": "declared artifact does not exist: " + relative}
         }
@@ -61,7 +64,11 @@ export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) 
         }
         i = i + 1
     }
-    write_text(output_dir + "/stdout.log", redacted_stdout)
-    write_text(output_dir + "/stderr.log", redacted_stderr)
-    return {"stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
+    try {
+        write_text(output_dir + "/stdout.log", redacted_stdout)
+        write_text(output_dir + "/stderr.log", redacted_stderr)
+        return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
+    } except err {
+        return {"ok": false, "error": "could not write execution logs: " + to_string(err)}
+    }
 }

@@ -73,7 +73,7 @@ export func create_workspace(repo_path, strategy, run_identifier) {
     if process_ok(result) == false {
         return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
     }
-    permissions := run_argv(["chmod", "-R", "a+rwX", "--", path], 60000)
+    permissions := run_argv(["chmod", "-R", "a+rwX", path], 60000)
     if process_ok(permissions) == false {
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
         return {"ok": false, "stage": "preparing", "error": process_error(permissions, "make disposable workspace writable")}
@@ -152,7 +152,7 @@ export func cleanup_workspace(workspace, preserve) {
     if workspace["strategy"] == "git-worktree" {
         result = git_result(["git", "-C", workspace["source_root"], "worktree", "remove", "--force", path], 60000)
     } else {
-        result = run_argv(["rm", "-rf", "--", path], 60000)
+        result = run_argv(["rm", "-rf", path], 60000)
     }
     if process_ok(result) == false && (path_is_dir(path) || file_exists(path)) {
         return {"ok": false, "error": process_error(result, "clean disposable workspace")}
@@ -171,7 +171,7 @@ export func clean_stale_workspaces() {
         if starts_with(name, "kujo-workcell-") {
             path := root + "/" + name
             if path_is_dir(path) {
-                result := run_argv(["rm", "-rf", "--", path], 60000)
+                result := run_argv(["rm", "-rf", path], 60000)
                 if process_ok(result) {
                     removed = push(removed, path)
                 } else {

@@ -196,6 +196,9 @@ func inspect_command(parsed) {
     if type(preview_root) != "string" || trim(preview_root) == "" {
         preview_root = "/tmp"
     }
+    while len(preview_root) > 1 && ends_with(preview_root, "/") {
+        preview_root = substring(preview_root, 0, len(preview_root) - 1)
+    }
     preview_workspace := preview_root + "/kujo-workcell-inspect"
     output := flag(parsed, "output", repo["root"] + "/.workcell/runs/inspect")
     value := inspect_policy(loaded["definition"], "inspect", preview_workspace, output)

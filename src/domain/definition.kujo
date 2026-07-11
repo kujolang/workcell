@@ -135,7 +135,7 @@ func validate_string_array(value, label) {
     return {"ok": true}
 }
 
-func validate_definition(raw) {
+export func validate_definition(raw) {
     if type(raw) != "dict" {
         return {"ok": false, "error": "Workcell definition must be a JSON object"}
     }

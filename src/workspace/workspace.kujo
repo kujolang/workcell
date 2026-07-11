@@ -1,13 +1,17 @@
 # Disposable Git workspace management.
 
-from src.util import ensure_dir, lines_of, path_within, process_error, process_ok, run_argv
+from src.util import ensure_dir, lines_of, path_within, process_error, process_ok, proc_stderr, proc_stdout, run_argv
 
 func temp_root() {
     candidate := env("TMPDIR")
     if type(candidate) != "string" || trim(candidate) == "" {
         return "/tmp"
     }
-    return candidate
+    mut normalized := replace(candidate, "\\", "/")
+    while len(normalized) > 1 && ends_with(normalized, "/") {
+        normalized = substring(normalized, 0, len(normalized) - 1)
+    }
+    return normalized
 }
 
 func git_result(args, timeout_ms) {
@@ -19,7 +23,7 @@ export func inspect_repository(repo_path) {
     if process_ok(root_result) == false {
         return {"ok": false, "error": "not a Git repository: " + repo_path}
     }
-    root := trim(root_result.stdout)
+    root := trim(proc_stdout(root_result))
     commit_result := git_result(["git", "-C", root, "rev-parse", "HEAD"], 10000)
     if process_ok(commit_result) == false {
         return {"ok": false, "error": process_error(commit_result, "resolve source commit")}
@@ -31,9 +35,9 @@ export func inspect_repository(repo_path) {
     return {
         "ok": true,
         "root": root,
-        "commit": trim(commit_result.stdout),
-        "status": trim(status_result.stdout),
-        "clean": trim(status_result.stdout) == ""
+        "commit": trim(proc_stdout(commit_result)),
+        "status": trim(proc_stdout(status_result)),
+        "clean": trim(proc_stdout(status_result)) == ""
     }
 }
 
@@ -67,7 +71,12 @@ export func create_workspace(repo_path, strategy, run_identifier) {
         result = git_result(["git", "clone", "--no-local", root, path], 120000)
     }
     if process_ok(result) == false {
-        return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": result.stdout, "stderr": result.stderr}
+        return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+    }
+    permissions := run_argv(["chmod", "-R", "a+rwX", "--", path], 60000)
+    if process_ok(permissions) == false {
+        cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
+        return {"ok": false, "stage": "preparing", "error": process_error(permissions, "make disposable workspace writable")}
     }
     return {
         "ok": true,
@@ -84,7 +93,7 @@ export func changed_files(workspace) {
     if process_ok(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
     }
-    lines := lines_of(trim(status_result.stdout))
+    lines := lines_of(trim(proc_stdout(status_result)))
     mut files := []
     mut i := 0
     while i < len(lines) {
@@ -96,7 +105,7 @@ export func changed_files(workspace) {
     }
     untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
     if process_ok(untracked_result) {
-        untracked := lines_of(trim(untracked_result.stdout))
+        untracked := lines_of(trim(proc_stdout(untracked_result)))
         mut j := 0
         while j < len(untracked) {
             item := trim(untracked[j])
@@ -127,8 +136,8 @@ export func make_patch(workspace, patch_path) {
     if file_exists(patch_path) {
         delete_file(patch_path)
     }
-    write_file(patch_path, result.stdout)
-    return {"ok": true, "path": patch_path, "bytes": len(result.stdout)}
+    write_file(patch_path, proc_stdout(result))
+    return {"ok": true, "path": patch_path, "bytes": len(proc_stdout(result))}
 }
 
 export func cleanup_workspace(workspace, preserve) {
@@ -166,7 +175,7 @@ export func clean_stale_workspaces() {
                 if process_ok(result) {
                     removed = push(removed, path)
                 } else {
-                    skipped = push(skipped, path + ": " + trim(result.stderr))
+                    skipped = push(skipped, path + ": " + trim(proc_stderr(result)))
                 }
             }
         }

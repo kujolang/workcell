@@ -227,24 +227,75 @@ export func redact(text, secrets) {
 }
 
 export func process_ok(result) {
-    if type(result) != "struct" {
-        return false
-    }
-    return result.success == true && result.timed_out == false
+    return proc_success(result) && proc_timed_out(result) == false
 }
 
 export func process_error(result, operation) {
-    if type(result) != "struct" {
-        return operation + ": process did not return a ProcessResult"
-    }
-    if result.timed_out {
+    if proc_timed_out(result) {
         return operation + ": timed out"
     }
-    return operation + " exited with code " + to_string(result.exitcode) + ": " + trim(result.stderr)
+    return operation + " exited with code " + to_string(proc_exitcode(result)) + ": " + trim(proc_stderr(result))
 }
 
 export func run_argv(argv, timeout_ms) {
-    return spawn_process(argv, {"timeout_ms": timeout_ms, "max_output_bytes": 4000000})
+    return run_argv_options(argv, {"timeout_ms": timeout_ms, "max_output_bytes": 4000000})
+}
+
+export func run_argv_options(argv, options) {
+    try {
+        return spawn_process(argv, options)
+    } except err {
+        return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err), "timed_out": false, "stdout_truncated": false, "stderr_truncated": false}
+    }
+}
+
+export func proc_success(result) {
+    if type(result) == "dict" {
+        return get_or(result, "success", false) == true
+    }
+    return result.success == true
+}
+
+export func proc_timed_out(result) {
+    if type(result) == "dict" {
+        return get_or(result, "timed_out", false) == true
+    }
+    return result.timed_out == true
+}
+
+export func proc_exitcode(result) {
+    if type(result) == "dict" {
+        return get_or(result, "exitcode", 127)
+    }
+    return result.exitcode
+}
+
+export func proc_stdout(result) {
+    if type(result) == "dict" {
+        return get_or(result, "stdout", "")
+    }
+    return result.stdout
+}
+
+export func proc_stderr(result) {
+    if type(result) == "dict" {
+        return get_or(result, "stderr", "")
+    }
+    return result.stderr
+}
+
+export func proc_stdout_truncated(result) {
+    if type(result) == "dict" {
+        return get_or(result, "stdout_truncated", false)
+    }
+    return result.stdout_truncated
+}
+
+export func proc_stderr_truncated(result) {
+    if type(result) == "dict" {
+        return get_or(result, "stderr_truncated", false)
+    }
+    return result.stderr_truncated
 }
 
 export func first_line(text) {

@@ -1,6 +1,6 @@
 # Docker runtime adapter. All host commands use structured argv.
 
-from src.util import lines_of, process_error, process_ok, run_argv
+from src.util import lines_of, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
 func docker_result(argv, timeout_ms) {
@@ -9,16 +9,13 @@ func docker_result(argv, timeout_ms) {
 
 export func doctor_docker() {
     result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
-    if type(result) != "struct" {
-        return {"status": "blocked", "message": "Docker CLI did not return a process result", "remediation": "Install Docker and rerun workcell doctor"}
-    }
-    if result.timed_out {
+    if proc_timed_out(result) {
         return {"status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
     }
-    if result.success == false {
-        return {"status": "blocked", "message": "Docker daemon is not reachable: " + trim(result.stderr), "remediation": "Start Docker Desktop or the Docker daemon"}
+    if proc_success(result) == false {
+        return {"status": "blocked", "message": "Docker daemon is not reachable: " + trim(proc_stderr(result)), "remediation": "Start Docker Desktop or the Docker daemon"}
     }
-    return {"status": "passed", "message": "Docker daemon reachable (server " + trim(result.stdout) + ")", "remediation": ""}
+    return {"status": "passed", "message": "Docker daemon reachable (server " + trim(proc_stdout(result)) + ")", "remediation": ""}
 }
 
 export func image_exists(image) {
@@ -31,24 +28,24 @@ export func image_digest(image) {
     if process_ok(result) == false {
         return ""
     }
-    return trim(result.stdout)
+    return trim(proc_stdout(result))
 }
 
 export func pull_image(image) {
     result := docker_result(["docker", "pull", image], 600000)
     if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": result.stdout, "stderr": result.stderr}
+        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
     }
-    return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
+    return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
 }
 
 export func build_image(image, context_path, run_identifier) {
     args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
     result := docker_result(args, 900000)
     if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "docker build"), "stdout": result.stdout, "stderr": result.stderr}
+        return {"ok": false, "error": process_error(result, "docker build"), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
     }
-    return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
+    return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
@@ -86,19 +83,16 @@ export func run_container(definition, policy) {
     if options["ok"] == false {
         return {"ok": false, "stage": "starting", "error": options["error"]}
     }
-    result := spawn_process(policy["docker_args"], options["options"])
-    if type(result) != "struct" {
-        return {"ok": false, "stage": "starting", "error": "Docker run did not return a process result"}
-    }
+    result := run_argv_options(policy["docker_args"], options["options"])
     return {
         "ok": true,
-        "success": result.success,
-        "exit_code": result.exitcode,
-        "stdout": result.stdout,
-        "stderr": result.stderr,
-        "timed_out": result.timed_out,
-        "stdout_truncated": result.stdout_truncated,
-        "stderr_truncated": result.stderr_truncated,
+        "success": proc_success(result),
+        "exit_code": proc_exitcode(result),
+        "stdout": proc_stdout(result),
+        "stderr": proc_stderr(result),
+        "timed_out": proc_timed_out(result),
+        "stdout_truncated": proc_stdout_truncated(result),
+        "stderr_truncated": proc_stderr_truncated(result),
         "container_name": policy["container_name"]
     }
 }
@@ -108,7 +102,7 @@ export func remove_container(container_name) {
     if process_ok(result) {
         return {"ok": true, "message": "container removed"}
     }
-    return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
+    return {"ok": false, "message": trim(proc_stderr(result)), "exit_code": proc_exitcode(result)}
 }
 
 export func clean_owned_resources() {
@@ -116,7 +110,7 @@ export func clean_owned_resources() {
     if process_ok(listed) == false {
         return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
     }
-    ids := lines_of(trim(listed.stdout))
+    ids := lines_of(trim(proc_stdout(listed)))
     mut removed := 0
     mut failed := []
     mut i := 0

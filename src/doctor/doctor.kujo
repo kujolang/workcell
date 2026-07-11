@@ -1,15 +1,21 @@
 # Environment diagnostics for Workcell.
 
 from src.runtime.docker import doctor_docker
-from src.util import ensure_dir, process_ok, run_argv
+from src.util import ensure_dir, process_ok, proc_stderr, proc_stdout, run_argv
 from src.workspace.workspace import inspect_repository
 
 func command_check(program, arguments, label) {
-    result := run_argv(push([program], arguments), 10000)
-    if process_ok(result) {
-        return {"name": label, "status": "passed", "message": trim(result.stdout), "remediation": ""}
+    mut argv := [program]
+    mut i := 0
+    while i < len(arguments) {
+        argv = push(argv, arguments[i])
+        i = i + 1
     }
-    return {"name": label, "status": "blocked", "message": trim(result.stderr), "remediation": "Install or expose " + program + " on PATH"}
+    result := run_argv(argv, 10000)
+    if process_ok(result) {
+        return {"name": label, "status": "passed", "message": trim(proc_stdout(result)), "remediation": ""}
+    }
+    return {"name": label, "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Install or expose " + program + " on PATH"}
 }
 
 export func report(repo_path) {

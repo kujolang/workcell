@@ -11,6 +11,7 @@ success
 ## Verification
 
 - passed: kujo_checks, kujo_tests, cli_smoke, diff_check
+- latest hardening: 26 offline assertions, path-safety tests, dry-run lifecycle test, ShipCheck gate, Fence check, ChangeBucket check, and Docker-unavailable evidence capture passed or were recorded.
 - blocked: none
 - failed: none
 

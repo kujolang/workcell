@@ -12,6 +12,11 @@ Please make sure you have the correct access rights
 and the repository exists."
     status: external-blocked
     next_action: "Restore SSH/Git remote access."
+  - id: remote-not-configured
+    command: "git push"
+    evidence: "fatal: No configured push destination. Configure a remote repository before pushing."
+    status: external-blocked
+    next_action: "Configure the repository's intended remote, then push the committed main branch."
   - id: remote-ssh-unavailable
     command: "git push origin HEAD"
     evidence: "[main c2a5105] Loop engineering: Build and verify the Kujo-native Workcell Docker-backed local execution MVP from the attached specification.

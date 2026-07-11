@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import ensure_dir, get_or, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, run_argv, save_json, write_text
+from src.util import ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, path_within, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, run_argv, save_json, write_text
 
 func temp_root() {
     candidate := env("TMPDIR")
@@ -216,20 +216,24 @@ func change_details(workspace) {
     numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", workspace["source_commit"]], 30000)
     if process_ok(numstat_result) {
         numstat_lines := lines_of(trim(proc_stdout(numstat_result)))
+        binary_paths := {}
         mut numstat_i := 0
         while numstat_i < len(numstat_lines) {
             numstat_columns := split(trim(numstat_lines[numstat_i]), "\t")
             if len(numstat_columns) >= 3 {
                 numstat_path := numstat_columns[len(numstat_columns) - 1]
-                mut file_i := 0
-                while file_i < len(files) {
-                    if files[file_i]["path"] == numstat_path && numstat_columns[0] == "-" && numstat_columns[1] == "-" {
-                        files[file_i]["binary"] := true
-                    }
-                    file_i = file_i + 1
+                if numstat_columns[0] == "-" && numstat_columns[1] == "-" {
+                    binary_paths[numstat_path] := true
                 }
             }
             numstat_i = numstat_i + 1
+        }
+        mut file_i := 0
+        while file_i < len(files) {
+            if has_key_safe(binary_paths, files[file_i]["path"]) {
+                files[file_i]["binary"] := true
+            }
+            file_i = file_i + 1
         }
     }
     return {"ok": true, "files": files, "summary": change_summary(files)}

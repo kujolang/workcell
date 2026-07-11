@@ -13,6 +13,7 @@ Additional hardening completed in this pass:
 
 - Nested default filling is centralized in one helper instead of repeating field-by-field logic at each call site.
 - Host-control environment policy is centralized and now rejects proxy, Git credential-helper, GitHub, npm-token, and existing Docker/cloud control variables.
+- Binary change classification indexes Git's binary paths before updating file metadata, avoiding the previous nested file/numstat scan for tracked changes.
 - Offline contracts cover partial defaults, empty-secret logs, and binary change metadata; CLI smoke covers the preparation exit-code contract.
 
 Verification on the local Docker/Colima daemon passed the full offline suite and `tests/docker_integration.sh`. The integration run covered successful execution, declared artifacts, controlled edits, workload failure, timeout cleanup, symlink rejection, and ownership-scoped cleanup. The Docker build still emits a legacy-builder warning because this daemon does not provide the `buildx` plugin; this is a tooling upgrade item, not a Workcell test failure.

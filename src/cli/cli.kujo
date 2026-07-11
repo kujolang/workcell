@@ -224,6 +224,9 @@ func run_exit_code(result) {
     if result["ok"] {
         return 0
     }
+    if has_key(result, "exit_code") && type(result["exit_code"]) == "int" {
+        return result["exit_code"]
+    }
     status := get_or(result, "stage", "internal")
     if status == "validated" {
         return 2

@@ -1,6 +1,7 @@
 # Convert a validated definition into an explicit Docker security policy.
 
 from src.util import get_or, has_key_safe, join_path_safe, truthy
+from src.domain.definition import runtime_env_deny_names
 
 func add_flag(args, flag) {
     return push(args, flag)
@@ -147,12 +148,13 @@ export func spawn_options(definition) {
         allow_keys = push(allow_keys, name)
         secret_i = secret_i + 1
     }
+    deny := runtime_env_deny_names()
     return {
         "ok": true,
         "options": {
             "inherit_env": false,
             "env_allow": allow_keys,
-            "env_deny": ["HOME", "SSH_AUTH_SOCK", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "DOCKER_HOST"],
+            "env_deny": deny,
             "env": environment,
             "timeout_ms": definition["resources"]["timeout_ms"],
             "max_output_bytes": 4000000

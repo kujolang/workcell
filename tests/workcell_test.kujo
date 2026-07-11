@@ -1,9 +1,9 @@
 # Offline Workcell contract tests. These tests do not require Docker.
 
-from src.artifacts.exporter import export_declared
-from src.domain.definition import default_definition, validate_definition
+from src.artifacts.exporter import export_declared, write_execution_logs
+from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy
-from src.util import ensure_dir, normalized_relative, redact, run_argv, run_id, write_text
+from src.util import ensure_dir, normalized_relative, read_text, redact, run_argv, run_id, write_text
 
 mut passed := 0
 mut failed := 0
@@ -103,6 +103,8 @@ func with_mount_path(definition, path) {
 definition := default_definition()
 valid := validate_definition(definition)
 expect("default definition validates", valid["ok"])
+partial := resolve_definition({"network": {}})
+expect("partial sections receive nested defaults", partial["ok"] && validate_definition(partial["definition"])["ok"] && definition_summary(partial["definition"])["network_mode"] == "none")
 expect("host networking rejected", validate_definition(with_network(definition, "host"))["ok"] == false)
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
@@ -120,6 +122,7 @@ expect("PID limit is bounded", validate_definition(with_resource(definition, "pi
 expect("environment names are validated", validate_definition(with_environment_set(definition, "BAD-NAME", "x"))["ok"] == false)
 expect("environment values are strings", validate_definition(with_environment_set(definition, "GOOD_NAME", 7))["ok"] == false)
 expect("host-control environment allow rejected", validate_definition(with_environment_allow(definition, "DOCKER_HOST"))["ok"] == false)
+expect("proxy environment allow rejected", validate_definition(with_environment_allow(definition, "HTTP_PROXY"))["ok"] == false)
 env_policy := build_policy(with_environment_set(definition, "WORKCELL_MODE", "check"), "test-env", "/tmp/workcell-test-workspace")
 expect("container environment is explicit", contains(to_string(env_policy["docker_args"]), "WORKCELL_MODE=check") == 1)
 secret_policy := build_policy(with_secret(definition, "WORKCELL_TOKEN"), "test-secret", "/tmp/workcell-test-workspace")
@@ -138,6 +141,14 @@ expect("relative path normalizes", normalized_relative("build/output.txt")["ok"]
 expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)
 expect("absolute path rejected", normalized_relative("/tmp/output.txt")["ok"] == false)
 expect("secret redaction replaces values", redact("token=abc", ["abc"]) == "token=[REDACTED]")
+
+secret_log_dir := "/tmp/workcell-empty-secret-" + run_id()
+ensure_dir(secret_log_dir)
+secret_logs := write_execution_logs(secret_log_dir, "hello", "stderr", ["EMPTY_SECRET"])
+secret_stdout := read_text(secret_log_dir + "/stdout.log")
+secret_stderr := read_text(secret_log_dir + "/stderr.log")
+expect("empty secret does not corrupt logs", secret_logs["ok"] && secret_stdout["text"] == "hello" && secret_stderr["text"] == "stderr")
+run_argv(["rm", "-rf", secret_log_dir], 30000)
 
 fixture := "/tmp/workcell-contract-fixture.txt"
 write_text(fixture, "fixture")

@@ -58,7 +58,7 @@ export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) 
     mut i := 0
     while i < len(secrets) {
         value := env(secrets[i])
-        if type(value) == "string" {
+        if type(value) == "string" && len(value) > 0 {
             redacted_stdout = replace(redacted_stdout, value, "[REDACTED]")
             redacted_stderr = replace(redacted_stderr, value, "[REDACTED]")
         }

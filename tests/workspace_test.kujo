@@ -1,4 +1,4 @@
-# Workspace contract test: untracked files must appear in generated patches.
+# Workspace contract test: untracked files must appear in generated patches and reports.
 
 from src.util import ensure_dir, load_json, read_text, run_argv, run_id, write_text
 from src.workspace.workspace import cleanup_workspace, create_workspace, inspect_repository, make_patch, write_change_report
@@ -30,17 +30,18 @@ expect("fixture repository detected", source["ok"])
 workspace := create_workspace(repo, "git-worktree", run_id())
 expect("disposable worktree created", workspace["ok"])
 if workspace["ok"] {
-    write_text(workspace["workspace_path"] + "/added.txt", "added from Workcell\n")
+    binary_path := workspace["workspace_path"] + "/added.bin"
+    run_argv(["dd", "if=/dev/zero", "of=" + binary_path, "bs=1", "count=1"], 30000)
     patch_path := repo + "/changes.patch"
     patch := make_patch(workspace, patch_path)
     expect("patch generated", patch["ok"])
     patch_text := read_text(patch_path)
-    expect("untracked file appears in patch", patch_text["ok"] && contains(patch_text["text"], "added.txt") == 1 && contains(patch_text["text"], "added from Workcell") == 1)
+    expect("untracked file appears in patch", patch_text["ok"] && contains(patch_text["text"], "added.bin") == 1)
     report_path := repo + "/changes.json"
     report := write_change_report(workspace, report_path, patch["bytes"])
     expect("structured change report generated", report["ok"])
     report_json := load_json(report_path)
-    expect("change report summarizes patch", report_json["ok"] && report_json["value"]["summary"]["total_files"] == 1 && report_json["value"]["patch_bytes"] > 0)
+    expect("change report summarizes patch", report_json["ok"] && report_json["value"]["summary"]["total_files"] == 1 && report_json["value"]["summary"]["binary_files"] == 1 && report_json["value"]["files"][0]["binary"] == true && report_json["value"]["patch_bytes"] > 0)
     cleanup := cleanup_workspace(workspace, false)
     expect("worktree cleanup succeeded", cleanup["ok"])
 }

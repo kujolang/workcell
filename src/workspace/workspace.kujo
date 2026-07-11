@@ -199,7 +199,15 @@ func change_details(workspace) {
                     k = k + 1
                 }
                 if exists == false {
-                    files = push(files, {"path": item, "status": "added", "binary": false})
+                    binary := false
+                    untracked_numstat := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "--no-index", "--", "/dev/null", item], 30000)
+                    if proc_exitcode(untracked_numstat) == 1 {
+                        untracked_columns := split(trim(proc_stdout(untracked_numstat)), "\t")
+                        if len(untracked_columns) >= 2 && untracked_columns[0] == "-" && untracked_columns[1] == "-" {
+                            binary = true
+                        }
+                    }
+                    files = push(files, {"path": item, "status": "added", "binary": binary})
                 }
             }
             j = j + 1

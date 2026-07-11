@@ -156,8 +156,29 @@ func validate_env_names(value, label) {
     return {"ok": true}
 }
 
+export func host_control_env_names() {
+    names := runtime_env_deny_names()
+    return push(names, "PATH")
+}
+
+export func runtime_env_deny_names() {
+    return [
+        "HOME", "SSH_AUTH_SOCK", "DOCKER_HOST", "DOCKER_CONFIG", "KUBECONFIG",
+        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+        "GIT_ASKPASS", "GIT_SSH_COMMAND", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN", "NPM_CONFIG_USERCONFIG"
+    ]
+}
+
 func host_control_env_name(name) {
-    return name == "PATH" || name == "HOME" || name == "SSH_AUTH_SOCK" || name == "DOCKER_HOST" || name == "DOCKER_CONFIG" || name == "KUBECONFIG" || name == "AWS_ACCESS_KEY_ID" || name == "AWS_SECRET_ACCESS_KEY"
+    names := host_control_env_names()
+    mut i := 0
+    while i < len(names) {
+        if name == names[i] {
+            return true
+        }
+        i = i + 1
+    }
+    return false
 }
 
 func valid_memory(value) {
@@ -426,6 +447,23 @@ export func validate_definition(raw) {
     return {"ok": true}
 }
 
+func fill_section_defaults(value, defaults, section_name, fields) {
+    section := get_or(value, section_name, null)
+    if type(section) == "dict" {
+        mut filled := section
+        mut i := 0
+        while i < len(fields) {
+            field := fields[i]
+            if has_key_safe(filled, field) == false {
+                filled[field] := defaults[section_name][field]
+            }
+            i = i + 1
+        }
+        value[section_name] := filled
+    }
+    return value
+}
+
 export func resolve_definition(raw) {
     defaults := default_definition()
     mut value := raw
@@ -443,6 +481,15 @@ export func resolve_definition(raw) {
             value[section] := defaults[section]
         }
     }
+    value = fill_section_defaults(value, defaults, "runtime", ["backend", "image", "build_context"])
+    value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path"])
+    value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
+    value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms"])
+    value = fill_section_defaults(value, defaults, "network", ["mode"])
+    value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs"])
+    value = fill_section_defaults(value, defaults, "artifacts", ["export"])
+    value = fill_section_defaults(value, defaults, "cleanup", ["keep_failed"])
+    value = fill_section_defaults(value, defaults, "receipt", ["path"])
     if has_key_safe(value, "command") == false {
         value["command"] := defaults["command"]
     }

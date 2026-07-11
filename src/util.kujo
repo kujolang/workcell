@@ -191,9 +191,45 @@ export func normalized_relative(path) {
     return {"ok": true, "path": output}
 }
 
+func lexical_absolute(path) {
+    value := replace(path, "\\", "/")
+    absolute := starts_with(value, "/")
+    if absolute == false {
+        value = os_getcwd() + "/" + value
+    }
+    parts := split(value, "/")
+    mut stack := []
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part == "" || part == "." {
+            i = i + 1
+            continue
+        }
+        if part == ".." {
+            if len(stack) > 0 {
+                stack = slice(stack, 0, len(stack) - 1)
+            }
+        } else {
+            stack = push(stack, part)
+        }
+        i = i + 1
+    }
+    mut output := "/"
+    i = 0
+    while i < len(stack) {
+        output = output + stack[i]
+        if i + 1 < len(stack) {
+            output = output + "/"
+        }
+        i = i + 1
+    }
+    return output
+}
+
 export func path_within(root, candidate) {
-    root_abs := path_absolute(root)
-    candidate_abs := path_absolute(candidate)
+    root_abs := lexical_absolute(root)
+    candidate_abs := lexical_absolute(candidate)
     if candidate_abs == root_abs {
         return true
     }

@@ -10,6 +10,7 @@
 - Artifact paths are normalized and contained; only declared outputs are copied.
 - Secret names are explicit, values are runtime-only, and known values are redacted from captured logs and excluded from receipts.
 - Cleanup filters Docker resources by Workcell ownership labels.
+- Workcell-built images receive deterministic ownership, run ID, project, and version labels; the integration suite verifies the label set.
 - Source workspaces are scanned for symlinks, output roots reject symlink components, and temporary workspace deletion requires a Workcell ownership marker.
 - Resource values are bounded (CPU, memory, PIDs, and a 24-hour timeout maximum); duration parsing rejects non-integer amounts.
 

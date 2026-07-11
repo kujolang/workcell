@@ -18,6 +18,7 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
 - Symlink safety: source worktrees, output roots, and declared artifact sources containing symlinks are rejected; disposable workspaces use an ownership marker for cleanup.
 - Failure categorization: Docker workload exit code 125 is retained in the receipt but classified as workload failure (CLI code 7), while Docker startup failures remain code 5.
 - Output boundary: absolute `--output` paths are limited to `TMPDIR` or the repository `.workcell` directory; traversal and arbitrary host destinations are rejected.
+- Image ownership: Workcell-built images carry Workcell, run ID, project, and version labels; integration inspects all four labels after a forced rebuild.
 - Loop gates: Kujo checks, Kujo tests, CLI smoke, and `git diff --check` passed.
 
 ## Toolchain notes

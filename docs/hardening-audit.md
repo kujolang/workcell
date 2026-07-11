@@ -13,6 +13,7 @@ Additional hardening completed in this pass:
 
 - Nested default filling is centralized in one helper instead of repeating field-by-field logic at each call site.
 - Host-control environment policy is centralized and now rejects proxy, Git credential-helper, GitHub, npm-token, and existing Docker/cloud control variables.
+- Docker-built image resources now carry Workcell ownership, run ID, project, and version labels for auditable resource boundaries.
 - Binary change classification indexes Git's binary paths before updating file metadata, avoiding the previous nested file/numstat scan for tracked changes.
 - Offline contracts cover custom network and security-profile validation, partial defaults, empty-secret logs, exact/base64-derived secret redaction, secret-safe receipts/errors, binary change metadata, digest/signature-key validation, namespace policy, null process output, and bounded absolute output paths; CLI smoke covers the preparation exit-code and Docker-profile contracts.
 

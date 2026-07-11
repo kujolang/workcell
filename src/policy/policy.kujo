@@ -66,6 +66,8 @@ export func build_policy(definition, run_identifier, host_workspace) {
     docker = add_pair(docker, "--name", "kujo-workcell-" + run_identifier)
     docker = add_pair(docker, "--network", definition["network"]["mode"])
     docker = add_pair(docker, "--user", "65532:65532")
+    docker = push(docker, "--init")
+    docker = add_pair(docker, "--ipc", "private")
     docker = add_flag(docker, "--cap-drop")
     docker = push(docker, "ALL")
     docker = add_pair(docker, "--security-opt", "no-new-privileges:true")

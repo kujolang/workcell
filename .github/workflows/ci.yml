@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d8 # v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Build pinned Kujo runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          KUJO_RUNTIME_REF="$(cat RUNTIME_VERSION)"
+          git init /tmp/kujo-runtime
+          git -C /tmp/kujo-runtime remote add origin https://github.com/kujolang/kujo.git
+          git -C /tmp/kujo-runtime fetch --depth 1 origin "$KUJO_RUNTIME_REF"
+          git -C /tmp/kujo-runtime checkout --detach "$KUJO_RUNTIME_REF"
+          cargo build --release --locked --manifest-path /tmp/kujo-runtime/Cargo.toml --bin kujo
+          echo "KUJO_BIN=/tmp/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+
+      - name: Verify Docker BuildKit support
+        shell: bash
+        run: docker buildx version
+
+      - name: Run offline and CLI contracts
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Run Docker integration suite
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/docker_integration.sh
+
+      - name: Run Workcell doctor
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./bin/workcell doctor --json
+
+      - name: Check formatting
+        shell: bash
+        run: git diff --check

@@ -1,6 +1,6 @@
 # Docker runtime adapter. All host commands use structured argv.
 
-from src.util import lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
+from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
 func docker_result(argv, timeout_ms) {
@@ -40,12 +40,31 @@ export func pull_image(image) {
 }
 
 export func build_image(image, context_path, run_identifier) {
-    args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+    mut args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+    buildx := docker_result(["docker", "buildx", "version"], 10000)
+    if process_ok(buildx) {
+        args = ["docker", "buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, context_path]
+    }
     result := docker_result(args, 900000)
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "docker build"), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
     }
     return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+}
+
+func digest_matches(actual, expected) {
+    return actual == expected || ends_with(actual, "@" + expected)
+}
+
+func verify_image_digest(definition, image, digest) {
+    expected := get_or(definition["runtime"], "image_digest", "")
+    if expected == "" {
+        return {"ok": true}
+    }
+    if digest_matches(digest, expected) == false {
+        return {"ok": false, "error": "runtime.image_digest mismatch for " + image + ": expected " + expected + ", observed " + digest}
+    }
+    return {"ok": true}
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
@@ -60,16 +79,25 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
             return {"ok": false, "error": "runtime.build_context contains a symlink and is not safe: " + context_path}
         }
         if rebuild == false && image_exists(image) {
-            return {"ok": true, "action": "reused", "digest": image_digest(image)}
+            digest := image_digest(image)
+            verified := verify_image_digest(definition, image, digest)
+            if verified["ok"] == false { return verified }
+            return {"ok": true, "action": "reused", "digest": digest}
         }
         built := build_image(image, context_path, run_identifier)
         if built["ok"] == false {
             return built
         }
-        return {"ok": true, "action": "built", "digest": image_digest(image), "stdout": built["stdout"]}
+        digest := image_digest(image)
+        verified := verify_image_digest(definition, image, digest)
+        if verified["ok"] == false { return verified }
+        return {"ok": true, "action": "built", "digest": digest, "stdout": built["stdout"]}
     }
     if image_exists(image) {
-        return {"ok": true, "action": "existing", "digest": image_digest(image)}
+        digest := image_digest(image)
+        verified := verify_image_digest(definition, image, digest)
+        if verified["ok"] == false { return verified }
+        return {"ok": true, "action": "existing", "digest": digest}
     }
     if no_pull {
         return {"ok": false, "error": "image is not available locally and --no-pull was requested: " + image}
@@ -78,7 +106,10 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
     if pulled["ok"] == false {
         return pulled
     }
-    return {"ok": true, "action": "pulled", "digest": image_digest(image), "stdout": pulled["stdout"]}
+    digest := image_digest(image)
+    verified := verify_image_digest(definition, image, digest)
+    if verified["ok"] == false { return verified }
+    return {"ok": true, "action": "pulled", "digest": digest, "stdout": pulled["stdout"]}
 }
 
 export func run_container(definition, policy) {

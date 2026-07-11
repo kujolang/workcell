@@ -52,7 +52,7 @@ Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`
 
 The default `contained-standard` profile uses Docker with network `none`, a non-root UID, a read-only root filesystem, bounded CPU/memory/PIDs/time, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted from captured logs.
 
-Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. See [docs/security-model.md](docs/security-model.md).
+Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, pin `runtime.image_digest` to a reviewed `sha256:` digest. See [docs/security-model.md](docs/security-model.md).
 
 ## Output
 

@@ -3,7 +3,7 @@
 from src.artifacts.exporter import export_declared, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy
-from src.util import ensure_dir, normalized_relative, read_text, redact, run_argv, run_id, write_text
+from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id, write_text
 
 mut passed := 0
 mut failed := 0
@@ -35,6 +35,13 @@ func with_artifact(definition, path) {
 func with_image(definition, image) {
     runtime := definition["runtime"]
     runtime["image"] := image
+    definition["runtime"] := runtime
+    return definition
+}
+
+func with_image_digest(definition, digest) {
+    runtime := definition["runtime"]
+    runtime["image_digest"] := digest
     definition["runtime"] := runtime
     return definition
 }
@@ -109,6 +116,8 @@ expect("host networking rejected", validate_definition(with_network(definition, 
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
+expect("valid image digest accepted", validate_definition(with_image_digest(definition, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))["ok"])
+expect("invalid image digest rejected", validate_definition(with_image_digest(definition, "sha256:not-a-digest"))["ok"] == false)
 expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
 expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
 expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)
@@ -136,11 +145,13 @@ expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
 expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
 expect("policy never mounts Docker socket", contains(to_string(args), "docker.sock") == 0)
 expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=true") == 1)
+expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1 && contains(to_string(args), "private") == 1)
 
 expect("relative path normalizes", normalized_relative("build/output.txt")["ok"])
 expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)
 expect("absolute path rejected", normalized_relative("/tmp/output.txt")["ok"] == false)
 expect("secret redaction replaces values", redact("token=abc", ["abc"]) == "token=[REDACTED]")
+expect("null process output is normalized", process_error({"exitcode": 125, "stderr": null, "timed_out": false}, "docker") == "docker exited with code 125: ")
 
 secret_log_dir := "/tmp/workcell-empty-secret-" + run_id()
 ensure_dir(secret_log_dir)

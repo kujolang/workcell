@@ -27,7 +27,31 @@ printf '# Fixture\n' > "$TMP_REPO/README.md"
 git -C "$TMP_REPO" add README.md
 git -C "$TMP_REPO" commit -qm initial
 
-docker build -q --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
+if docker buildx version >/dev/null 2>&1; then
+  docker buildx build --load --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
+else
+  docker build -q --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
+fi
+
+BASE_DIGEST="$(docker image inspect --format '{{index .RepoDigests 0}}' kujolang/workcell-base:local 2>/dev/null || true)"
+BASE_DIGEST="$(printf '%s' "$BASE_DIGEST" | sed 's/.*@//')"
+if [ -n "$BASE_DIGEST" ]; then
+  jq --arg digest "$BASE_DIGEST" '.runtime.image_digest = $digest' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/digest.json"
+  KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/digest.json" --repo "$TMP_REPO" --output "$OUT_ROOT/digest"
+  jq --arg digest "sha256:$(printf '0%.0s' {1..64})" '.runtime.image_digest = $digest' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/digest-mismatch.json"
+  set +e
+  KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/digest-mismatch.json" --repo "$TMP_REPO" --output "$OUT_ROOT/digest-mismatch" --json > "$OUT_ROOT/digest-mismatch.json.result"
+  DIGEST_MISMATCH_CODE=$?
+  set -e
+  test "$DIGEST_MISMATCH_CODE" -eq 4
+  jq -e '.stage == "preparing" and (.error | contains("image_digest mismatch"))' "$OUT_ROOT/digest-mismatch.json.result" >/dev/null
+fi
+
+cp -R "$ROOT/docker" "$TMP_REPO/build-context"
+git -C "$TMP_REPO" add build-context
+git -C "$TMP_REPO" commit -qm "add runtime build context fixture"
+jq '.runtime.image = "kujolang/workcell-runtime-build:integration" | .runtime.build_context = "build-context" | .artifacts.export = []' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/runtime-build.json"
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/runtime-build.json" --repo "$TMP_REPO" --output "$OUT_ROOT/runtime-build" --no-pull
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/hello"
 test -f "$OUT_ROOT/hello"/*/receipt.json

@@ -1,0 +1,28 @@
+[package]
+name = "workcell"
+version = "0.1.0"
+description = "Kujo-native Docker-backed disposable execution sandbox for AI agents and workflows."
+license = "MIT"
+repository = "https://github.com/kujolang/workcell"
+keywords = ["kujo", "docker", "sandbox", "agents", "workflows"]
+categories = ["developer-tools"]
+readme = "README.md"
+
+[package.status]
+stage = "experimental"
+stability = "early"
+public_api = false
+notes = "Local Docker MVP with bounded execution, receipts, declared artifacts, and release-gated integration tests."
+
+[kujo]
+minimum_version = "0.1.0"
+entry = "main.kujo"
+sources = ["src", "."]
+includes = ["README.md", "docs", "tests", "examples", "docker", "LICENSE"]
+excludes = [".git", ".workcell", ".casefile", ".runledger", "dist", "build", "node_modules"]
+
+[scripts]
+test = "bash tests/run.sh"
+integration = "bash tests/docker_integration.sh"
+
+[dependencies]

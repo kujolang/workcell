@@ -25,5 +25,10 @@ cleanup() {
 trap cleanup EXIT
 
 git -C "$KUJO_SOURCE" archive --format=tar "$KUJO_COMMIT" | tar -x -C "$CONTEXT"
-docker build --tag kujolang/workcell-kujo:local \
-  --file "$ROOT/docker/kujo/Dockerfile.local" "$CONTEXT"
+if docker buildx version >/dev/null 2>&1; then
+  docker buildx build --load --tag kujolang/workcell-kujo:local \
+    --file "$ROOT/docker/kujo/Dockerfile.local" "$CONTEXT"
+else
+  docker build --tag kujolang/workcell-kujo:local \
+    --file "$ROOT/docker/kujo/Dockerfile.local" "$CONTEXT"
+fi

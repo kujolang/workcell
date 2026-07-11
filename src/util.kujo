@@ -355,18 +355,25 @@ export func proc_exitcode(result) {
     return result.exitcode
 }
 
+func text_or_empty(value) {
+    if type(value) == "string" {
+        return value
+    }
+    return ""
+}
+
 export func proc_stdout(result) {
     if type(result) == "dict" {
-        return get_or(result, "stdout", "")
+        return text_or_empty(get_or(result, "stdout", ""))
     }
-    return result.stdout
+    return text_or_empty(result.stdout)
 }
 
 export func proc_stderr(result) {
     if type(result) == "dict" {
-        return get_or(result, "stderr", "")
+        return text_or_empty(get_or(result, "stderr", ""))
     }
-    return result.stderr
+    return text_or_empty(result.stderr)
 }
 
 export func proc_stdout_truncated(result) {

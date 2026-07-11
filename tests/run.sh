@@ -10,6 +10,7 @@ check_all() {
     "$KUJO" check "$ROOT/$file"
   done < <(cd "$ROOT" && find src -type f -name '*.kujo' | sort)
   "$KUJO" check "$ROOT/tests/workcell_test.kujo"
+  "$KUJO" check "$ROOT/tests/workspace_test.kujo"
 }
 
 if [ "${1:-}" = "--check-only" ]; then
@@ -19,5 +20,8 @@ fi
 
 check_all
 "$KUJO" run "$ROOT/tests/workcell_test.kujo"
+"$KUJO" run "$ROOT/tests/workspace_test.kujo"
 KUJO="$KUJO" "$ROOT/tests/path_safety.sh"
 KUJO="$KUJO" "$ROOT/tests/dry_run.sh"
+KUJO="$KUJO" "$ROOT/tests/examples.sh"
+KUJO="$KUJO" "$ROOT/tests/cli_smoke.sh"

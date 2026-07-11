@@ -87,6 +87,14 @@ export func run_container(definition, policy) {
         return {"ok": false, "stage": "starting", "error": options["error"]}
     }
     result := run_argv_options(policy["docker_args"], options["options"])
+    if proc_success(result) == false && proc_timed_out(result) == false && proc_exitcode(result) == 125 {
+        return {
+            "ok": false,
+            "stage": "starting",
+            "error": process_error(result, "start Docker container " + policy["container_name"]),
+            "container_name": policy["container_name"]
+        }
+    }
     return {
         "ok": true,
         "success": proc_success(result),

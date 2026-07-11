@@ -9,4 +9,4 @@ RUN addgroup -g 65532 workcell && adduser -D -u 65532 -G workcell workcell
 WORKDIR /workspace
 USER 65532:65532
 
-ENTRYPOINT ["/bin/sh"]
+CMD ["/bin/sh"]

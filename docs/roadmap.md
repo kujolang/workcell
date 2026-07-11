@@ -7,7 +7,7 @@ Future possibilities, not current behavior:
 - Podman and other OCI-compatible adapters.
 - gVisor-compatible Docker runtime and microVM backends.
 - Controlled network proxy and honest domain allowlists.
-- Image signing/verification and provenance policy.
+- Signature key lifecycle/transparency policy and provenance integrations beyond the optional local cosign verification hook.
 - Agent context adapters for PackWrite/Muzzle.
 - Direct RunLedger/ChangeBucket/ShipCheck/Fence adapters where stable contracts justify them.
 - Prepared image and package caching with explicit isolation.

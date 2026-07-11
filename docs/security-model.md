@@ -20,10 +20,11 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.
 - Definitions may pin `runtime.image_digest`; Workcell verifies the observed Docker image digest before launch and fails closed on mismatch.
 - Definitions may set `runtime.signature_key` to a repository-relative cosign public key; missing keys, unavailable cosign, and failed verification all fail image preparation closed.
+- `workcell doctor` checks that the daemon reports seccomp and AppArmor; rootless status is surfaced as a deployment warning rather than silently assumed.
 
 ## Secrets
 
-Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr replace known current values with `[REDACTED]`. Redaction cannot guarantee protection when a workload transforms, encodes, hashes, or writes a secret to a declared artifact, so secret-aware workloads remain the caller's responsibility.
+Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr replace known current values and common base64 encodings with `[REDACTED]`. Redaction cannot guarantee protection when a workload hashes or otherwise transforms a secret, or writes it to a declared artifact, so secret-aware workloads remain the caller's responsibility.
 
 ## Network and daemon trust
 
@@ -31,4 +32,4 @@ Only `none` and `default` are supported. Domain allowlists are rejected rather t
 
 ## Residual risks
 
-The MVP does not implement image signature verification, a hardened microVM, a controlled network proxy, syscall filtering beyond Docker's configured defaults, streaming log redaction, or a scheduler. Future runtime adapters must preserve the policy interface and document stronger/weaker guarantees explicitly.
+The MVP does not provide a hardened microVM, a controlled network proxy, custom syscall profiles beyond Docker's configured defaults, streaming log redaction, or a scheduler. Image digest pinning and optional cosign public-key verification are implemented; key lifecycle and transparency policy remain deployment responsibilities. Future runtime adapters must preserve the policy interface and document stronger/weaker guarantees explicitly.

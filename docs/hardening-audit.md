@@ -14,7 +14,7 @@ Additional hardening completed in this pass:
 - Nested default filling is centralized in one helper instead of repeating field-by-field logic at each call site.
 - Host-control environment policy is centralized and now rejects proxy, Git credential-helper, GitHub, npm-token, and existing Docker/cloud control variables.
 - Binary change classification indexes Git's binary paths before updating file metadata, avoiding the previous nested file/numstat scan for tracked changes.
-- Offline contracts cover partial defaults, empty-secret logs, binary change metadata, digest/signature-key validation, namespace policy, and null process output; CLI smoke covers the preparation exit-code contract.
+- Offline contracts cover partial defaults, empty-secret logs, exact/base64-derived secret redaction, binary change metadata, digest/signature-key validation, namespace policy, and null process output; CLI smoke covers the preparation exit-code and Docker-profile contracts.
 
 Verification on the local Docker/Colima daemon passed the full offline suite and `tests/docker_integration.sh`. The integration run covered successful execution, declared artifacts, controlled edits, runtime image builds, digest verification and mismatch failure, workload failure, timeout cleanup, symlink rejection, and ownership-scoped cleanup. Docker buildx 0.35.0 is installed locally and the integration suite now exercises BuildKit.
 

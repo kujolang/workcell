@@ -46,6 +46,13 @@ func with_image_digest(definition, digest) {
     return definition
 }
 
+func with_signature_key(definition, key_path) {
+    runtime := definition["runtime"]
+    runtime["signature_key"] := key_path
+    definition["runtime"] := runtime
+    return definition
+}
+
 func with_unknown_field(definition) {
     definition["unknown"] := true
     return definition
@@ -118,6 +125,8 @@ expect("absolute artifact rejected", validate_definition(with_artifact(definitio
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
 expect("valid image digest accepted", validate_definition(with_image_digest(definition, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))["ok"])
 expect("invalid image digest rejected", validate_definition(with_image_digest(definition, "sha256:not-a-digest"))["ok"] == false)
+expect("relative signature key accepted", validate_definition(with_signature_key(definition, "keys/workcell.pub"))["ok"])
+expect("absolute signature key rejected", validate_definition(with_signature_key(definition, "/tmp/workcell.pub"))["ok"] == false)
 expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
 expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
 expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)

@@ -47,6 +47,14 @@ if [ -n "$BASE_DIGEST" ]; then
   jq -e '.stage == "preparing" and (.error | contains("image_digest mismatch"))' "$OUT_ROOT/digest-mismatch.json.result" >/dev/null
 fi
 
+jq '.runtime.signature_key = "missing-workcell.pub"' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/signature-mismatch.json"
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/signature-mismatch.json" --repo "$TMP_REPO" --output "$OUT_ROOT/signature-mismatch" --json > "$OUT_ROOT/signature-mismatch.json.result"
+SIGNATURE_MISMATCH_CODE=$?
+set -e
+test "$SIGNATURE_MISMATCH_CODE" -eq 4
+jq -e '.stage == "preparing" and (.error | contains("signature_key"))' "$OUT_ROOT/signature-mismatch.json.result" >/dev/null
+
 cp -R "$ROOT/docker" "$TMP_REPO/build-context"
 git -C "$TMP_REPO" add build-context
 git -C "$TMP_REPO" commit -qm "add runtime build context fixture"

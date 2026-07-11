@@ -56,13 +56,21 @@ func digest_matches(actual, expected) {
     return actual == expected || ends_with(actual, "@" + expected)
 }
 
-func verify_image_digest(definition, image, digest) {
+func verify_image(definition, source_root, image, digest) {
     expected := get_or(definition["runtime"], "image_digest", "")
-    if expected == "" {
-        return {"ok": true}
-    }
-    if digest_matches(digest, expected) == false {
+    if expected != "" && digest_matches(digest, expected) == false {
         return {"ok": false, "error": "runtime.image_digest mismatch for " + image + ": expected " + expected + ", observed " + digest}
+    }
+    signature_key := get_or(definition["runtime"], "signature_key", "")
+    if signature_key != "" {
+        key_path := source_root + "/" + signature_key
+        if file_exists(key_path) == false || path_has_symlink(key_path) {
+            return {"ok": false, "error": "runtime.signature_key does not exist or contains a symlink: " + key_path}
+        }
+        signature := docker_result(["cosign", "verify", "--key", key_path, image], 120000)
+        if process_ok(signature) == false {
+            return {"ok": false, "error": process_error(signature, "cosign verify " + image), "stdout": proc_stdout(signature), "stderr": proc_stderr(signature)}
+        }
     }
     return {"ok": true}
 }
@@ -80,7 +88,7 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
         }
         if rebuild == false && image_exists(image) {
             digest := image_digest(image)
-            verified := verify_image_digest(definition, image, digest)
+            verified := verify_image(definition, source_root, image, digest)
             if verified["ok"] == false { return verified }
             return {"ok": true, "action": "reused", "digest": digest}
         }
@@ -89,13 +97,13 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
             return built
         }
         digest := image_digest(image)
-        verified := verify_image_digest(definition, image, digest)
+        verified := verify_image(definition, source_root, image, digest)
         if verified["ok"] == false { return verified }
         return {"ok": true, "action": "built", "digest": digest, "stdout": built["stdout"]}
     }
     if image_exists(image) {
         digest := image_digest(image)
-        verified := verify_image_digest(definition, image, digest)
+        verified := verify_image(definition, source_root, image, digest)
         if verified["ok"] == false { return verified }
         return {"ok": true, "action": "existing", "digest": digest}
     }
@@ -107,7 +115,7 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
         return pulled
     }
     digest := image_digest(image)
-    verified := verify_image_digest(definition, image, digest)
+    verified := verify_image(definition, source_root, image, digest)
     if verified["ok"] == false { return verified }
     return {"ok": true, "action": "pulled", "digest": digest, "stdout": pulled["stdout"]}
 }

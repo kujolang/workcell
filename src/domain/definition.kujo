@@ -10,7 +10,8 @@ export func default_definition() {
             "backend": "docker",
             "image": "kujolang/workcell-base:local",
             "build_context": "",
-            "image_digest": ""
+            "image_digest": "",
+            "signature_key": ""
         },
         "workspace": {
             "strategy": "git-worktree",
@@ -251,7 +252,7 @@ export func validate_definition(raw) {
     }
 
     runtime := get_or(raw, "runtime", {})
-    runtime_keys := validate_keys(runtime, ["backend", "image", "build_context", "image_digest"], "runtime")
+    runtime_keys := validate_keys(runtime, ["backend", "image", "build_context", "image_digest", "signature_key"], "runtime")
     if runtime_keys["ok"] == false {
         return runtime_keys
     }
@@ -271,6 +272,13 @@ export func validate_definition(raw) {
         digest_check := valid_image_digest(image_digest, "runtime.image_digest")
         if digest_check["ok"] == false {
             return digest_check
+        }
+    }
+    signature_key := get_or(runtime, "signature_key", "")
+    if signature_key != "" {
+        signature_check := normalized_relative(signature_key)
+        if signature_check["ok"] == false {
+            return {"ok": false, "error": "runtime.signature_key: " + signature_check["error"]}
         }
     }
     build_context := get_or(runtime, "build_context", "")
@@ -490,7 +498,7 @@ export func resolve_definition(raw) {
             value[section] := defaults[section]
         }
     }
-    value = fill_section_defaults(value, defaults, "runtime", ["backend", "image", "build_context", "image_digest"])
+    value = fill_section_defaults(value, defaults, "runtime", ["backend", "image", "build_context", "image_digest", "signature_key"])
     value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path"])
     value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
     value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms"])
@@ -539,6 +547,7 @@ export func definition_summary(definition) {
         "backend": definition["runtime"]["backend"],
         "image": definition["runtime"]["image"],
         "image_digest": definition["runtime"]["image_digest"],
+        "signature_key": definition["runtime"]["signature_key"],
         "command": definition["command"],
         "network_mode": definition["network"]["mode"],
         "timeout_ms": definition["resources"]["timeout_ms"],

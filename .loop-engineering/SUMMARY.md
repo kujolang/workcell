@@ -35,6 +35,8 @@ success
 - `bac5b38` — docs: close P2 hardening and integration boundaries
 - `61cbaf5` — feat: support process working directories (Kujo)
 - `475fb1a` — chore: refresh unsafe inventory baseline (Kujo)
+- `125d714` — docs: record P2 loop evidence
+- `6f8af19` — fix: pin exact Kujo runtime commit
 
 ## Remaining
 

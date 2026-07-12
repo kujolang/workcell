@@ -38,7 +38,8 @@ success
 - `475fb1a` — chore: refresh unsafe inventory baseline (Kujo)
 - `125d714` — docs: record P2 loop evidence
 - `6f8af19` — fix: pin exact Kujo runtime commit
-- continuation — atomic-write checks, dry-run integration status, runtime-class validation, backend-aware doctor, and adversarial coverage (pending commit)
+- `4362a25` — fix P2 failure-path checks, truthful dry-run integration status, runtime-class validation, backend-aware doctor, and adversarial coverage
+- `9afc769` — docs: record P2 adversarial audit evidence
 
 ## Remaining
 

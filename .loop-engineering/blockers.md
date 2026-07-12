@@ -21,6 +21,11 @@ blockers:
     evidence: "Current Colima daemon reports seccomp/AppArmor but is not rootless; doctor reports this as a warning."
     status: host-owned
     next_action: "Use a rootless Docker/VM/microVM deployment for multi-tenant untrusted workloads."
+  - id: podman-live-host
+    command: "podman info"
+    evidence: "Podman is not installed on the current macOS host; offline Podman policy/validation/cleanup coverage passed, while Docker/Colima remains the live integration evidence."
+    status: host-owned
+    next_action: "Run the backend integration suite on a supported rootless Podman host."
 
 Resolved evidence:
 

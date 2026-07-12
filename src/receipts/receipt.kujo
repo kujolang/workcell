@@ -1,6 +1,6 @@
 # Structured Workcell execution receipts.
 
-from src.util import iso_now, redact_with_env, save_json
+from src.util import redact_with_env, save_json
 
 func redacted_command(command, secret_names) {
     mut output := []
@@ -32,7 +32,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "container_image_labels": {},
         "container_name": policy["container_name"],
         "command": redacted_command(definition["command"], definition["secrets"]),
-        "start_time": iso_now(),
+        "start_time": now_utc(),
         "end_time": null,
         "elapsed": null,
         "elapsed_ms": null,
@@ -84,7 +84,7 @@ export func add_error(receipt, stage, message) {
 }
 
 export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status, elapsed_ms, execution_succeeded, artifacts_succeeded) {
-    receipt["end_time"] := iso_now()
+    receipt["end_time"] := now_utc()
     receipt["exit_code"] := exit_code
     receipt["timeout"] := timed_out
     receipt["elapsed"] := elapsed_ms

@@ -30,10 +30,6 @@ export func get_or(value, key, fallback) {
 return fallback
 }
 
-export func iso_now() {
-    return format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
-}
-
 export func project_version() {
     project_root := env("WORKCELL_PROJECT_DIR")
     if type(project_root) != "string"||trim(project_root) == "" {

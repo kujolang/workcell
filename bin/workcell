@@ -13,6 +13,7 @@ while [ -h "$SOURCE" ]; do
 done
 PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
 KUJO="${KUJO:-kujo}"
+export WORKCELL_PROJECT_DIR="$PROJECT_DIR"
 
 if ! command -v "$KUJO" >/dev/null 2>&1 && [ ! -x "$KUJO" ]; then
   echo "workcell: cannot find the Kujo runtime ('$KUJO')." >&2

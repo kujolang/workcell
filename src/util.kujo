@@ -34,6 +34,21 @@ export func iso_now() {
     return format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
 }
 
+export func project_version() {
+    project_root := env("WORKCELL_PROJECT_DIR")
+    if type(project_root) != "string" || trim(project_root) == "" {
+        project_root = os_getcwd()
+    }
+    version_path := project_root + "/VERSION"
+    if file_exists(version_path) {
+        version := trim(read_file(version_path))
+        if version != "" {
+            return version
+        }
+    }
+    return "unknown"
+}
+
 export func run_id() {
     return "wc-" + replace(uuid_v4(), "-", "")
 }
@@ -343,6 +358,42 @@ export func env_secret_values(names) {
 
 export func redact_with_env(text, names) {
     return redact(text, env_secret_values(names))
+}
+
+func valid_identity_number(value) {
+    if type(value) != "string" || trim(value) == "" {
+        return false
+    }
+    mut i := 0
+    while i < len(value) {
+        if contains("0123456789", substring(value, i, i + 1)) == 0 {
+            return false
+        }
+        i = i + 1
+    }
+    number := parse_int(value)
+    return number > 0 && number <= 65534
+}
+
+export func resolve_run_as(run_as) {
+    if run_as == "host" {
+        uid_result := run_argv(["id", "-u"], 10000)
+        gid_result := run_argv(["id", "-g"], 10000)
+        if process_ok(uid_result) == false || process_ok(gid_result) == false {
+            return {"ok": false, "error": "could not resolve the host uid/gid for workspace ownership"}
+        }
+        uid := trim(proc_stdout(uid_result))
+        gid := trim(proc_stdout(gid_result))
+        if valid_identity_number(uid) == false || valid_identity_number(gid) == false {
+            return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
+        }
+        return {"ok": true, "value": uid + ":" + gid, "source": "host", "uid": parse_int(uid), "gid": parse_int(gid)}
+    }
+    parts := split(to_string(run_as), ":")
+    if len(parts) != 2 || valid_identity_number(parts[0]) == false || valid_identity_number(parts[1]) == false {
+        return {"ok": false, "error": "workspace.run_as must resolve to a non-root uid:gid pair"}
+    }
+    return {"ok": true, "value": parts[0] + ":" + parts[1], "source": "fixed", "uid": parse_int(parts[0]), "gid": parse_int(parts[1])}
 }
 
 export func process_ok(result) {

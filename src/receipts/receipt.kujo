@@ -26,6 +26,10 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "runtime_backend": "docker",
         "container_image": definition["runtime"]["image"],
         "container_image_digest": "",
+        "container_image_id": "",
+        "container_image_digest_source": "",
+        "container_image_platform": "",
+        "container_image_labels": {},
         "container_name": policy["container_name"],
         "command": redacted_command(definition["command"], definition["secrets"]),
         "start_time": iso_now(),
@@ -42,6 +46,8 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "mounts": policy["mounts"],
         "effective_security_policy": policy["effective_security_policy"],
         "exported_artifacts": [],
+        "artifact_bytes": 0,
+        "artifact_files": 0,
         "changed_files": [],
         "change_report_path": null,
         "patch_path": null,
@@ -52,6 +58,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "verification": {
             "execution_succeeded": false,
             "verification_succeeded": false,
+            "checks": [],
             "artifacts_exported": false,
             "cleanup_succeeded": false
         },

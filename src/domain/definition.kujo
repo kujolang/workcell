@@ -15,7 +15,13 @@ export func default_definition() {
         },
         "workspace": {
             "strategy": "git-worktree",
-            "mount_path": "/workspace"
+            "mount_path": "/workspace",
+            "run_as": "host",
+            "scan": {
+                "max_files": 100000,
+                "max_bytes": 1000000000,
+                "max_depth": 128
+            }
         },
         "command": ["sh", "-lc", "printf 'Workcell ready\\n'"],
         "environment": {
@@ -27,7 +33,8 @@ export func default_definition() {
             "cpus": 2,
             "memory": "1g",
             "pids": 256,
-            "timeout_ms": 300000
+            "timeout_ms": 300000,
+            "max_output_bytes": 4000000
         },
         "network": {
             "mode": "none",
@@ -40,12 +47,22 @@ export func default_definition() {
             "apparmor_profile": ""
         },
         "artifacts": {
-            "export": []
+            "export": [],
+            "limits": {},
+            "max_bytes": 0,
+            "max_files": 0,
+            "max_depth": 32,
+            "allowed_extensions": [],
+            "secret_action": "allow"
         },
         "cleanup": {
             "keep_failed": false
         },
         "trust_profile": "contained-standard",
+        "verification": {
+            "version": 1,
+            "commands": []
+        },
         "receipt": {
             "path": ".workcell/runs"
         }
@@ -188,6 +205,39 @@ func valid_env_name(value, label) {
     return {"ok": true}
 }
 
+func valid_run_as(value) {
+    if type(value) != "string" || trim(value) == "" {
+        return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+    }
+    if value == "host" {
+        return {"ok": true}
+    }
+    parts := split(value, ":")
+    if len(parts) != 2 {
+        return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+    }
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part == "" {
+            return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+        }
+        mut digit_i := 0
+        while digit_i < len(part) {
+            if contains("0123456789", substring(part, digit_i, digit_i + 1)) == 0 {
+                return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+            }
+            digit_i = digit_i + 1
+        }
+        numeric := parse_int(part)
+        if numeric <= 0 || numeric > 65534 {
+            return {"ok": false, "error": "workspace.run_as uid and gid must be between 1 and 65534"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
 func validate_env_names(value, label) {
     if type(value) != "array" {
         return {"ok": false, "error": label + " must be an array"}
@@ -280,11 +330,114 @@ func validate_unique_strings(value, label) {
     return {"ok": true}
 }
 
+func valid_extension(value, label) {
+    if type(value) != "string" || len(value) < 2 || substring(value, 0, 1) != "." {
+        return {"ok": false, "error": label + " must start with a dot"}
+    }
+    mut i := 1
+    while i < len(value) {
+        if contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.", substring(value, i, i + 1)) == 0 {
+            return {"ok": false, "error": label + " contains unsafe characters"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func validate_artifact_limits(value) {
+    if type(value) != "dict" {
+        return {"ok": false, "error": "artifacts.limits must be an object"}
+    }
+    names := keys(value)
+    mut i := 0
+    while i < len(names) {
+        name := names[i]
+        path_check := normalized_relative(name)
+        if path_check["ok"] == false {
+            return {"ok": false, "error": "artifacts.limits path: " + path_check["error"]}
+        }
+        limit := value[name]
+        limit_keys := validate_keys(limit, ["max_bytes", "max_files", "max_depth"], "artifacts.limits." + name)
+        if limit_keys["ok"] == false {
+            return limit_keys
+        }
+        if has_key_safe(limit, "max_bytes") && (type(limit["max_bytes"]) != "int" || limit["max_bytes"] <= 0 || limit["max_bytes"] > 1000000000) {
+            return {"ok": false, "error": "artifacts.limits." + name + ".max_bytes must be between 1 and 1000000000"}
+        }
+        if has_key_safe(limit, "max_files") && (type(limit["max_files"]) != "int" || limit["max_files"] <= 0 || limit["max_files"] > 100000) {
+            return {"ok": false, "error": "artifacts.limits." + name + ".max_files must be between 1 and 100000"}
+        }
+        if has_key_safe(limit, "max_depth") && (type(limit["max_depth"]) != "int" || limit["max_depth"] <= 0 || limit["max_depth"] > 128) {
+            return {"ok": false, "error": "artifacts.limits." + name + ".max_depth must be between 1 and 128"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func validate_verification(value) {
+    if type(value) != "dict" {
+        return {"ok": false, "error": "verification must be an object"}
+    }
+    keys_check := validate_keys(value, ["version", "commands"], "verification")
+    if keys_check["ok"] == false {
+        return keys_check
+    }
+    if get_or(value, "version", 0) != 1 {
+        return {"ok": false, "error": "verification.version must be exactly 1"}
+    }
+    commands := get_or(value, "commands", [])
+    if type(commands) != "array" || len(commands) > 32 {
+        return {"ok": false, "error": "verification.commands must be an array with at most 32 checks"}
+    }
+    mut i := 0
+    while i < len(commands) {
+        check := commands[i]
+        check_keys := validate_keys(check, ["name", "command"], "verification.commands[" + to_string(i) + "]")
+        if check_keys["ok"] == false {
+            return check_keys
+        }
+        name_check := valid_token(get_or(check, "name", ""), "verification.commands[" + to_string(i) + "].name")
+        if name_check["ok"] == false {
+            return name_check
+        }
+        command_check := validate_string_array(get_or(check, "command", []), "verification.commands[" + to_string(i) + "].command")
+        if command_check["ok"] == false || len(get_or(check, "command", [])) == 0 {
+            if command_check["ok"] == false {
+                return command_check
+            }
+            return {"ok": false, "error": "verification command must not be empty"}
+        }
+        i = i + 1
+    }
+    return {"ok": true}
+}
+
+func validate_workspace_scan(value) {
+    if type(value) != "dict" {
+        return {"ok": false, "error": "workspace.scan must be an object"}
+    }
+    keys_check := validate_keys(value, ["max_files", "max_bytes", "max_depth"], "workspace.scan")
+    if keys_check["ok"] == false {
+        return keys_check
+    }
+    if type(get_or(value, "max_files", 0)) != "int" || value["max_files"] <= 0 || value["max_files"] > 1000000 {
+        return {"ok": false, "error": "workspace.scan.max_files must be between 1 and 1000000"}
+    }
+    if type(get_or(value, "max_bytes", 0)) != "int" || value["max_bytes"] <= 0 || value["max_bytes"] > 10000000000 {
+        return {"ok": false, "error": "workspace.scan.max_bytes must be between 1 and 10000000000"}
+    }
+    if type(get_or(value, "max_depth", 0)) != "int" || value["max_depth"] <= 0 || value["max_depth"] > 256 {
+        return {"ok": false, "error": "workspace.scan.max_depth must be between 1 and 256"}
+    }
+    return {"ok": true}
+}
+
 export func validate_definition(raw) {
     if type(raw) != "dict" {
         return {"ok": false, "error": "Workcell definition must be a JSON object"}
     }
-    top := validate_keys(raw, ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "receipt"], "definition")
+    top := validate_keys(raw, ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt"], "definition")
     if top["ok"] == false {
         return top
     }
@@ -338,7 +491,7 @@ export func validate_definition(raw) {
     }
 
     workspace := get_or(raw, "workspace", {})
-    workspace_keys := validate_keys(workspace, ["strategy", "mount_path"], "workspace")
+    workspace_keys := validate_keys(workspace, ["strategy", "mount_path", "run_as", "scan"], "workspace")
     if workspace_keys["ok"] == false {
         return workspace_keys
     }
@@ -348,6 +501,14 @@ export func validate_definition(raw) {
     mount_path := get_or(workspace, "mount_path", "")
     if type(mount_path) != "string" || starts_with(mount_path, "/") == false || contains(mount_path, "..") == 1 || mount_path == "/" || (mount_path != "/workspace" && starts_with(mount_path, "/workspace/") == false) {
         return {"ok": false, "error": "workspace.mount_path must be /workspace or a descendant beneath it"}
+    }
+    run_as_check := valid_run_as(get_or(workspace, "run_as", "host"))
+    if run_as_check["ok"] == false {
+        return run_as_check
+    }
+    scan_check := validate_workspace_scan(get_or(workspace, "scan", {"max_files": 100000, "max_bytes": 1000000000, "max_depth": 128}))
+    if scan_check["ok"] == false {
+        return scan_check
     }
 
     command_check := validate_string_array(get_or(raw, "command", []), "command")
@@ -422,7 +583,7 @@ export func validate_definition(raw) {
     }
 
     resources := get_or(raw, "resources", {})
-    resources_keys := validate_keys(resources, ["cpus", "memory", "pids", "timeout_ms"], "resources")
+    resources_keys := validate_keys(resources, ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"], "resources")
     if resources_keys["ok"] == false {
         return resources_keys
     }
@@ -442,6 +603,9 @@ export func validate_definition(raw) {
     }
     if timeout_check["value"] > 86400000 {
         return {"ok": false, "error": "resources.timeout_ms must not exceed 24 hours"}
+    }
+    if type(get_or(resources, "max_output_bytes", 0)) != "int" || resources["max_output_bytes"] <= 0 || resources["max_output_bytes"] > 16000000 {
+        return {"ok": false, "error": "resources.max_output_bytes must be an integer from 1 through 16000000"}
     }
 
     network := get_or(raw, "network", {})
@@ -499,7 +663,7 @@ export func validate_definition(raw) {
     }
 
     artifacts := get_or(raw, "artifacts", {})
-    artifacts_keys := validate_keys(artifacts, ["export"], "artifacts")
+    artifacts_keys := validate_keys(artifacts, ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"], "artifacts")
     if artifacts_keys["ok"] == false {
         return artifacts_keys
     }
@@ -510,6 +674,40 @@ export func validate_definition(raw) {
     artifact_unique := validate_unique_strings(get_or(artifacts, "export", []), "artifacts.export")
     if artifact_unique["ok"] == false {
         return artifact_unique
+    }
+    limits_check := validate_artifact_limits(get_or(artifacts, "limits", {}))
+    if limits_check["ok"] == false {
+        return limits_check
+    }
+    if type(get_or(artifacts, "max_bytes", 0)) != "int" || artifacts["max_bytes"] < 0 || artifacts["max_bytes"] > 1000000000 {
+        return {"ok": false, "error": "artifacts.max_bytes must be 0 or an integer from 1 through 1000000000"}
+    }
+    if type(get_or(artifacts, "max_files", 0)) != "int" || artifacts["max_files"] < 0 || artifacts["max_files"] > 100000 {
+        return {"ok": false, "error": "artifacts.max_files must be 0 or an integer from 1 through 100000"}
+    }
+    if type(get_or(artifacts, "max_depth", 32)) != "int" || artifacts["max_depth"] <= 0 || artifacts["max_depth"] > 128 {
+        return {"ok": false, "error": "artifacts.max_depth must be an integer from 1 through 128"}
+    }
+    extensions := get_or(artifacts, "allowed_extensions", [])
+    extensions_check := validate_string_array(extensions, "artifacts.allowed_extensions")
+    if extensions_check["ok"] == false {
+        return extensions_check
+    }
+    mut extension_i := 0
+    while extension_i < len(extensions) {
+        extension_check := valid_extension(extensions[extension_i], "artifacts.allowed_extensions[" + to_string(extension_i) + "]")
+        if extension_check["ok"] == false {
+            return extension_check
+        }
+        extension_i = extension_i + 1
+    }
+    extension_unique := validate_unique_strings(extensions, "artifacts.allowed_extensions")
+    if extension_unique["ok"] == false {
+        return extension_unique
+    }
+    secret_action := get_or(artifacts, "secret_action", "allow")
+    if secret_action != "allow" && secret_action != "reject" && secret_action != "redact" {
+        return {"ok": false, "error": "artifacts.secret_action must be allow, reject, or redact"}
     }
     mut artifact_i := 0
     while artifact_i < len(get_or(artifacts, "export", [])) {
@@ -531,6 +729,10 @@ export func validate_definition(raw) {
     trust := get_or(raw, "trust_profile", "contained-standard")
     if trust != "contained-standard" && trust != "contained-open" && trust != "native-guarded" {
         return {"ok": false, "error": "trust_profile must be contained-standard, contained-open, or native-guarded"}
+    }
+    verification_check := validate_verification(get_or(raw, "verification", {"version": 1, "commands": []}))
+    if verification_check["ok"] == false {
+        return verification_check
     }
     receipt := get_or(raw, "receipt", {})
     receipt_keys := validate_keys(receipt, ["path"], "receipt")
@@ -573,19 +775,20 @@ export func resolve_definition(raw) {
     if has_key_safe(value, "name") == false {
         value["name"] := defaults["name"]
     }
-    for section in ["runtime", "workspace", "environment", "resources", "network", "filesystem", "artifacts", "cleanup", "receipt"] {
+    for section in ["runtime", "workspace", "environment", "resources", "network", "filesystem", "artifacts", "cleanup", "verification", "receipt"] {
         if has_key_safe(value, section) == false {
             value[section] := defaults[section]
         }
     }
     value = fill_section_defaults(value, defaults, "runtime", ["backend", "image", "build_context", "image_digest", "signature_key"])
-    value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path"])
+    value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "scan"])
     value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
-    value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms"])
+    value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"])
     value = fill_section_defaults(value, defaults, "network", ["mode", "name"])
     value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"])
-    value = fill_section_defaults(value, defaults, "artifacts", ["export"])
+    value = fill_section_defaults(value, defaults, "artifacts", ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"])
     value = fill_section_defaults(value, defaults, "cleanup", ["keep_failed"])
+    value = fill_section_defaults(value, defaults, "verification", ["version", "commands"])
     value = fill_section_defaults(value, defaults, "receipt", ["path"])
     if has_key_safe(value, "command") == false {
         value["command"] := defaults["command"]
@@ -631,6 +834,37 @@ export func definition_summary(definition) {
         "command": definition["command"],
         "network_mode": definition["network"]["mode"],
         "timeout_ms": definition["resources"]["timeout_ms"],
+        "max_output_bytes": definition["resources"]["max_output_bytes"],
+        "workspace_run_as": definition["workspace"]["run_as"],
+        "workspace_scan": definition["workspace"]["scan"],
+        "artifact_policy": definition["artifacts"],
+        "verification_checks": len(definition["verification"]["commands"]),
         "trust_profile": definition["trust_profile"]
+    }
+}
+
+export func definition_schema() {
+    return {
+        "schema_version": "workcell-definition/v1",
+        "type": "object",
+        "required": ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt"],
+        "unknown_fields": "rejected",
+        "fields": {
+            "version": {"type": "integer", "const": 1},
+            "name": {"type": "string", "non_empty": true},
+            "runtime": {"type": "object", "fields": ["backend", "image", "build_context", "image_digest", "signature_key"]},
+            "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
+            "command": {"type": "array", "items": "string", "min_items": 1},
+            "environment": {"type": "object", "fields": ["allow", "set"]},
+            "secrets": {"type": "array", "items": "environment variable name"},
+            "resources": {"type": "object", "fields": ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"]},
+            "network": {"type": "object", "fields": ["mode", "name"]},
+            "filesystem": {"type": "object", "fields": ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"]},
+            "artifacts": {"type": "object", "fields": ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"]},
+            "verification": {"type": "object", "version": 1, "commands": "array of named argv checks"},
+            "cleanup": {"type": "object", "fields": ["keep_failed"]},
+            "trust_profile": {"enum": ["contained-standard", "contained-open", "native-guarded"]},
+            "receipt": {"type": "object", "fields": ["path"]}
+        }
     }
 }

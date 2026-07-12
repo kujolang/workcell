@@ -1,0 +1,44 @@
+# Local performance signal for batched changed-file collection.
+
+from src.util import ensure_dir, run_argv, run_id, write_text
+from src.workspace.workspace import change_details, cleanup_workspace, create_workspace, inspect_repository
+
+repo := "/tmp/workcell-performance-fixture-" + run_id()
+mut file_count := 200
+requested_count := env("WORKCELL_PERF_FILES")
+if type(requested_count) == "string" && trim(requested_count) != "" {
+    parsed_count := parse_int(trim(requested_count))
+    if parsed_count > 0 && parsed_count <= 10000 {
+        file_count = parsed_count
+    }
+}
+ensure_dir(repo)
+run_argv(["git", "-C", repo, "init", "-q"], 30000)
+run_argv(["git", "-C", repo, "config", "user.email", "workcell@example.invalid"], 30000)
+run_argv(["git", "-C", repo, "config", "user.name", "Workcell"], 30000)
+write_text(repo + "/tracked.txt", "tracked\n")
+run_argv(["git", "-C", repo, "add", "tracked.txt"], 30000)
+run_argv(["git", "-C", repo, "commit", "-qm", "initial"], 30000)
+workspace := create_workspace(repo, "git-worktree", run_id())
+if workspace["ok"] == false {
+    print("FAIL performance fixture workspace: " + workspace["error"])
+    exit(1)
+}
+mut i := 0
+while i < file_count {
+    write_text(workspace["workspace_path"] + "/generated/file-" + to_string(i) + ".txt", "file\n")
+    i = i + 1
+}
+start := current_timestamp()
+details := change_details(workspace)
+elapsed := current_timestamp() - start
+if details["ok"] == false || details["summary"]["total_files"] != file_count {
+    print("FAIL performance changed-file collection: " + to_string(details))
+    cleanup_workspace(workspace, false)
+    run_argv(["rm", "-rf", repo], 30000)
+    exit(1)
+}
+print("Performance signal: changed_files=" + to_string(file_count) + " elapsed_ms=" + to_string(elapsed) + " batched_binary_probe=true")
+cleanup_workspace(workspace, false)
+run_argv(["rm", "-rf", repo], 30000)
+exit(0)

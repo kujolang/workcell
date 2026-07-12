@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, read_text, run_argv, save_json, valid_run_id, write_text
+from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, read_text, resolve_run_as, run_argv, save_json, valid_run_id, write_text
 
 export func temp_root() {
     candidate := env("TMPDIR")
@@ -45,10 +45,21 @@ export func inspect_repository(repo_path) {
 }
 
 export func find_symlink(root) {
+    return find_symlink_with_limits(root, {"max_files": 100000, "max_bytes": 1000000000, "max_depth": 128})
+}
+
+export func find_symlink_with_limits(root, limits) {
     mut queue := [root]
+    mut depths := [0]
     mut queue_i := 0
+    mut scanned_files := 0
+    mut scanned_bytes := 0
     while queue_i < len(queue) {
         current := queue[queue_i]
+        depth := depths[queue_i]
+        if depth > limits["max_depth"] {
+            return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(limits["max_depth"]) + ": " + current}
+        }
         entries := list_dir(current)
         mut entry_i := 0
         while entry_i < len(entries) {
@@ -65,15 +76,29 @@ export func find_symlink(root) {
             }
             if path_is_dir(candidate) {
                 queue = push(queue, candidate)
+                depths = push(depths, depth + 1)
+            } else {
+                scanned_files = scanned_files + 1
+                scanned_bytes = scanned_bytes + file_size(candidate)
+                if scanned_files > limits["max_files"] {
+                    return {"ok": false, "error": "workspace scan exceeded max files " + to_string(limits["max_files"])}
+                }
+                if scanned_bytes > limits["max_bytes"] {
+                    return {"ok": false, "error": "workspace scan exceeded max bytes " + to_string(limits["max_bytes"])}
+                }
             }
             entry_i = entry_i + 1
         }
         queue_i = queue_i + 1
     }
-    return {"ok": true}
+    return {"ok": true, "files": scanned_files, "bytes": scanned_bytes, "depth": limits["max_depth"]}
 }
 
 export func create_workspace(repo_path, strategy, run_identifier) {
+    return create_workspace_for_user(repo_path, strategy, run_identifier, "host")
+}
+
+export func create_workspace_for_user(repo_path, strategy, run_identifier, run_as) {
     inspected := inspect_repository(repo_path)
     if inspected["ok"] == false {
         return inspected
@@ -111,7 +136,19 @@ export func create_workspace(repo_path, strategy, run_identifier) {
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
         return {"ok": false, "stage": "preparing", "error": symlinks["error"]}
     }
-    permissions := run_argv(["chmod", "-R", "a+rwX", path], 60000)
+    identity := resolve_run_as(run_as)
+    if identity["ok"] == false {
+        cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
+        return {"ok": false, "stage": "preparing", "error": identity["error"]}
+    }
+    if identity["source"] == "fixed" {
+        ownership := run_argv(["chown", "-R", identity["value"], path], 60000)
+        if process_ok(ownership) == false {
+            cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
+            return {"ok": false, "stage": "preparing", "error": process_error(ownership, "assign workspace uid/gid")}
+        }
+    }
+    permissions := run_argv(["chmod", "-R", "u+rwX", path], 60000)
     if process_ok(permissions) == false {
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
         return {"ok": false, "stage": "preparing", "error": process_error(permissions, "make disposable workspace writable")}
@@ -142,6 +179,38 @@ func status_name(letter) {
     return "modified"
 }
 
+func binary_paths_for_batch(workspace_path, paths) {
+    mut binary_paths := {}
+    mut offset := 0
+    while offset < len(paths) {
+        end := offset + 256
+        if end > len(paths) {
+            end = len(paths)
+        }
+        batch := slice(paths, offset, end)
+        mut args := ["file", "--brief", "--mime-type"]
+        mut i := 0
+        while i < len(batch) {
+            args = push(args, workspace_path + "/" + batch[i])
+            i = i + 1
+        }
+        result := run_argv(args, 60000)
+        if process_ok(result) {
+            mime_lines := lines_of(trim(proc_stdout(result)))
+            mut mime_i := 0
+            while mime_i < len(batch) && mime_i < len(mime_lines) {
+                mime := to_lower(trim(mime_lines[mime_i]))
+                if starts_with(mime, "text/") == false && contains(mime, "json") == 0 && contains(mime, "xml") == 0 && contains(mime, "javascript") == 0 && contains(mime, "empty") == 0 {
+                    binary_paths[batch[mime_i]] := true
+                }
+                mime_i = mime_i + 1
+            }
+        }
+        offset = end
+    }
+    return binary_paths
+}
+
 func change_summary(files) {
     mut summary := {"total_files": len(files), "added": 0, "modified": 0, "deleted": 0, "renamed": 0, "copied": 0, "binary_files": 0}
     mut i := 0
@@ -166,7 +235,7 @@ func change_summary(files) {
     return summary
 }
 
-func change_details(workspace) {
+export func change_details(workspace) {
     status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
     if process_ok(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
@@ -189,24 +258,28 @@ func change_details(workspace) {
     untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
     if process_ok(untracked_result) {
         untracked := lines_of(trim(proc_stdout(untracked_result)))
+        mut untracked_paths := []
         mut j := 0
         while j < len(untracked) {
             item := trim(untracked[j])
             if item != "" {
                 if has_key_safe(known_paths, item) == false {
-                    binary := false
-                    untracked_numstat := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "--no-index", "--", "/dev/null", item], 30000)
-                    if proc_exitcode(untracked_numstat) == 1 {
-                        untracked_columns := split(trim(proc_stdout(untracked_numstat)), "\t")
-                        if len(untracked_columns) >= 2 && untracked_columns[0] == "-" && untracked_columns[1] == "-" {
-                            binary = true
-                        }
-                    }
-                    files = push(files, {"path": item, "status": "added", "binary": binary})
+                    untracked_paths = push(untracked_paths, item)
+                    files = push(files, {"path": item, "status": "added", "binary": false})
                     known_paths[item] := true
                 }
             }
             j = j + 1
+        }
+        binary_paths := binary_paths_for_batch(workspace["workspace_path"], untracked_paths)
+        mut untracked_file_i := 0
+        while untracked_file_i < len(files) {
+            if files[untracked_file_i]["status"] == "added" && has_key_safe(binary_paths, files[untracked_file_i]["path"]) {
+                mut updated_file := files[untracked_file_i]
+                updated_file["binary"] := true
+                files[untracked_file_i] := updated_file
+            }
+            untracked_file_i = untracked_file_i + 1
         }
     }
     numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", workspace["source_commit"]], 30000)
@@ -370,4 +443,46 @@ export func clean_stale_workspaces() {
         i = i + 1
     }
     return {"ok": len(skipped) == 0, "removed": removed, "skipped": skipped}
+}
+
+export func workspace_inventory() {
+    root := temp_root()
+    if path_is_dir(root) == false {
+        return {"ok": true, "workspaces": []}
+    }
+    entries := list_dir(root)
+    mut workspaces := []
+    mut i := 0
+    while i < len(entries) {
+        name := to_string(entries[i])
+        if starts_with(name, "kujo-workcell-") && ends_with(name, ".owner") == false {
+            path := root + "/" + name
+            owner_path := path + ".owner"
+            run_prefix := "kujo-workcell-"
+            run_value := substring(name, len(run_prefix), len(name))
+            mut status := "unowned"
+            if valid_run_id(run_value) == false {
+                status = "invalid-run-id"
+            } else if path_is_symlink(path) {
+                status = "symlink"
+            } else if path_is_dir(path) == false {
+                status = "not-directory"
+            } else {
+                owner := read_text(owner_path)
+                expected_owner := "workcell-run-id=" + run_value + "\n"
+                if owner["ok"] && owner["text"] == expected_owner {
+                    status = "owned"
+                } else {
+                    status = "marker-mismatch"
+                }
+            }
+            mut cleanup_action := "preserve"
+            if status == "owned" {
+                cleanup_action = "eligible"
+            }
+            workspaces = push(workspaces, {"path": path, "owner_path": owner_path, "run_id": run_value, "status": status, "cleanup": cleanup_action})
+        }
+        i = i + 1
+    }
+    return {"ok": true, "workspaces": workspaces}
 }

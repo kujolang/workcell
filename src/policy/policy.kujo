@@ -1,6 +1,6 @@
 # Convert a validated definition into an explicit Docker security policy.
 
-from src.util import get_or, join_path_safe, runtime_env_deny_names
+from src.util import get_or, join_path_safe, resolve_run_as, runtime_env_deny_names
 
 func add_flag(args, flag) {
     return push(args, flag)
@@ -59,6 +59,10 @@ export func labels_for(definition, run_identifier) {
 }
 
 export func build_policy(definition, run_identifier, host_workspace) {
+    identity := resolve_run_as(definition["workspace"]["run_as"])
+    if identity["ok"] == false {
+        return identity
+    }
     mount_path := definition["workspace"]["mount_path"]
     labels := labels_for(definition, run_identifier)
     mut docker := ["docker", "run"]
@@ -69,7 +73,7 @@ export func build_policy(definition, run_identifier, host_workspace) {
     docker = label_args(docker, labels)
     docker = add_pair(docker, "--name", "kujo-workcell-" + run_identifier)
     docker = add_pair(docker, "--network", network_mode)
-    docker = add_pair(docker, "--user", "65532:65532")
+    docker = add_pair(docker, "--user", identity["value"])
     docker = push(docker, "--init")
     docker = add_pair(docker, "--ipc", "private")
     docker = add_flag(docker, "--cap-drop")
@@ -122,14 +126,16 @@ export func build_policy(definition, run_identifier, host_workspace) {
             "host_ipc": false,
             "host_user_namespace": false,
             "devices": false,
-            "non_root_user": "65532:65532",
+            "non_root_user": identity["value"],
             "read_only_root": definition["filesystem"]["read_only_root"],
             "no_new_privileges": true,
             "capabilities_dropped": "ALL",
             "network_mode": network_mode,
             "workspace_mount": mount_path + ":rw",
             "artifact_export_boundary": "host output directory only"
-        }
+        },
+        "ok": true,
+        "run_as": identity
     }
 }
 
@@ -170,7 +176,7 @@ export func spawn_options(definition) {
             "env_deny": deny,
             "env": environment,
             "timeout_ms": definition["resources"]["timeout_ms"],
-            "max_output_bytes": 4000000
+            "max_output_bytes": definition["resources"]["max_output_bytes"]
         }
     }
 }

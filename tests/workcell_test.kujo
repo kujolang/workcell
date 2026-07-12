@@ -1,10 +1,11 @@
 # Offline Workcell contract tests. These tests do not require Docker.
 
-from src.artifacts.exporter import export_declared, write_execution_logs
+from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy
 from src.receipts.receipt import add_error, new_receipt
 from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id, write_text
+from src.verification.verification import run_verification_checks
 
 mut passed := 0
 mut failed := 0
@@ -91,6 +92,29 @@ func with_duplicate_artifact(definition) {
     return definition
 }
 
+func with_artifact_policy(definition, key, value) {
+    artifacts := definition["artifacts"]
+    artifacts[key] := value
+    definition["artifacts"] := artifacts
+    return definition
+}
+
+func with_verification(definition, commands) {
+    verification := definition["verification"]
+    verification["commands"] := commands
+    definition["verification"] := verification
+    return definition
+}
+
+func with_workspace_scan(definition, key, value) {
+    workspace := definition["workspace"]
+    scan := workspace["scan"]
+    scan[key] := value
+    workspace["scan"] := scan
+    definition["workspace"] := workspace
+    return definition
+}
+
 func with_resource(definition, key, value) {
     resources := definition["resources"]
     resources[key] := value
@@ -169,6 +193,13 @@ expect("workspace mount outside /workspace rejected", validate_definition(with_m
 expect("secret assignment rejected", validate_definition(with_secret(definition, "TOKEN=leak"))["ok"] == false)
 expect("duplicate secret rejected", validate_definition(with_duplicate_secret(definition))["ok"] == false)
 expect("duplicate artifact rejected", validate_definition(with_duplicate_artifact(definition))["ok"] == false)
+expect("artifact max bytes is bounded", validate_definition(with_artifact_policy(definition, "max_bytes", 1000000001))["ok"] == false)
+expect("artifact extension policy is validated", validate_definition(with_artifact_policy(definition, "allowed_extensions", ["txt"]))["ok"] == false)
+expect("artifact secret action is validated", validate_definition(with_artifact_policy(definition, "secret_action", "leak"))["ok"] == false)
+expect("verification command is accepted", validate_definition(with_verification(definition, [{"name": "smoke", "command": ["sh", "-lc", "true"]}]))["ok"])
+expect("verification command must be non-empty", validate_definition(with_verification(definition, [{"name": "empty", "command": []}]))["ok"] == false)
+expect("workspace scan file limit is bounded", validate_definition(with_workspace_scan(definition, "max_files", 0))["ok"] == false)
+expect("workspace scan depth limit is bounded", validate_definition(with_workspace_scan(definition, "max_depth", 257))["ok"] == false)
 expect("CPU limit is bounded", validate_definition(with_resource(definition, "cpus", 65))["ok"] == false)
 expect("memory limit is bounded", validate_definition(with_resource(definition, "memory", "128g"))["ok"] == false)
 expect("PID limit is bounded", validate_definition(with_resource(definition, "pids", 70000))["ok"] == false)
@@ -194,6 +225,8 @@ expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=t
 expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1 && contains(to_string(args), "private") == 1)
 profile_policy := build_policy(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"), "test-security-profiles", "/tmp/workcell-test-workspace")
 expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1 && contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
+empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)
+expect("empty verification plan succeeds without Docker work", empty_verification["ok"] && len(empty_verification["checks"]) == 0)
 
 expect("relative path normalizes", normalized_relative("build/output.txt")["ok"])
 expect("parent traversal rejected", normalized_relative("build/../output.txt")["ok"] == false)
@@ -237,6 +270,24 @@ run_argv(["ln", "-s", export_fixture + "/outside.txt", export_fixture + "/worksp
 symlink_export := export_declared(export_fixture + "/workspace", export_fixture + "/output", ["escape.txt"])
 expect("symlink artifact source rejected", symlink_export["ok"] == false)
 run_argv(["rm", "-rf", export_fixture], 30000)
+
+policy_fixture := "/tmp/workcell-artifact-policy-" + run_id()
+ensure_dir(policy_fixture + "/workspace/nested")
+write_text(policy_fixture + "/workspace/nested/result.txt", "artifact-secret\n")
+limited_policy := {"export": ["nested"], "limits": {}, "max_bytes": 4, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}
+limited_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/limited", limited_policy, [])
+expect("artifact byte limit rejects oversized export", limited_export["ok"] == false && contains(limited_export["error"], "max bytes") == 1)
+extension_policy := {"export": ["nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [".md"], "secret_action": "allow"}
+extension_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/extension", extension_policy, [])
+expect("artifact extension policy rejects wrong content type", extension_export["ok"] == false && contains(extension_export["error"], "content type") == 1)
+reject_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "reject"}
+reject_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/reject", reject_policy, ["AUDIT_SECRET"])
+expect("artifact secret reject hook blocks declared secret", reject_export["ok"] == false)
+redact_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "redact"}
+redact_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/redact", redact_policy, ["AUDIT_SECRET"])
+redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
+expect("artifact secret redaction hook changes exported content", redact_export["ok"] && redacted_artifact["text"] == "[REDACTED]\n")
+run_argv(["rm", "-rf", policy_fixture], 30000)
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

@@ -1,11 +1,12 @@
 # Explicit Workcell lifecycle coordinator.
 
-from src.artifacts.exporter import export_declared, write_execution_logs
+from src.artifacts.exporter import export_declared_with_policy, write_execution_logs
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
 from src.util import ensure_dir, get_or, iso_now, path_has_symlink, path_within, redact_with_env, run_id, write_text
-from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace, find_symlink, inspect_repository, make_patch, temp_root, write_change_report
+from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink, inspect_repository, make_patch, temp_root, write_change_report
+from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 
 func option(flags, name, fallback) {
@@ -95,12 +96,20 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     }
     output_dir := output_root + "/" + run_identifier
     ensure_dir(output_dir)
-    workspace := create_workspace(source_info["root"], definition["workspace"]["strategy"], run_identifier)
+    workspace := create_workspace_for_user(source_info["root"], definition["workspace"]["strategy"], run_identifier, definition["workspace"]["run_as"])
     if workspace["ok"] == false {
         write_failure_note(output_dir, get_or(workspace, "stage", "preparing"), workspace["error"])
         return {"ok": false, "run_id": run_identifier, "stage": get_or(workspace, "stage", "preparing"), "error": workspace["error"], "output_dir": output_dir, "exit_code": 3}
     }
     policy := build_policy(definition, run_identifier, workspace["workspace_path"])
+    if policy["ok"] == false {
+        cleanup := cleanup_workspace(workspace, false)
+        mut policy_cleanup_status := "failed"
+        if get_or(cleanup, "ok", false) {
+            policy_cleanup_status = "complete"
+        }
+        return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": policy["error"], "output_dir": output_dir, "exit_code": 3, "cleanup_status": policy_cleanup_status}
+    }
     start_clock := current_timestamp()
     receipt := new_receipt(definition, definition_path, run_identifier, workspace, workspace, policy, output_dir)
     receipt = add_state(receipt, "validated")
@@ -164,6 +173,10 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", redact_with_env(image["error"], definition["secrets"]), 4, false, cleanup_status)
     }
     receipt["container_image_digest"] := get_or(image, "digest", "")
+    receipt["container_image_id"] := get_or(image, "image_id", "")
+    receipt["container_image_digest_source"] := get_or(image, "digest_source", "")
+    receipt["container_image_platform"] := get_or(image, "platform", "")
+    receipt["container_image_labels"] := get_or(image, "labels", {})
     receipt = add_state(receipt, "starting")
     container := run_container(definition, policy)
     if container["ok"] == false {
@@ -236,7 +249,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     }
     receipt["logs_path"] := output_dir
     receipt = add_state(receipt, "collecting")
-    workspace_scan := find_symlink(workspace["workspace_path"])
+    workspace_scan := find_symlink_with_limits(workspace["workspace_path"], definition["workspace"]["scan"])
     workspace_safe := workspace_scan["ok"]
     if workspace_safe == false {
         receipt = add_error(receipt, "collecting", workspace_scan["error"])
@@ -271,11 +284,19 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     }
     verification := receipt["verification"]
     verification["verification_succeeded"] := execution_success && workspace_safe && logs_ok && patch["ok"] && change_report["ok"]
+    verification_run := run_verification_checks(definition, workspace, run_identifier, definition["secrets"], execution_success)
+    verification["checks"] := verification_run["checks"]
+    verification["verification_succeeded"] := verification["verification_succeeded"] && verification_run["ok"]
     receipt["verification"] := verification
-    artifacts := export_declared(workspace["workspace_path"], output_dir + "/artifacts", definition["artifacts"]["export"])
+    if verification_run["ok"] == false {
+        receipt = add_error(receipt, "verifying", verification_run["error"])
+    }
+    artifacts := export_declared_with_policy(workspace["workspace_path"], output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
     artifact_list := []
     if artifacts["ok"] {
         artifact_list = artifacts["artifacts"]
+        receipt["artifact_bytes"] := get_or(artifacts, "bytes", 0)
+        receipt["artifact_files"] := get_or(artifacts, "files", 0)
     } else {
         receipt = add_error(receipt, "exporting", artifacts["error"])
     }
@@ -318,7 +339,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     }
     exit_code := container["exit_code"]
     final_status := "completed"
-    final_ok := execution_success && workspace_safe && logs_ok && artifacts["ok"] && patch["ok"] && change_report["ok"] && cleanup["ok"] && stop_result["ok"] && container_cleanup["ok"]
+    final_ok := execution_success && workspace_safe && logs_ok && artifacts["ok"] && patch["ok"] && change_report["ok"] && verification_run["ok"] && cleanup["ok"] && stop_result["ok"] && container_cleanup["ok"]
     mut final_error := ""
     if container["timed_out"] {
         exit_code = 6
@@ -329,7 +350,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         final_status = "workload-failed"
         final_ok = false
         final_error = "container exited with code " + to_string(container["exit_code"])
-    } else if workspace_safe == false || logs_ok == false || patch["ok"] == false || change_report["ok"] == false {
+    } else if workspace_safe == false || logs_ok == false || patch["ok"] == false || change_report["ok"] == false || verification_run["ok"] == false {
         exit_code = 8
         final_status = "verification-failed"
         final_ok = false

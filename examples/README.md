@@ -14,5 +14,6 @@ docker/kujo/build-local.sh /path/to/kujo-source
 - `hello/workcell.json`: writes and exports one declared artifact.
 - `kujo-project-check/workcell.json`: runs a pinned Kujo runtime image and executes a Kujo check inside it. The local-source image build avoids private repository credentials.
 - `controlled-edit/workcell.json`: edits a tracked README and exports it, producing a patch.
+- `verification/workcell.json`: creates an artifact, runs a declared post-run check, and records execution versus verification separately.
 - `failure/workcell.json`: exits non-zero and preserves diagnostic evidence.
 - `timeout/workcell.json`: exceeds a short timeout and exercises termination.

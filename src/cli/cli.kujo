@@ -1,14 +1,14 @@
 # Workcell command-line surface. This is the only printing/exit-code layer.
 
-from src.domain.definition import default_definition, definition_summary, load_definition
+from src.domain.definition import default_definition, definition_schema, definition_summary, load_definition
 from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
 from src.policy.policy import inspect_policy
-from src.runtime.docker import clean_owned_resources
-from src.util import get_or, save_json
-from src.workspace.workspace import clean_stale_workspaces, inspect_repository
+from src.runtime.docker import clean_owned_resources_with_options, owned_resource_inventory
+from src.util import get_or, project_version, save_json
+from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
 
-VERSION := "0.1.0"
+VERSION := project_version()
 
 func print_lines(lines) {
     mut i := 0
@@ -30,7 +30,7 @@ func flag(parsed, name, fallback) {
 }
 
 func parse_args(tokens) {
-    bool_flags := ["json", "keep-failed", "dry-run", "no-pull", "rebuild", "force"]
+    bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images"]
     value_flags := ["file", "repo", "output"]
     mut positionals := []
     mut flags := {}
@@ -92,17 +92,38 @@ func repo_path(parsed) {
     return flag(parsed, "repo", ".")
 }
 
-func print_help() {
+func help_value() {
+    return {
+        "schema_version": "workcell-cli/v1",
+        "version": VERSION,
+        "commands": [
+            {"name": "doctor", "options": ["--repo", "--json"]},
+            {"name": "init", "options": ["--file", "--force"]},
+            {"name": "validate", "options": ["--file", "--json", "--schema"]},
+            {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
+            {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
+            {"name": "clean", "options": ["--json", "--dry-run", "--prune-images"]}
+        ],
+        "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "Docker or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
+        "definition_schema": definition_schema()
+    }
+}
+
+func print_help(json_mode) {
+    if json_mode {
+        print(to_json_pretty(help_value()))
+        return
+    }
     print_lines([
         "Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
         "",
         "Usage:",
         "  workcell doctor [--repo <path>] [--json]",
         "  workcell init [--file <path>] [--force]",
-        "  workcell validate [--file <path>] [--json]",
+        "  workcell validate [--file <path>] [--json] [--schema]",
         "  workcell inspect [--file <path>] [--repo <path>] [--json]",
         "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
-        "  workcell clean [--json]",
+        "  workcell clean [--json] [--dry-run] [--prune-images]",
         "",
         "Run options:",
         "  --dry-run       Resolve and record the policy without starting Docker",
@@ -110,6 +131,7 @@ func print_help() {
         "  --no-pull       Do not pull a missing image",
         "  --rebuild       Rebuild a configured build context",
         "  --json          Emit one machine-readable JSON object",
+        "  --schema        Emit the versioned Workcell definition schema (validate only)",
         "",
         "Security defaults:",
         "  Docker backend, non-root user, network none, no-new-privileges,",
@@ -153,6 +175,10 @@ func init_command(parsed) {
 }
 
 func validate_command(parsed) {
+    if has_flag(parsed, "schema") {
+        print(to_json_pretty(definition_schema()))
+        return 0
+    }
     path := definition_path(parsed)
     loaded := load_definition(path)
     result := {"ok": loaded["ok"], "definition_path": path}
@@ -296,7 +322,32 @@ func run_command(parsed) {
 }
 
 func clean_command(parsed) {
-    docker := clean_owned_resources()
+    prune_images := has_flag(parsed, "prune-images")
+    if has_flag(parsed, "dry-run") {
+        docker := owned_resource_inventory()
+        temp := workspace_inventory()
+        mut image_action := "preserve"
+        if prune_images {
+            image_action = "remove-owned"
+        }
+        mut inventory_ok := docker["ok"]
+        if temp["ok"] == false {
+            inventory_ok = false
+        }
+        result := {"ok": inventory_ok, "dry_run": true, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
+        if has_flag(parsed, "json") {
+            print(to_json_pretty(result))
+        } else {
+            print("Workcell resource inventory (dry run)")
+            print("Containers: " + to_string(get_or(docker, "containers", [])))
+            print("Images: " + to_string(get_or(docker, "images", [])))
+            print("Networks preserved: " + to_string(get_or(docker, "networks", [])))
+            print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
+        }
+        if result["ok"] { return 0 }
+        return 9
+    }
+    docker := clean_owned_resources_with_options(prune_images)
     temp := clean_stale_workspaces()
     clean_ok := docker["ok"] && temp["ok"]
     result := {"ok": clean_ok, "docker": docker, "temporary_workspaces": temp}
@@ -305,6 +356,7 @@ func clean_command(parsed) {
     } else {
         print("Cleaned Workcell-owned resources")
         print("Docker containers removed: " + to_string(get_or(docker, "removed", 0)))
+        print("Docker images removed: " + to_string(len(get_or(docker, "removed_images", []))))
         print("Temporary workspaces removed: " + to_string(len(get_or(temp, "removed", []))))
         if result["ok"] == false {
             print("Warnings: some owned resources could not be removed")
@@ -324,7 +376,7 @@ export func main(argv) {
     }
     command := command_name(parsed)
     if command == "help" || command == "--help" || command == "-h" {
-        print_help()
+        print_help(has_flag(parsed, "json"))
         return 0
     }
     if command == "version" || command == "--version" {
@@ -355,6 +407,6 @@ export func main(argv) {
         return clean_command(parsed)
     }
     print("error: unknown command " + command)
-    print_help()
+    print_help(has_flag(parsed, "json"))
     return 2
 }

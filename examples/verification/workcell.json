@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "verified-edit-workcell",
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-base:local", "build_context": ""},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace", "run_as": "host"},
+  "command": ["sh", "-lc", "printf 'verified Workcell output\\n' > verification.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000, "max_output_bytes": 1000000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["verification.txt"], "max_bytes": 4096, "max_files": 1, "max_depth": 4, "allowed_extensions": [".txt"], "secret_action": "reject"},
+  "verification": {"version": 1, "commands": [{"name": "output-exists", "command": ["sh", "-lc", "test -s verification.txt"]}]},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

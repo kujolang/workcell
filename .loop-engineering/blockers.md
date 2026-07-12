@@ -3,9 +3,9 @@
 blockers:
   - id: kujo-formatter-semantic-safety
     command: "kujo format --write"
-    evidence: "Previously observed rewriting valid Workcell operators, path separators in strings, and CLI flags; documented in docs/next-hardening-backlog.md."
-    status: external-blocked
-    next_action: "Fix formatter AST round-trip semantics in the Kujo repository before formatting Workcell modules."
+    evidence: "Resolved by Kujo commits ff31153 and ff662a3 with syntax-preserving protection, cached regexes, and regression tests; all Workcell .kujo files pass format --check."
+    status: resolved
+    next_action: "Add AST-aware wrapping when the Kujo formatter has syntax-tree support."
   - id: kujo-process-stream-cancellation
     command: "spawn_process"
     evidence: "Current Kujo API returns bounded completion output and timeout metadata but exposes no Workcell-consumable stream callback or parent-signal hook."
@@ -13,9 +13,9 @@ blockers:
     next_action: "Coordinate a Kujo process API contract for streaming redaction and cancellation receipts."
   - id: kujo-linter-reachability
     command: "kujo lint"
-    evidence: "Current linter exits successfully but emits widespread unreachable-code warnings for valid imported/exported modules."
-    status: external-blocked
-    next_action: "Improve module-aware reachability analysis or establish a reviewed warning baseline in Kujo."
+    evidence: "Resolved by Kujo commit 7ef6eb8 with token-aware reachability; all Workcell source modules pass lint --json with zero findings."
+    status: resolved
+    next_action: "Evolve the pass to AST/control-flow analysis for branch-sensitive reachability."
   - id: docker-rootless-host
     command: "workcell doctor --json"
     evidence: "Current Colima daemon reports seccomp/AppArmor but is not rootless; doctor reports this as a warning."
@@ -24,5 +24,5 @@ blockers:
 
 Resolved evidence:
 
-- Docker CLI and daemon: `workcell doctor --json` reported 8 passed, 0 blocked, 2 warnings (non-rootless daemon and dirty review worktree).
+- Docker CLI and daemon: `workcell doctor --json` reported 9 passed, 0 blocked, 1 warning (non-rootless daemon) on the clean pushed worktree.
 - Docker integration: `KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh` passed, including the verification example and `clean --dry-run` inventory contract.

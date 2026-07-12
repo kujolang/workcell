@@ -28,5 +28,5 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 ## Secrets and evidence
 
 - Prefer short-lived secret values and avoid exporting secret-bearing artifacts.
-- Workcell redacts exact captured values and common base64 encodings after command completion. Hashed or otherwise transformed secret output requires workload-level controls or a streaming redaction layer in the process runtime.
+- Workcell redacts exact captured values and common base64 encodings incrementally while the process streams, before logs and receipts are persisted. Hashed or otherwise transformed secret output still requires workload-level controls.
 - Retain receipts, logs, patches, and failure workspaces according to the organization's evidence-retention policy.

@@ -4,7 +4,7 @@ This is the next-session work list produced by the codebase review on 2026-07-11
 
 ## Review result
 
-The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, cannot provide true streaming redaction until the Kujo process API exposes stream callbacks, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. Docker integration has now passed against the available Colima daemon, including verification and ownership-scoped cleanup; rootless and production-host evidence remain deployment-dependent.
+The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. The Kujo process API now provides bounded stream sinks, incremental exact/base64 redaction, and cancellation hooks. Docker integration has passed against the available Colima daemon, including verification, streamed log files, cancellation metadata, and ownership-scoped cleanup; rootless and production-host evidence remain deployment-dependent.
 
 The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, and image ownership labels. The current offline suite is 68 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
 
@@ -32,11 +32,11 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 - Implemented: default `workspace.run_as: host` resolves the invoking non-root UID/GID, uses owner-only write permissions, and supports explicit fixed non-root UID/GID values with fail-closed host `chown`.
 - Acceptance status: offline coverage and compatibility documentation pass; Linux/rootless Docker evidence remains host-dependent.
 
-### [blocked: Kujo process API] Add bounded streaming output and streaming redaction
+### [x] Add bounded streaming output and streaming redaction
 
 - Owner: Kujo process API plus Workcell runtime.
-- Implemented locally: per-stream output caps, truncation metadata, timeout log collection, and redaction before persisted logs/receipts.
-- External blocker: Kujo `spawn_process` exposes bounded completion results but no streaming callback/redaction hook; incremental redaction and signal cancellation require a coordinated Kujo process API change.
+- Implemented in Kujo and Workcell: bounded `spawn_process` stream channels and file sinks, per-stream output caps, EOF/sequence events, incremental exact-value redaction across chunk boundaries, common base64-derived secret redaction, and completion metadata that remains bounded and redacted.
+- Acceptance status: Kujo unit coverage exercises backpressure, split-secret redaction, UTF-8 preservation, and Workcell Docker integration asserts persisted stdout/stderr stream logs and redacted receipt output.
 
 ### [x] Add artifact content policy hooks
 
@@ -64,11 +64,12 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 - Goal: make receipts useful for local images with no `RepoDigests` and for multi-platform images.
 - Acceptance: record a stable observed image ID/config digest fallback, platform, builder, labels, and the verified digest source; digest pin comparisons remain fail-closed and documented.
 
-### [blocked: Kujo process API] Add explicit cancellation handling
+### [x] Add explicit cancellation handling
 
 - Owner: Kujo process API plus Workcell.
 - Goal: handle user interruption and parent-process termination without orphaning Docker containers or losing receipts.
-- External blocker: the current Kujo runtime has timeout results but no user-signal/cancellation hook exposed to Workcell. Workcell already performs labeled stop/remove cleanup for timeouts and startup failures; true parent-signal receipts require the coordinated process API change.
+- Implemented in Kujo and Workcell: SIGINT/SIGTERM cancellation capture, cross-platform cancellation-marker support, cancellation-aware bounded stream backpressure, explicit `cancelled` ProcessResult/receipt fields, exit code 130, and the existing labeled stop/remove cleanup path.
+- Acceptance status: Kujo coverage terminates a running child through a cancellation marker; Workcell Docker integration and offline suites pass with the new receipt/log contract.
 
 ## P1 — Performance and scale
 
@@ -134,6 +135,6 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 
 ## Suggested next-session order
 
-1. Coordinate the remaining Kujo process-API work for streaming redaction and parent-signal cancellation.
-2. Rerun Docker integration, doctor, and ecosystem gates on each supported deployment class, including rootless Linux and the verification example/resource inventory.
+1. Rerun Docker integration, doctor, and ecosystem gates on each supported deployment class, including rootless Linux and the verification example/resource inventory.
+2. Exercise the cancellation and stream-log contracts on a production-like Linux daemon, including rootless and VM-backed deployments.
 3. Add optional ecosystem adapters only when their stable CLI contracts and ownership are approved.

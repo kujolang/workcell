@@ -11,10 +11,9 @@
 
 ## Process lifecycle and signals
 
-- Problem: the current script surface exposes bounded process execution but not a portable explicit signal/escalation API to Kujo code.
-- Impact: timeout cleanup relies on the runtime's process timeout behavior and Docker removal after return.
-- Workaround: `timeout_ms`, then labeled `docker rm -f`.
-- Suggested capability: typed cancellation/termination and completion metadata.
+- Resolved: Kujo `spawn_process` now supports process-wide SIGINT/SIGTERM cancellation, a cross-platform cancellation-marker file, cancellation-aware stream backpressure, and explicit `cancelled` completion metadata.
+- Evidence: Kujo unit coverage terminates a sleeping child with a cancellation marker; Workcell records cancellation in the receipt and retains labeled Docker cleanup for timeout/cancel paths.
+- Remaining opportunity: add a scoped cancellation token API for libraries that need independent concurrent process lifecycles instead of the current process-wide signal hook.
 - Priority: high for hardened runtimes.
 - Blocks Workcell: no for the Docker MVP.
 
@@ -38,10 +37,9 @@
 
 ## Secret-safe process output
 
-- Problem: exact-value log redaction cannot detect transformed secrets.
-- Impact: callers must avoid writing secrets to artifacts and review outputs.
-- Workaround: runtime-only env injection and exact-value redaction.
-- Suggested capability: provider-aware secret handles and streaming redaction hooks.
+- Resolved for known values: Kujo stream channels and file sinks apply bounded incremental redaction across chunk boundaries before Workcell persists logs, receipts, or artifacts; Workcell supplies exact secret values and common base64 encodings.
+- Evidence: Kujo tests cover split secrets, UTF-8 preservation, backpressure, and EOF events; Docker integration asserts streamed stdout/stderr files and cancellation metadata.
+- Remaining opportunity: provider-aware secret handles and workload-level controls for hashes or other transformed output.
 - Priority: high for hosted execution.
 - Blocks Workcell: no.
 

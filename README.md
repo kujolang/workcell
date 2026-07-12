@@ -69,7 +69,7 @@ Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`
 
 ## Security defaults
 
-The default `contained-standard` profile uses Docker with network `none`, a non-root host-mapped UID/GID, a read-only root filesystem, bounded CPU/memory/PIDs/time/output, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted from captured logs. Artifact limits, extension policies, and reject/redact secret hooks are opt-in.
+The default `contained-standard` profile uses Docker with network `none`, a non-root host-mapped UID/GID, a read-only root filesystem, bounded CPU/memory/PIDs/time/output, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted incrementally in stream logs and captured output. Cancellation is recorded explicitly and triggers labeled cleanup. Artifact limits, extension policies, and reject/redact secret hooks are opt-in.
 
 Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, pin `runtime.image_digest` to a reviewed `sha256:` digest and use `runtime.signature_key` when your organization verifies images with cosign. See [docs/security-model.md](docs/security-model.md) and [docs/enterprise-deployment.md](docs/enterprise-deployment.md).
 

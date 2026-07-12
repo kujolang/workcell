@@ -13,7 +13,7 @@ created → validated → preparing → prepared → starting → running
 3. **Launch**: build explicit Docker argv and start the labeled container with the configured timeout and bounded output capture.
 4. **Collect**: capture stdout/stderr, exit status, timing, changed files, and a Git patch.
 5. **Verify**: reject post-run workspace symlinks, run the versioned declarative checks in separate labeled containers when the workload succeeds, validate patch/artifact boundaries, and record execution versus verification separately.
-6. **Export**: copy declared artifacts only into the run directory and redact known secret values from logs.
+6. **Export**: stream bounded stdout/stderr to redacted run logs while the container runs, then copy declared artifacts only into the run directory and apply the same secret policy to persisted evidence.
 7. **Record**: write the structured receipt, including failure stage and diagnostics.
 8. **Clean**: remove the labeled container and ownership-marked temporary worktree. On failure, `--keep-failed` preserves only the explicitly owned temporary workspace.
 

@@ -51,7 +51,7 @@ The README is the onboarding surface. Architecture, security, definition format,
 
 ## Important runtime findings
 
-- The current Kujo runtime provides `spawn_process(argv, options)` with structured arguments, timeout, output limits, environment allow/deny controls, and explicit environment injection.
+- The current Kujo runtime provides `spawn_process(argv, options)` with structured arguments, timeout, output limits, environment allow/deny controls, explicit environment injection, bounded stream channels/file sinks, incremental redaction, and cancellation metadata. It still does not expose a working-directory option.
 - The process API does not currently expose a working-directory option, so Workcell uses `git -C <path>` for Git and Docker's explicit `-w /workspace` for container commands.
 - The current runtime provides `sha256_file`, JSON parsing/serialization, file/directory APIs, path helpers, and environment reads.
 - The repository conventions favor `while` loops in check-clean code where the current Kujo checker has stricter loop-scope rules.

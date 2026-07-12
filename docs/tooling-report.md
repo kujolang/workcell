@@ -14,6 +14,7 @@ Kujo, PackWrite, RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, Muzzle, Ag
 - Fence validated `fence.toml` and checked 10 files / 24 imports with 0 violations and 0 warnings.
 - CaseFile captured the Docker-unavailable failure as `.casefile/2026-07-10-214039-dockerunavailable/` (ignored generated evidence).
 - The Docker integration script passed against the local Colima daemon, with the run logs retained outside Git under `.workcell/review/2026-07-11-full-run`.
+- Kujo commit `0f77781` added bounded process stream channels/file sinks, incremental redaction, cancellation hooks, and regression coverage; Workcell integration now persists redacted stdout/stderr stream logs and cancellation metadata.
 - The current offline suite passed 68 definition/policy/artifact/verification assertions and 8 workspace patch/change-report assertions; the 200-file performance signal, example definitions, schema/help, CLI smoke, and version-consistency fixtures also passed.
 - Kujo commits `ff31153` and `7ef6eb8` made formatter output syntax-preserving and reachability analysis token-aware. Every Workcell `.kujo` file passes `kujo format --check`, every source module passes `kujo lint --json` with zero findings, and formatted temporary copies pass `kujo check`; line wrapping remains conservative until an AST-aware pass exists.
 

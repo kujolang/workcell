@@ -28,7 +28,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 
 ## Secrets
 
-Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr replace known current values and common base64 encodings with `[REDACTED]`. Redaction cannot guarantee protection when a workload hashes or otherwise transforms a secret, or writes it to a declared artifact, so secret-aware workloads remain the caller's responsibility.
+Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr are redacted incrementally before stream log files, channel events, receipts, and artifacts are persisted; known current values and common base64 encodings are replaced with `[REDACTED]`. Redaction cannot guarantee protection when a workload hashes or otherwise transforms a secret, or writes it to a declared artifact, so secret-aware workloads remain the caller's responsibility.
 
 ## Network and daemon trust
 
@@ -36,4 +36,4 @@ Only `none`, `default`, and explicitly pre-created `custom` networks are support
 
 ## Residual risks
 
-The MVP does not provide a hardened microVM, a controlled network proxy, a scheduler, or true incremental stream callbacks. Completion-captured output is bounded and redacted before persistence, but streaming redaction and parent-signal cancellation require Kujo process-API extensions. Named seccomp/AppArmor profiles may be selected when already installed on the Docker host, but Workcell does not install or audit them. Image digest pinning, local image-ID provenance fallback, and optional cosign public-key verification are implemented; key lifecycle and transparency policy remain deployment responsibilities. Future runtime adapters must preserve the policy interface and document stronger/weaker guarantees explicitly.
+The MVP does not provide a hardened microVM, a controlled network proxy, or a scheduler. Kujo process streams are bounded and redacted incrementally, and parent cancellation produces explicit receipt metadata, but transformed-secret detection remains impossible at this layer. Named seccomp/AppArmor profiles may be selected when already installed on the Docker host, but Workcell does not install or audit them. Image digest pinning, local image-ID provenance fallback, and optional cosign public-key verification are implemented; key lifecycle and transparency policy remain deployment responsibilities. Future runtime adapters must preserve the policy interface and document stronger/weaker guarantees explicitly.

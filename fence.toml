@@ -45,7 +45,7 @@ severity = "error"
 
 [zones.execution]
 paths = ["src/execution/**"]
-can_depend_on = ["artifacts", "domain", "policy", "receipts", "runtime", "workspace", "shared"]
+can_depend_on = ["artifacts", "domain", "policy", "receipts", "runtime", "verification", "workspace", "shared"]
 cannot_depend_on = []
 severity = "error"
 
@@ -76,6 +76,12 @@ severity = "error"
 [zones.workspace]
 paths = ["src/workspace/**"]
 can_depend_on = ["shared"]
+cannot_depend_on = []
+severity = "error"
+
+[zones.verification]
+paths = ["src/verification/**"]
+can_depend_on = ["policy", "runtime", "shared"]
 cannot_depend_on = []
 severity = "error"
 

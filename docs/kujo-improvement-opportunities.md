@@ -47,18 +47,16 @@
 
 ## Formatter semantic safety
 
-- Problem: `kujo format --check` reports several valid Workcell modules as needing formatting, but `kujo format --write` rewrites program semantics instead of only layout. Observed transformations included `--` to spaced tokens, `/` inside string literals to `" / "`, and `>=` to `> =`.
-- Observed impact: the formatter cannot currently be used as a trustworthy repository gate; its write mode must not be run on Workcell source. The rewritten files were restored and all source behavior was reverified with `kujo check` and the full test suite.
-- Current workaround: preserve manually reviewed source formatting, run `kujo check`, `kujo lint`, and `git diff --check`; do not use formatter write mode until the formatter is fixed.
-- Suggested Kujo capability: formatter round-trip tests covering operators, CLI flags, path literals, arrays, dictionaries, imports, and string contents; require parse/AST equivalence before accepting formatted output.
-- Priority: high for production Kujo repositories.
-- Blocks Workcell: no; it blocks a reliable formatting gate, not the Workcell runtime.
+- Resolved: Kujo commits `ff31153` and `7ef6eb8` protect strings/comments and multi-character operators, cache formatter regexes, and disable unsafe line-oriented wrapping until an AST-aware pass exists.
+- Evidence: all Workcell `.kujo` files pass `kujo format --check`; formatted temporary copies pass `kujo check`; formatter regression tests cover operators, CLI flags, paths, arrays, dictionaries, imports, comments, and string contents.
+- Remaining opportunity: implement AST-aware wrapping so line length can be improved without moving commas across expression boundaries.
+- Priority: medium for production Kujo repositories.
+- Blocks Workcell: no; formatting is now a safe gate, with wrapping intentionally conservative.
 
 ## Linter control-flow analysis
 
-- Problem: `kujo lint` exits successfully but emits widespread `unreachable-code` warnings on valid imported/exported module code, plus one `missing-error-handling-pattern` warning in the guarded `read_text` path.
-- Observed impact: Workcell lint output is noisy and does not distinguish actionable warnings from analyzer false positives.
-- Current workaround: retain the warnings as audit evidence, use `kujo check` and runtime contracts as correctness gates, and review the one fallible filesystem call separately.
-- Suggested Kujo capability: module-aware reachability analysis and severity controls for warnings, with a machine-readable baseline mechanism.
+- Resolved: Kujo commit `7ef6eb8` makes reachability token-aware and distinguishes multiline returned data from statements after a direct terminator. Workcell now handles its fallible file/JSON calls explicitly.
+- Evidence: every Workcell source module passes `kujo lint --json` with zero findings; the linter regression suite covers direct unreachable code and multiline returned dictionaries.
+- Remaining opportunity: evolve the linter from line facts to AST/control-flow analysis for branch-sensitive reachability.
 - Priority: medium.
-- Blocks Workcell: no.
+- Blocks Workcell: no; lint output is currently clean for the repository.

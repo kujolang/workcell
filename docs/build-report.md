@@ -23,7 +23,7 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
 
 ## Toolchain notes
 
-Kujo lint exited successfully with documented analyzer warnings. Formatter round-trip testing found kujo format --write can change semantics in valid Workcell code; no formatter rewrite was retained.
+Kujo commits `ff31153` and `7ef6eb8` made formatting syntax-preserving and reachability analysis token-aware. Every Workcell `.kujo` file now passes `kujo format --check`; every source module passes `kujo lint --json` with zero findings; formatted temporary copies pass `kujo check`. The formatter intentionally defers line wrapping until Kujo has an AST-aware pass.
 
 ## Artifacts
 

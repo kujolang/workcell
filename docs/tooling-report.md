@@ -15,7 +15,7 @@ Kujo, PackWrite, RunLedger, ChangeBucket, ShipCheck, Fence, CaseFile, Muzzle, Ag
 - CaseFile captured the Docker-unavailable failure as `.casefile/2026-07-10-214039-dockerunavailable/` (ignored generated evidence).
 - The Docker integration script passed against the local Colima daemon, with the run logs retained outside Git under `.workcell/review/2026-07-11-full-run`.
 - The current offline suite passed 68 definition/policy/artifact/verification assertions and 8 workspace patch/change-report assertions; the 200-file performance signal, example definitions, schema/help, CLI smoke, and version-consistency fixtures also passed.
-- Kujo lint exited successfully but emitted widespread unreachable-code warnings on valid module/import patterns. Kujo format --check currently reports multiple valid modules needing formatting; kujo format --write was tested and found semantically unsafe because it altered operators, path separators inside string literals, and CLI flag strings, so the generated rewrites were discarded and not committed.
+- Kujo commits `ff31153` and `7ef6eb8` made formatter output syntax-preserving and reachability analysis token-aware. Every Workcell `.kujo` file passes `kujo format --check`, every source module passes `kujo lint --json` with zero findings, and formatted temporary copies pass `kujo check`; line wrapping remains conservative until an AST-aware pass exists.
 
 ## Integration gaps
 

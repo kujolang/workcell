@@ -4,24 +4,25 @@ This is the next-session work list produced by the codebase review on 2026-07-11
 
 ## Review result
 
-The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, cannot provide true streaming redaction until the Kujo process API exposes stream callbacks, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. A prior Colima integration run passed; the current local daemon is unavailable and must be rerun before claiming host-level integration evidence for this milestone.
+The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, cannot provide true streaming redaction until the Kujo process API exposes stream callbacks, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. Docker integration has now passed against the available Colima daemon, including verification and ownership-scoped cleanup; rootless and production-host evidence remain deployment-dependent.
 
 The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, and image ownership labels. The current offline suite is 68 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
 
 ## P0 — Kujo toolchain safety
 
-### [blocked] Fix formatter semantic corruption
+### [x] Fix formatter semantic corruption
 
 - Owner: Kujo language repository.
-- Evidence: `kujo format --write` rewrote valid Workcell code by changing operator spacing, path separators inside string literals, and CLI flag strings. `kujo format --check` is therefore not a trustworthy gate.
-- Workcell action: keep manually reviewed formatting and use `kujo check`, lint review, tests, and `git diff --check` until the formatter is fixed.
-- Acceptance: formatter round-trip tests prove parse/AST equivalence for operators, strings, paths, imports, arrays, dictionaries, and CLI flags; Workcell `format --check` passes without semantic changes.
+- Evidence before fix: `kujo format --write` rewrote valid Workcell code by changing operator spacing, path separators inside string literals, and CLI flag strings; it also split nested comma expressions.
+- Implemented in Kujo commits `ff31153` and `7ef6eb8`: non-code/operator protection, syntax-safe formatting, cached regexes, and regression tests for strings, comments, paths, flags, operators, and nested comma expressions. Wrapping is deferred until an AST-aware pass exists.
+- Acceptance status: every Workcell `.kujo` file passes `kujo format --check`; formatted temporary copies of all source files pass `kujo check`; the Kujo formatter tests pass.
 
-### [blocked] Reduce false-positive linter warnings
+### [x] Reduce false-positive linter warnings
 
 - Owner: Kujo language repository.
-- Evidence: `kujo lint` exits 0 but emits widespread `unreachable-code` warnings for valid imported/exported modules.
-- Acceptance: module-aware reachability analysis or a reviewed warning baseline distinguishes actionable findings from analyzer noise.
+- Evidence before fix: `kujo lint` exited 0 but emitted widespread `unreachable-code` warnings for valid returned dictionaries and imported/exported modules.
+- Implemented in Kujo commit `7ef6eb8`: token-based reachability tracks block braces, multiline delimited return expressions, and only direct-line terminators. Workcell's remaining actionable warnings were fixed with explicit error handling.
+- Acceptance status: all Workcell source modules pass `kujo lint --json` with zero findings, and the linter regression suite passes.
 
 ## P0 — Host isolation and secret handling
 
@@ -133,6 +134,6 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 
 ## Suggested next-session order
 
-1. Coordinate Kujo formatter/linter/process-API changes; these are the remaining toolchain blockers.
-2. Rerun Docker integration, doctor, and ecosystem gates on an available daemon, including the verification example and resource inventory.
+1. Coordinate the remaining Kujo process-API work for streaming redaction and parent-signal cancellation.
+2. Rerun Docker integration, doctor, and ecosystem gates on each supported deployment class, including rootless Linux and the verification example/resource inventory.
 3. Add optional ecosystem adapters only when their stable CLI contracts and ownership are approved.

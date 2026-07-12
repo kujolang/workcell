@@ -24,7 +24,8 @@ Workcell supplies a physical boundary and a durable evidence boundary. Kujo trus
 
 - `src/domain/definition.kujo`: JSON loading, defaults, schema/semantic validation, duration normalization.
 - `src/policy/policy.kujo`: explicit Docker security arguments and runtime environment policy.
-- `src/runtime/docker.kujo`: Docker availability, image build/pull/inspect, run, and ownership-scoped cleanup.
+- `src/runtime/docker.kujo`: OCI runtime availability, image build/pull/inspect, run, output collection, and ownership-scoped cleanup for Docker or Podman.
+- `src/integrations/integrations.kujo`: opt-in RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle evidence adapters with bounded execution and redacted reports.
 - `src/workspace/workspace.kujo`: Git repository inspection, clean-source enforcement, worktree/clone creation, patch and change collection, safe cleanup.
 - `src/verification/verification.kujo`: versioned post-run checks in separate labeled containers using the same runtime policy.
 - `src/execution/coordinator.kujo`: stateful `validate → prepare → launch → execute → collect → verify → export → record → clean` lifecycle.
@@ -33,7 +34,7 @@ Workcell supplies a physical boundary and a durable evidence boundary. Kujo trus
 - `src/doctor/doctor.kujo`: actionable local diagnostics.
 - `src/cli/cli.kujo`: argument parsing, human/machine output, and stable exit-code mapping.
 
-The runtime adapter is intentionally narrow. Docker is the only implementation, but lifecycle and policy code do not depend on Docker-specific cleanup details beyond the adapter boundary.
+The runtime adapter is intentionally narrow. Docker is the default and Podman is the compatible OCI implementation; lifecycle and policy code do not depend on engine-specific cleanup details beyond the adapter boundary.
 
 ## Workspace and artifact flow
 

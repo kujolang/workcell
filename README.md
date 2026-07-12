@@ -41,7 +41,7 @@ $KUJO check main.kujo
 ./bin/workcell run --file workcell.json --repo .
 ```
 
-`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, verification, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example.
+`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, verification, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
 
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
@@ -82,6 +82,7 @@ Each run produces, when the lifecycle reaches the relevant stage:
 ├── receipt.json
 ├── stdout.log
 ├── stderr.log
+├── integrations/
 ├── changes.patch
 ├── changes.json
 └── artifacts/

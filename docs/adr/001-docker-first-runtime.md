@@ -6,7 +6,7 @@ Workcell needs a portable local execution boundary and must remain open to futur
 
 ## Decision
 
-Implement Docker as the first runtime adapter and keep Docker-specific operations behind `src/runtime/docker.kujo`.
+Implement Docker as the default runtime adapter and keep OCI engine-specific operations behind `src/runtime/docker.kujo`; compatible backends such as Podman may implement the same boundary without weakening policy guarantees.
 
 ## Alternatives
 

@@ -6,7 +6,7 @@ This is the next-session work list produced by the codebase review on 2026-07-11
 
 The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. The Kujo process API now provides bounded stream sinks, incremental exact/base64 redaction, and cancellation hooks. Docker integration has passed against the available Colima daemon, including verification, streamed log files, cancellation metadata, and ownership-scoped cleanup; rootless and production-host evidence remain deployment-dependent.
 
-The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, and image ownership labels. The current offline suite is 68 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
+The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, image ownership labels, opt-in ecosystem evidence adapters, and an OCI runtime backend contract. The current offline suite is 74 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
 
 ## P0 — Kujo toolchain safety
 
@@ -120,21 +120,28 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 
 ## P2 — Optional ecosystem integrations
 
-- [deferred optional] RunLedger adapter for importing completed Workcell receipts without duplicating the local receipt schema.
-- [deferred optional] ChangeBucket adapter for optional bounded change-risk reports inside a run.
-- [deferred optional] ShipCheck/Fence verification hooks with explicit opt-in and separate verification status.
-- [deferred optional] PackWrite/Muzzle context packaging adapters once stable contracts justify the dependency.
-- Podman, gVisor/Kata, remote, and microVM runtime adapters behind the existing runtime boundary.
+### [x] Add opt-in ecosystem evidence adapters
 
-## Out of repository scope for the next Workcell-only session
+- Implemented a versioned \`integrations\` definition section for RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle.
+- Every adapter is disabled by default, uses structured argv with a bounded working directory and timeout, redacts output, writes a separate JSON report, and cannot change the primary Workcell success status.
+- RunLedger imports a completed Workcell result as a linked start/finish record; ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle preserve their native machine-readable output in separate run evidence.
+- Acceptance: offline tests cover validation, bounded argv, disabled defaults, and a deterministic opt-in adapter; all external tool failures remain visible as integration warnings rather than being hidden.
+
+### [x] Add an OCI runtime adapter contract
+
+- Implemented Podman as an OCI-compatible backend with the same policy, identity, resource, network, security-option, image-provenance, stream, cancellation, and ownership-label contract as Docker.
+- Added \`runtime.engine_runtime\` for reviewed gVisor/Kata/crun-style runtime classes and \`clean --backend docker|podman\` resource selection. Remote and microVM services remain provider deployments behind this same backend boundary.
+- Acceptance: definitions and policy tests cover Podman and runtime-class arguments; Docker remains the default and existing Docker integration remains required.
+
+## Deployment-owned P2 boundaries
 
 - Provisioning a production rootless/microVM fleet.
 - Operating a transparent egress proxy or domain policy service.
 - Organization-wide cosign key rotation, Rekor policy, registry authorization, and vulnerability scanning.
-- Modifying the Kujo compiler/runtime or formatter without a coordinated Kujo-repository change.
+- Remote or microVM service provisioning and provider-specific attestation remain deployment-owned; Workcell now exposes the explicit backend/runtime-class contract and fails closed when the selected engine is unavailable.
 
 ## Suggested next-session order
 
-1. Rerun Docker integration, doctor, and ecosystem gates on each supported deployment class, including rootless Linux and the verification example/resource inventory.
-2. Exercise the cancellation and stream-log contracts on a production-like Linux daemon, including rootless and VM-backed deployments.
-3. Add optional ecosystem adapters only when their stable CLI contracts and ownership are approved.
+1. Exercise Docker and Podman integration on supported deployment classes, including rootless Linux and VM-backed hosts.
+2. Enable approved ecosystem integrations in CI/release definitions and review their separate evidence reports.
+3. Add provider-specific remote/microVM adapters only when an owner supplies a stable service contract and attestation policy.

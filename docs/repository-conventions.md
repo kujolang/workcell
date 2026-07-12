@@ -19,7 +19,7 @@ Workcell was designed after a read-only audit of the sibling Kujo ecosystem repo
 
 ### Repository and source layout
 
-Workcell is a standalone sibling repository named `workcell`, with a thin `main.kujo` entrypoint, a `src/` module tree, hand-rolled Kujo tests under `tests/`, runnable examples under `examples/`, Docker assets under `docker/`, and user/contributor documentation under `docs/`. The application is substantive Kujo code; Bash is used only for a thin launcher and test orchestration.
+Workcell is a standalone sibling repository named `workcell`, with a thin `main.kujo` entrypoint, a `src/` module tree, hand-rolled Kujo tests under `tests/`, runnable examples under `examples/`, container assets under `docker/`, and user/contributor documentation under `docs/`. The application is substantive Kujo code; Bash is used only for a thin launcher and test orchestration. External integration commands are opt-in and must use explicit argv, bounded time/output, and redacted evidence files.
 
 ### Entry point and CLI
 
@@ -51,7 +51,7 @@ The README is the onboarding surface. Architecture, security, definition format,
 
 ## Important runtime findings
 
-- The current Kujo runtime provides `spawn_process(argv, options)` with structured arguments, timeout, output limits, environment allow/deny controls, explicit environment injection, bounded stream channels/file sinks, incremental redaction, and cancellation metadata. It still does not expose a working-directory option.
+- The current Kujo runtime provides `spawn_process(argv, options)` with structured arguments, an optional working directory, timeout, output limits, environment allow/deny controls, explicit environment injection, bounded stream channels/file sinks, incremental redaction, and cancellation metadata.
 - The process API does not currently expose a working-directory option, so Workcell uses `git -C <path>` for Git and Docker's explicit `-w /workspace` for container commands.
 - The current runtime provides `sha256_file`, JSON parsing/serialization, file/directory APIs, path helpers, and environment reads.
 - The repository conventions favor `while` loops in check-clean code where the current Kujo checker has stricter loop-scope rules.

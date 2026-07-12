@@ -45,7 +45,13 @@ severity = "error"
 
 [zones.execution]
 paths = ["src/execution/**"]
-can_depend_on = ["artifacts", "domain", "policy", "receipts", "runtime", "verification", "workspace", "shared"]
+can_depend_on = ["artifacts", "domain", "integrations", "policy", "receipts", "runtime", "verification", "workspace", "shared"]
+cannot_depend_on = []
+severity = "error"
+
+[zones.integrations]
+paths = ["src/integrations/**"]
+can_depend_on = ["shared"]
 cannot_depend_on = []
 severity = "error"
 

@@ -26,7 +26,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 
 - `version`: required integer `1`.
 - `name`: required non-empty project name.
-- `runtime.backend`: required `docker`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch; optional `signature_key` verifies the image with `cosign verify --key` before launch.
+- `runtime.backend`: `docker` (default) or `podman`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch; optional `signature_key` verifies the image with `cosign verify --key` before launch.
 - `workspace.strategy`: `git-worktree` (default) or `isolated-clone`; `mount_path` must be a safe absolute container path and defaults to `/workspace`. `run_as` defaults to `host`, resolving the invoking non-root UID/GID and avoiding world-writable temporary workspaces; explicit non-root `uid:gid` pairs are supported when the host can assign ownership.
 - `workspace.scan`: bounded post-run workspace inspection with `max_files`, `max_bytes`, and `max_depth`; limits fail verification with receipt diagnostics rather than silently truncating evidence.
 - `command`: required non-empty argv array. Arguments may begin with `-`; host-side Workcell commands never use shell interpolation.
@@ -34,6 +34,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 - `environment.set`: explicit non-secret container values passed as `--env NAME=value`; a configured name cannot override a declared secret.
 - `secrets`: environment-variable names read at execution time and passed into the container by name, without placing their values in Docker argv. Missing names fail the run.
 - `resources.cpus`, `memory`, `pids`, `timeout_ms`, `max_output_bytes`: bounded Docker/process values. CPUs range from 1–64, memory accepts integer `k`, `m`, or `g` values up to 64g, PIDs range from 1–65536, output is capped at 16 MB per stream, and timeouts are capped at 24 hours. Timeout strings ending in `s`, `m`, or `h` are normalized to milliseconds.
+- `integrations`: optional RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle adapters. Each adapter is disabled by default and accepts a bounded command argv, timeout, and tool-specific mode. Enabled adapters write redacted reports under the run's `integrations/` directory and remain separate from the primary execution/verification result.
 - `network.mode`: `none` (default), explicit `default`, or `custom`; `custom` attaches to a pre-created Docker network named by `network.name`, allowing operators to enforce an internal network or egress proxy boundary outside Workcell.
 - `network.name`: required and Docker-safe when `network.mode` is `custom`; forbidden otherwise.
 - `filesystem.read_only_root`: default `true`; `tmpfs` targets must be `/tmp` or a descendant beneath `/tmp`.

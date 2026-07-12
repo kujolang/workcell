@@ -15,7 +15,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 - If `default` is required, enforce egress with a host firewall or transparent proxy; Workcell rejects inherited proxy and credential-selector variables but cannot force arbitrary child processes to honor a proxy.
 - For a reproducible controlled boundary, pre-create an internal or proxy-enforced Docker network and use `network.mode: custom` with its `network.name`; Workcell will attach only to that named network and will not create or mutate it.
 - Docker's default seccomp and AppArmor profiles must remain enabled. Do not run the daemon with `seccomp=unconfined` or equivalent relaxed profiles for production workloads.
-- `workcell doctor` verifies that Docker reports both seccomp and AppArmor; a non-rootless daemon is surfaced as a warning so operators can choose a rootless or VM/microVM boundary.
+- `workcell doctor --backend docker|podman` verifies the selected engine; Docker must report seccomp/AppArmor and Podman must report its rootless state. A non-rootless engine is surfaced as a warning so operators can choose a rootless or VM/microVM boundary.
 - Set `filesystem.seccomp_profile` and `filesystem.apparmor_profile` only to profiles installed and reviewed on the target daemon; Workcell passes those names through and rejects `unconfined`.
 - Use `trust_profile: native-guarded` to make runs fail closed on a non-rootless daemon; this does not provision the daemon or a microVM for you.
 

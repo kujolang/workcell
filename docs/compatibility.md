@@ -1,6 +1,6 @@
 # Platform compatibility
 
-Workcell is a local Docker adapter. `workcell doctor --json` is the authoritative host preflight; the matrix documents the expected differences rather than claiming identical behavior across hosts.
+Workcell defaults to Docker and also exposes a Podman-compatible OCI backend. `workcell doctor --backend docker|podman --json` is the authoritative host preflight; the matrix documents expected differences rather than claiming identical behavior across hosts.
 
 | Host/runtime | Workspace ownership | Network/security behavior | Image/build notes | Status |
 | --- | --- | --- | --- | --- |

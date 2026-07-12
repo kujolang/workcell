@@ -7,18 +7,19 @@ success
 ## Completed
 
 - Completed the local-fixable hardening backlog: host UID/GID workspace ownership, bounded scans/output/artifacts, declarative verification containers, image provenance fallback, resource inventory and explicit image retention, batched binary probes, schema/help contracts, version consistency, compatibility documentation, and the verification example.
-- Added 74 policy/artifact/verification assertions, 8 workspace assertions, a 200-file default performance signal, and an opt-in 2,000-file signal (32,259 ms on the current macOS host).
+- Added 77 policy/artifact/verification assertions, 8 workspace assertions, a 200-file default performance signal, and an opt-in 2,000-file signal (32,259 ms on the current macOS host).
 - Restarted Colima 0.10.3 and reran Docker integration successfully against Docker server 29.5.2.
 - Coordinated and pushed Kujo formatter and linter fixes (`ff31153`, `7ef6eb8`, `ff662a3`); Workcell source/test formatting and error-handling follow-ups landed in `88f3cf6`, with evidence refreshed in `8e9307d`.
 - Coordinated and pushed Kujo bounded process stream/cancellation support (`73f3e7c`, `0f77781`); Workcell integration landed in `c3aa847`, with the backlog and operational docs closed in `fa10665`.
 - Completed P2 local hardening: opt-in RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle evidence adapters with bounded argv/cwd/time/output, redacted separate reports, and primary-result isolation; added Docker/Podman runtime selection, engine-runtime passthrough, backend-aware cleanup, and runtime metadata in receipts.
 - Added a Kujo `spawn_process` working-directory option (`61cbaf5`), refreshed the process-tree unsafe inventory baseline (`475fb1a`), and pinned Workcell `RUNTIME_VERSION` to the pushed Kujo commit.
 - Added an explicit Fence integrations zone and corrected stale evidence counts.
+- Closed the continuation audit: atomic-write failures are checked, enabled integrations are explicit dry-run skips, unsafe runtime-class injection is rejected, and Docker/Podman doctor diagnostics handle missing CLIs and backend-specific security checks.
 
 ## Verification
 
-- passed: Kujo checks, 74 policy/artifact/verification assertions, 8 workspace assertions, performance signals, path-safety, dry-run, custom-network, custom security profiles, receipt redaction, integration command redaction, duplicate-input validation, ownership-marker validation, example validation, CLI schema/help smoke, version consistency, Docker integration including verification and clean inventory, and Docker/Colima doctor.
-- passed: Kujo full test suite after the pushed runtime change, required docs/CLI/diagnostic integration contracts, VM 145/145, dual 145/145, Workcell offline suite, Docker integration with streamed logs, doctor, Kennel, ShipCheck, ChangeBucket, and Fence with zero boundary violations.
+- passed: Kujo checks, 77 policy/artifact/verification assertions, 8 workspace assertions, performance signals, path-safety, adversarial rejection, dry-run, custom-network, custom security profiles, receipt redaction, integration command redaction, duplicate-input validation, ownership-marker validation, explicit dry-run integration skips, example validation, CLI schema/help smoke, version consistency, Docker integration including verification and clean inventory, and Docker/Colima doctor.
+- passed: Kujo full test suite after the pushed runtime change, required docs/CLI/diagnostic integration contracts, VM 145/145, dual 145/145, Workcell offline suite, Docker integration with streamed logs, Docker and missing-Podman doctor diagnostics, Kennel, ShipCheck, ChangeBucket, and Fence with zero boundary violations.
 - warning: rootless is not enabled on the current Colima daemon; this is a deployment evidence gap, not a code blocker.
 - failed: none
 
@@ -37,6 +38,7 @@ success
 - `475fb1a` — chore: refresh unsafe inventory baseline (Kujo)
 - `125d714` — docs: record P2 loop evidence
 - `6f8af19` — fix: pin exact Kujo runtime commit
+- continuation — atomic-write checks, dry-run integration status, runtime-class validation, backend-aware doctor, and adversarial coverage (pending commit)
 
 ## Remaining
 
@@ -44,7 +46,7 @@ success
 
 ## External Blockers
 
-- Host ownership: rootless/VM/microVM fleet, egress proxy, signing governance, registry authorization, and vulnerability scanning remain deployment controls.
+- Host ownership: rootless/VM/microVM fleet, egress proxy, signing governance, registry authorization, vulnerability scanning, and live Podman remain deployment controls.
 - Current host: Podman is not installed, so no live Podman daemon run was claimed; Docker/Colima is the live runtime evidence.
 
 ## Next Start

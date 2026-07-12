@@ -3,3 +3,4 @@ iteration	action	verdict	progress	evidence	justification
 001	configured-gates	success	1	iterations/001/eval.log	success: required gates passed
 002	backlog-hardening	partial	1	iterations/002/eval.log	local-fixable backlog complete; external/toolchain blockers recorded
 003	toolchain-coordination	partial	1	iterations/003/eval.log	formatter and linter resolved; process streaming/cancellation remains Kujo API blocked
+004	process-api-coordination	success	1	manual-gates-2026-07-12	Kujo process streams/cancellation integrated; full Kujo, Workcell, Docker, and ecosystem gates passed

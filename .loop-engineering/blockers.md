@@ -8,9 +8,9 @@ blockers:
     next_action: "Add AST-aware wrapping when the Kujo formatter has syntax-tree support."
   - id: kujo-process-stream-cancellation
     command: "spawn_process"
-    evidence: "Current Kujo API returns bounded completion output and timeout metadata but exposes no Workcell-consumable stream callback or parent-signal hook."
-    status: external-blocked
-    next_action: "Coordinate a Kujo process API contract for streaming redaction and cancellation receipts."
+    evidence: "Resolved by Kujo commits 73f3e7c and 0f77781: bounded channel/file stream sinks, chunk-boundary-safe redaction, cancellation hooks, and regression coverage; Workcell integrates stream logs and cancellation receipts in c3aa847."
+    status: resolved
+    next_action: "Exercise the contract on rootless Linux and VM-backed deployments."
   - id: kujo-linter-reachability
     command: "kujo lint"
     evidence: "Resolved by Kujo commit 7ef6eb8 with token-aware reachability; all Workcell source modules pass lint --json with zero findings."

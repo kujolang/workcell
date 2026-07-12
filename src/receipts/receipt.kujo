@@ -107,9 +107,12 @@ export func finish_receipt(receipt, final_status, exit_code, timed_out, image_di
 
 export func write_receipt(receipt, output_path) {
     try {
-        save_json(output_path, receipt)
-        return {"ok": true, "path": output_path}
-    } except err {
-    return {"ok": false, "path": output_path, "error": "could not write receipt: " + to_string(err)}
+        persisted := save_json(output_path, receipt)
+        if persisted != true {
+            return {"ok": false, "path": output_path, "error": "could not write receipt: atomic write returned false"}
+        }
+    return {"ok": true, "path": output_path}
+} except err {
+return {"ok": false, "path": output_path, "error": "could not write receipt: " + to_string(err)}
 }
 }

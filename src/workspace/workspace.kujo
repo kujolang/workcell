@@ -130,7 +130,11 @@ result = git_result(["git", "clone", "--no-local", root, path], 120000)
 if process_ok(result) == false {
     return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
-write_file_atomic(path + ".owner", "workcell-run-id=" + run_identifier + "\n", true)
+owner_written := write_file_atomic(path + ".owner", "workcell-run-id=" + run_identifier + "\n", true)
+if owner_written != true {
+    cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
+    return {"ok": false, "stage": "preparing", "error": "could not write disposable workspace ownership marker"}
+}
 symlinks := find_symlink(path)
 if symlinks["ok"] == false {
     cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
@@ -328,7 +332,10 @@ export func write_change_report(workspace, output_path, patch_bytes) {
         return details
     }
 try {
-    save_json(output_path, {"source_commit": workspace["source_commit"], "patch_bytes": patch_bytes, "summary": details["summary"], "files": details["files"]})
+    written := save_json(output_path, {"source_commit": workspace["source_commit"], "patch_bytes": patch_bytes, "summary": details["summary"], "files": details["files"]})
+    if written != true {
+        return {"ok": false, "error": "could not write change report: atomic write returned false"}
+    }
 } except err {
 return {"ok": false, "error": "could not write change report: " + to_string(err)}
 }

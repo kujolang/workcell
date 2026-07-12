@@ -8,7 +8,7 @@ from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_syml
 from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
-from src.integrations.integrations import run_integrations
+from src.integrations.integrations import dry_run_integrations, run_integrations
 
 func option(flags, name, fallback) {
     if type(flags) == "dict"&&has_key(flags, name) == 1 {
@@ -131,6 +131,9 @@ return final_result(run_identifier, receipt_path, output_dir, receipt, false, "i
 
 preserve_failed := is_true(option(flags, "keep_failed", definition["cleanup"]["keep_failed"]))
 if is_true(option(flags, "dry_run", false)) {
+    dry_integrations := dry_run_integrations(definition, output_dir)
+    receipt["integrations"] := dry_integrations["results"]
+    receipt["integration_status"] := dry_integrations["status"]
     receipt = add_state(receipt, "verifying")
     receipt = add_state(receipt, "exporting")
     receipt = add_state(receipt, "cleaning")

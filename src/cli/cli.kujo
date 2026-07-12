@@ -97,7 +97,7 @@ func help_value() {
         "schema_version": "workcell-cli/v1",
         "version": VERSION,
         "commands": [
-        {"name": "doctor", "options": ["--repo", "--json"]},
+        {"name": "doctor", "options": ["--repo", "--backend", "--json"]},
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
@@ -118,7 +118,7 @@ print_lines([
 "Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
 "",
 "Usage:",
-"  workcell doctor [--repo <path>] [--json]",
+"  workcell doctor [--repo <path>] [--backend docker|podman] [--json]",
 "  workcell init [--file <path>] [--force]",
 "  workcell validate [--file <path>] [--json] [--schema]",
 "  workcell inspect [--file <path>] [--repo <path>] [--json]",
@@ -168,7 +168,11 @@ func init_command(parsed) {
         print("Use --force only when replacing it intentionally.")
         return 2
     }
-save_json(path, default_definition())
+written := save_json(path, default_definition())
+if written != true {
+    print("error: could not write starter definition: " + path)
+    return 10
+}
 print("Created " + path)
 print("Next: edit the definition, then run `workcell validate --file " + path + "`.")
 return 0
@@ -389,11 +393,16 @@ if command == "version"||command == "--version" {
     return 0
 }
 if command == "doctor" {
-    value := report(repo_path(parsed))
-    print_check_report(value, has_flag(parsed, "json"))
-    if value["ok"] {
-        return 0
+    backend := flag(parsed, "backend", "docker")
+    if backend != "docker"&&backend != "podman" {
+        print("error: --backend must be docker or podman")
+        return 2
     }
+value := report(repo_path(parsed), backend)
+print_check_report(value, has_flag(parsed, "json"))
+if value["ok"] {
+    return 0
+}
 return 3
 }
 if command == "init" {

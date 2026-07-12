@@ -3,6 +3,16 @@
 from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
+func process_field(result, key, fallback) {
+    if type(result) == "dict" {
+        return get_or(result, key, fallback)
+    }
+if key == "timed_out" {return result.timed_out}
+if key == "stdout" {return result.stdout}
+if key == "stderr" {return result.stderr}
+return fallback
+}
+
 func runtime_program(backend) {
     if backend == "podman" {return "podman"}
     return "docker"
@@ -56,13 +66,27 @@ return {"ok": true}
 
 export func doctor_docker() {
     result := runtime_result("docker", ["version", "--format", "{{.Server.Version}}"], 10000)
-    if result.timed_out {
+    if process_field(result, "timed_out", false) {
         return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
     }
-if result.success == false {
-    return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon is not reachable: " + trim(result.stderr), "remediation": "Start Docker Desktop or the Docker daemon"}
+if process_ok(result) == false {
+    return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon is not reachable: " + trim(process_field(result, "stderr", "")), "remediation": "Start Docker Desktop or the Docker daemon"}
 }
-return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(result.stdout) + ")", "remediation": ""}
+return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(process_field(result, "stdout", "")) + ")", "remediation": ""}
+}
+
+export func doctor_runtime(backend) {
+    if backend == "podman" {
+        result := runtime_result(backend, ["version", "--format", "{{.Server.Version}}"], 10000)
+        if process_field(result, "timed_out", false) {
+            return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine check timed out", "remediation": "Start a Podman machine or rootless Podman service"}
+        }
+    if process_ok(result) == false {
+        return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine is not reachable: " + trim(process_field(result, "stderr", "")), "remediation": "Start a Podman machine or rootless Podman service"}
+    }
+return {"name": "Podman daemon", "status": "passed", "message": "Podman engine reachable (server " + trim(process_field(result, "stdout", "")) + ")", "remediation": ""}
+}
+return doctor_docker()
 }
 
 export func image_exists(image, backend) {

@@ -6,7 +6,7 @@ from src.policy.policy import build_policy
 from src.receipts.receipt import add_error, new_receipt
 from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
-from src.integrations.integrations import run_integrations
+from src.integrations.integrations import dry_run_integrations, run_integrations
 
 mut passed := 0
 mut failed := 0
@@ -290,10 +290,25 @@ expect("empty secret does not corrupt logs", secret_logs["ok"]&&secret_stdout["t
 run_argv(["rm", "-rf", secret_log_dir], 30000)
 
 integration_output := "/tmp/workcell-integration-contract-" + run_id()
-integration_definition := with_secret(with_integration(definition, "changebucket", true, ["sh", "-c", "printf longsecret >/dev/null"]), "LONG_SECRET")
+integration_definition := with_secret(with_integration(default_definition(), "changebucket", true, ["sh", "-c", "printf longsecret >/dev/null"]), "LONG_SECRET")
 integration_result := run_integrations(integration_definition, "/tmp", integration_output, integration_output + "/receipt.json", "completed", true)
 expect("opt-in integration writes a separate redacted report", integration_result["ok"]&&integration_result["results"][1]["ok"]&&integration_result["results"][1]["exit_code"] == 0&&file_exists(integration_output + "/integrations/changebucket.json")&&contains(to_json(integration_result["results"][1]), "longsecret") == 0)
 run_argv(["rm", "-rf", integration_output], 30000)
+
+runledger_output := "/tmp/workcell-runledger-contract-" + run_id()
+runledger_definition := with_integration(default_definition(), "runledger", true, ["sh", "-c", "printf 'Started run: fake-run\\n'"])
+runledger_result := run_integrations(runledger_definition, "/tmp", runledger_output, runledger_output + "/receipt.json", "completed", true)
+expect("RunLedger adapter links start and finish evidence", runledger_result["ok"]&&runledger_result["results"][0]["status"] == "imported"&&runledger_result["results"][0]["run_id"] == "fake-run"&&runledger_result["results"][0]["finish"]["exit_code"] == 0)
+run_argv(["rm", "-rf", runledger_output], 30000)
+
+failed_integration_output := "/tmp/workcell-integration-failure-" + run_id()
+failed_integration_definition := with_integration(default_definition(), "changebucket", true, ["false"])
+failed_integration_result := run_integrations(failed_integration_definition, "/tmp", failed_integration_output, failed_integration_output + "/receipt.json", "completed", true)
+expect("integration failure is explicit and bounded", failed_integration_result["ok"] == false&&failed_integration_result["results"][1]["ok"] == false&&failed_integration_result["results"][1]["exit_code"] == 1&&file_exists(failed_integration_output + "/integrations/changebucket.json"))
+run_argv(["rm", "-rf", failed_integration_output], 30000)
+
+dry_integration_result := dry_run_integrations(with_integration(default_definition(), "changebucket", true, ["false"]), "/tmp/workcell-dry-run-integrations")
+expect("dry-run integrations are explicit skips", dry_integration_result["ok"]&&dry_integration_result["status"] == "skipped"&&dry_integration_result["results"][1]["status"] == "skipped-dry-run")
 
 derived_log_dir := "/tmp/workcell-derived-secret-" + run_id()
 ensure_dir(derived_log_dir)

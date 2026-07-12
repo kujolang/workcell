@@ -1,8 +1,18 @@
 # Environment diagnostics for Workcell.
 
-from src.runtime.docker import doctor_docker
-from src.util import parent_of, process_ok, run_argv, run_id
+from src.runtime.docker import doctor_runtime
+from src.util import get_or, parent_of, process_error, process_ok, run_argv, run_id
 from src.workspace.workspace import inspect_repository
+
+func process_field(result, key, fallback) {
+    if type(result) == "dict" {
+        return get_or(result, key, fallback)
+    }
+if key == "timed_out" {return result.timed_out}
+if key == "stdout" {return result.stdout}
+if key == "stderr" {return result.stderr}
+return fallback
+}
 
 func command_check(program, arguments, label) {
     mut argv := [program]
@@ -35,12 +45,23 @@ if len(missing) == 0 {
 return {"name": "Optional Kujo tooling", "status": "warning", "message": "optional sibling tools not found: " + to_string(missing), "remediation": "Install sibling tools only when their integrations are needed; core Workcell runtime does not require them"}
 }
 
-func docker_security_check() {
-    result := run_argv(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
-    if process_ok(result) == false {
-        return {"name": "Docker security profiles", "status": "blocked", "message": trim(result.stderr), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
+func runtime_security_check(backend) {
+    if backend == "podman" {
+        result := run_argv(["podman", "info", "--format", "{{.Host.Security.Rootless}}"], 10000)
+        if process_ok(result) == false {
+            return {"name": "Podman security", "status": "blocked", "message": trim(process_field(result, "stderr", "")), "remediation": "Expose a reachable rootless Podman engine"}
+        }
+    rootless := to_lower(trim(process_field(result, "stdout", "")))
+    if rootless == "true" {
+        return {"name": "Podman security", "status": "passed", "message": "rootless Podman engine detected", "remediation": ""}
     }
-options := trim(result.stdout)
+return {"name": "Podman security", "status": "warning", "message": "Podman engine is not rootless", "remediation": "Use rootless Podman or a stronger VM/microVM boundary for multi-tenant untrusted workloads"}
+}
+result := run_argv(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
+if process_ok(result) == false {
+    return {"name": "Docker security profiles", "status": "blocked", "message": trim(process_field(result, "stderr", "")), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
+}
+options := trim(process_field(result, "stdout", ""))
 if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
     return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
 }
@@ -50,7 +71,7 @@ if contains(options, "rootless") == 1 {
 return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and AppArmor detected; daemon is not rootless", "remediation": "Use a rootless daemon or stronger VM/microVM boundary for multi-tenant untrusted workloads"}
 }
 
-export func report(repo_path) {
+export func report(repo_path, backend) {
     mut checks := []
     kujo_program := env("KUJO")
     if type(kujo_program) != "string"||trim(kujo_program) == "" {
@@ -58,9 +79,11 @@ export func report(repo_path) {
     }
 checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
 checks = push(checks, command_check("git", ["--version"], "Git CLI"))
-checks = push(checks, command_check("docker", ["--version"], "Docker CLI"))
-checks = push(checks, doctor_docker())
-checks = push(checks, docker_security_check())
+runtime_label := "Docker"
+if backend == "podman" {runtime_label = "Podman"}
+checks = push(checks, command_check(backend, ["--version"], runtime_label + " CLI"))
+checks = push(checks, doctor_runtime(backend))
+checks = push(checks, runtime_security_check(backend))
 repo := inspect_repository(repo_path)
 if repo["ok"] {
     status := "passed"

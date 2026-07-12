@@ -100,7 +100,10 @@ return {"ok": true}
 }
 text_result := read_text(path)
 if text_result["ok"] {
-    write_file_atomic(path, redact(text_result["text"], secrets), true)
+    written := write_file_atomic(path, redact(text_result["text"], secrets), true)
+    if written != true {
+        return {"ok": false, "error": "could not write redacted artifact: " + relative}
+    }
 }
 return {"ok": true}
 }
@@ -185,10 +188,13 @@ export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) 
     redacted_stdout := redact(stdout_text, secret_values)
     redacted_stderr := redact(stderr_text, secret_values)
     try {
-        write_file_atomic(output_dir + "/stdout.log", redacted_stdout, true)
-        write_file_atomic(output_dir + "/stderr.log", redacted_stderr, true)
-        return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
-    } except err {
-    return {"ok": false, "error": "could not write execution logs: " + to_string(err)}
+        stdout_written := write_file_atomic(output_dir + "/stdout.log", redacted_stdout, true)
+        stderr_written := write_file_atomic(output_dir + "/stderr.log", redacted_stderr, true)
+        if stdout_written != true||stderr_written != true {
+            return {"ok": false, "error": "could not write execution logs: atomic write returned false"}
+        }
+    return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
+} except err {
+return {"ok": false, "error": "could not write execution logs: " + to_string(err)}
 }
 }

@@ -152,6 +152,20 @@ if starts_with(value, "-")||contains(value, "\n") == 1||contains(value, "\r") ==
 return {"ok": true}
 }
 
+func valid_runtime_class(value, label) {
+    if type(value) != "string"||trim(value) == ""||len(value) > 64 {
+        return {"ok": false, "error": label + " must be a bounded runtime class name"}
+    }
+mut i := 0
+while i < len(value) {
+    if contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-", substring(value, i, i + 1)) == 0 {
+        return {"ok": false, "error": label + " contains unsafe characters"}
+    }
+i = i + 1
+}
+return {"ok": true}
+}
+
 func valid_image_digest(value, label) {
     if type(value) != "string"||value == ""||starts_with(value, "sha256:") == false||len(value) != 71 {
         return {"ok": false, "error": label + " must be a sha256 digest"}
@@ -526,7 +540,7 @@ if backend != "docker"&&backend != "podman" {
 }
 engine_runtime := get_or(runtime, "engine_runtime", "")
 if engine_runtime != "" {
-    runtime_check := valid_token(engine_runtime, "runtime.engine_runtime")
+    runtime_check := valid_runtime_class(engine_runtime, "runtime.engine_runtime")
     if runtime_check["ok"] == false {return runtime_check}
 }
 image_check := valid_token(get_or(runtime, "image", ""), "runtime.image")

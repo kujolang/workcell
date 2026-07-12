@@ -28,6 +28,7 @@ complete
 - `0f77781` — test: make process stream coverage scheduler safe
 - `c3aa847` — feat: integrate streamed logs and cancellation receipts
 - `fa10665` — docs: close process hardening backlog
+- `4b0fdb5` — fix: pin current Kujo runtime revision
 
 ## Remaining
 

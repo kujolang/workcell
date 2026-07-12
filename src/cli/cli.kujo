@@ -31,7 +31,7 @@ return fallback
 
 func parse_args(tokens) {
     bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images"]
-    value_flags := ["file", "repo", "output"]
+    value_flags := ["file", "repo", "output", "backend"]
     mut positionals := []
     mut flags := {}
     mut i := 0
@@ -102,7 +102,7 @@ func help_value() {
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
         {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
-        {"name": "clean", "options": ["--json", "--dry-run", "--prune-images"]}
+        {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         ],
         "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "Docker or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
@@ -123,7 +123,7 @@ print_lines([
 "  workcell validate [--file <path>] [--json] [--schema]",
 "  workcell inspect [--file <path>] [--repo <path>] [--json]",
 "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
-"  workcell clean [--json] [--dry-run] [--prune-images]",
+"  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
 "",
 "Run options:",
 "  --dry-run       Resolve and record the policy without starting Docker",
@@ -323,17 +323,22 @@ return run_exit_code(result)
 
 func clean_command(parsed) {
     prune_images := has_flag(parsed, "prune-images")
-    if has_flag(parsed, "dry-run") {
-        docker := owned_resource_inventory()
-        temp := workspace_inventory()
-        mut image_action := "preserve"
-        if prune_images {
-            image_action = "remove-owned"
-        }
-    mut inventory_ok := docker["ok"]
-    if temp["ok"] == false {
-        inventory_ok = false
+    backend := flag(parsed, "backend", "docker")
+    if backend != "docker"&&backend != "podman" {
+        print("error: --backend must be docker or podman")
+        return 2
     }
+if has_flag(parsed, "dry-run") {
+    docker := owned_resource_inventory(backend)
+    temp := workspace_inventory()
+    mut image_action := "preserve"
+    if prune_images {
+        image_action = "remove-owned"
+    }
+mut inventory_ok := docker["ok"]
+if temp["ok"] == false {
+    inventory_ok = false
+}
 result := {"ok": inventory_ok, "dry_run": true, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
@@ -347,7 +352,7 @@ print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
 if result["ok"] {return 0}
 return 9
 }
-docker := clean_owned_resources_with_options(prune_images)
+docker := clean_owned_resources_with_options(prune_images, backend)
 temp := clean_stale_workspaces()
 clean_ok := docker["ok"]&&temp["ok"]
 result := {"ok": clean_ok, "docker": docker, "temporary_workspaces": temp}

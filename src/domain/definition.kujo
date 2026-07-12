@@ -8,6 +8,7 @@ export func default_definition() {
         "name": "workcell-project-check",
         "runtime": {
             "backend": "docker",
+            "engine_runtime": "",
             "image": "kujolang/workcell-base:local",
             "build_context": "",
             "image_digest": "",
@@ -65,6 +66,14 @@ export func default_definition() {
 },
 "receipt": {
     "path": ".workcell/runs"
+},
+"integrations": {
+    "runledger": {"enabled": false, "command": ["runledger"], "timeout_ms": 30000},
+    "changebucket": {"enabled": false, "command": ["changebucket"], "timeout_ms": 30000},
+    "shipcheck": {"enabled": false, "command": ["shipcheck"], "mode": "scan", "timeout_ms": 120000},
+    "fence": {"enabled": false, "command": [], "timeout_ms": 120000},
+    "packwrite": {"enabled": false, "command": ["packwrite"], "mode": "validate", "timeout_ms": 120000},
+    "muzzle": {"enabled": false, "command": ["muzzle"], "mode": "list", "timeout_ms": 120000}
 }
 }
 }
@@ -383,6 +392,7 @@ keys_check := validate_keys(value, ["version", "commands"], "verification")
 if keys_check["ok"] == false {
     return keys_check
 }
+
 if get_or(value, "version", 0) != 1 {
     return {"ok": false, "error": "verification.version must be exactly 1"}
 }
@@ -413,6 +423,62 @@ i = i + 1
 return {"ok": true}
 }
 
+func validate_integration_command(value, label) {
+    result := validate_string_array(value, label)
+    if result["ok"] == false {
+        return result
+    }
+if len(value) > 8 {
+    return {"ok": false, "error": label + " must contain at most 8 argv entries"}
+}
+return {"ok": true}
+}
+
+func validate_integrations(value) {
+    if type(value) != "dict" {
+        return {"ok": false, "error": "integrations must be an object"}
+    }
+allowed_names := ["runledger", "changebucket", "shipcheck", "fence", "packwrite", "muzzle"]
+names_check := validate_keys(value, allowed_names, "integrations")
+if names_check["ok"] == false {return names_check}
+for name in allowed_names {
+    if has_key_safe(value, name) == false {continue}
+    config := value[name]
+    if type(config) != "dict" {
+        return {"ok": false, "error": "integrations." + name + " must be an object"}
+    }
+allowed_fields := ["enabled", "command", "mode", "timeout_ms"]
+fields_check := validate_keys(config, allowed_fields, "integrations." + name)
+if fields_check["ok"] == false {return fields_check}
+if type(get_or(config, "enabled", false)) != "bool" {
+    return {"ok": false, "error": "integrations." + name + ".enabled must be boolean"}
+}
+command_check := validate_integration_command(get_or(config, "command", []), "integrations." + name + ".command")
+if command_check["ok"] == false {return command_check}
+if get_or(config, "enabled", false)&&len(get_or(config, "command", [])) == 0 {
+    return {"ok": false, "error": "integrations." + name + ".command is required when enabled"}
+}
+timeout := get_or(config, "timeout_ms", 120000)
+if type(timeout) != "int"||timeout <= 0||timeout > 900000 {
+    return {"ok": false, "error": "integrations." + name + ".timeout_ms must be between 1 and 900000"}
+}
+mode := get_or(config, "mode", "")
+if type(mode) != "string"||contains(mode, "\n") == 1||contains(mode, "\r") == 1 {
+    return {"ok": false, "error": "integrations." + name + ".mode must be a safe string"}
+}
+if name == "shipcheck"&&(mode != "scan"&&mode != "gate") {
+    return {"ok": false, "error": "integrations.shipcheck.mode must be scan or gate"}
+}
+if name == "packwrite"&&(mode != "validate"&&mode != "doctor") {
+    return {"ok": false, "error": "integrations.packwrite.mode must be validate or doctor"}
+}
+if name == "muzzle"&&mode != "list" {
+    return {"ok": false, "error": "integrations.muzzle.mode must be list"}
+}
+}
+return {"ok": true}
+}
+
 func validate_workspace_scan(value) {
     if type(value) != "dict" {
         return {"ok": false, "error": "workspace.scan must be an object"}
@@ -437,7 +503,7 @@ export func validate_definition(raw) {
     if type(raw) != "dict" {
         return {"ok": false, "error": "Workcell definition must be a JSON object"}
     }
-top := validate_keys(raw, ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt"], "definition")
+top := validate_keys(raw, ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt", "integrations"], "definition")
 if top["ok"] == false {
     return top
 }
@@ -450,12 +516,18 @@ if name_check["ok"] == false {
 }
 
 runtime := get_or(raw, "runtime", {})
-runtime_keys := validate_keys(runtime, ["backend", "image", "build_context", "image_digest", "signature_key"], "runtime")
+runtime_keys := validate_keys(runtime, ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"], "runtime")
 if runtime_keys["ok"] == false {
     return runtime_keys
 }
-if get_or(runtime, "backend", "") != "docker" {
-    return {"ok": false, "error": "runtime.backend must be docker in the MVP"}
+backend := get_or(runtime, "backend", "")
+if backend != "docker"&&backend != "podman" {
+    return {"ok": false, "error": "runtime.backend must be docker or podman"}
+}
+engine_runtime := get_or(runtime, "engine_runtime", "")
+if engine_runtime != "" {
+    runtime_check := valid_token(engine_runtime, "runtime.engine_runtime")
+    if runtime_check["ok"] == false {return runtime_check}
 }
 image_check := valid_token(get_or(runtime, "image", ""), "runtime.image")
 if image_check["ok"] == false {
@@ -734,6 +806,10 @@ verification_check := validate_verification(get_or(raw, "verification", {"versio
 if verification_check["ok"] == false {
     return verification_check
 }
+integrations_check := validate_integrations(get_or(raw, "integrations", default_definition()["integrations"]))
+if integrations_check["ok"] == false {
+    return integrations_check
+}
 receipt := get_or(raw, "receipt", {})
 receipt_keys := validate_keys(receipt, ["path"], "receipt")
 if receipt_keys["ok"] == false {
@@ -775,12 +851,12 @@ if has_key_safe(value, "version") == false {
 if has_key_safe(value, "name") == false {
     value["name"] := defaults["name"]
 }
-for section in ["runtime", "workspace", "environment", "resources", "network", "filesystem", "artifacts", "cleanup", "verification", "receipt"] {
+for section in ["runtime", "workspace", "environment", "resources", "network", "filesystem", "artifacts", "cleanup", "verification", "receipt", "integrations"] {
     if has_key_safe(value, section) == false {
         value[section] := defaults[section]
     }
 }
-value = fill_section_defaults(value, defaults, "runtime", ["backend", "image", "build_context", "image_digest", "signature_key"])
+value = fill_section_defaults(value, defaults, "runtime", ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"])
 value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "scan"])
 value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
 value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"])
@@ -828,6 +904,7 @@ export func definition_summary(definition) {
         "name": definition["name"],
         "version": definition["version"],
         "backend": definition["runtime"]["backend"],
+        "engine_runtime": definition["runtime"]["engine_runtime"],
         "image": definition["runtime"]["image"],
         "image_digest": definition["runtime"]["image_digest"],
         "signature_key": definition["runtime"]["signature_key"],
@@ -840,6 +917,7 @@ export func definition_summary(definition) {
         "artifact_policy": definition["artifacts"],
         "verification_checks": len(definition["verification"]["commands"]),
         "trust_profile": definition["trust_profile"]
+        , "integrations": definition["integrations"]
     }
 }
 
@@ -847,12 +925,12 @@ export func definition_schema() {
     return {
         "schema_version": "workcell-definition/v1",
         "type": "object",
-        "required": ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt"],
+        "required": ["version", "name", "runtime", "workspace", "command", "environment", "secrets", "resources", "network", "filesystem", "artifacts", "cleanup", "trust_profile", "verification", "receipt", "integrations"],
         "unknown_fields": "rejected",
         "fields": {
             "version": {"type": "integer", "const": 1},
             "name": {"type": "string", "non_empty": true},
-            "runtime": {"type": "object", "fields": ["backend", "image", "build_context", "image_digest", "signature_key"]},
+            "runtime": {"type": "object", "fields": ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"], "backend_enum": ["docker", "podman"]},
             "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
             "command": {"type": "array", "items": "string", "min_items": 1},
             "environment": {"type": "object", "fields": ["allow", "set"]},
@@ -865,6 +943,7 @@ export func definition_schema() {
             "cleanup": {"type": "object", "fields": ["keep_failed"]},
             "trust_profile": {"enum": ["contained-standard", "contained-open", "native-guarded"]},
             "receipt": {"type": "object", "fields": ["path"]}
+            , "integrations": {"type": "object", "fields": ["runledger", "changebucket", "shipcheck", "fence", "packwrite", "muzzle"], "opt_in": true}
         }
 }
 }

@@ -20,6 +20,14 @@
       "/tmp"
     ]
   },
+  "integrations": {
+    "changebucket": {"command": ["changebucket"], "enabled": false, "timeout_ms": 30000},
+    "fence": {"command": [], "enabled": false, "timeout_ms": 120000},
+    "muzzle": {"command": ["muzzle"], "enabled": false, "mode": "list", "timeout_ms": 120000},
+    "packwrite": {"command": ["packwrite"], "enabled": false, "mode": "validate", "timeout_ms": 120000},
+    "runledger": {"command": ["runledger"], "enabled": false, "timeout_ms": 30000},
+    "shipcheck": {"command": ["shipcheck"], "enabled": false, "mode": "scan", "timeout_ms": 120000}
+  },
   "name": "workcell-project-check",
   "network": {
     "mode": "none"
@@ -36,6 +44,7 @@
   "runtime": {
     "backend": "docker",
     "build_context": "",
+    "engine_runtime": "",
     "image": "kujolang/workcell-base:local"
   },
   "secrets": [],

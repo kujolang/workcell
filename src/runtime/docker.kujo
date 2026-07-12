@@ -3,27 +3,59 @@
 from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
+func runtime_program(backend) {
+    if backend == "podman" {return "podman"}
+    return "docker"
+}
+
+func runtime_argv(backend, arguments) {
+    mut argv := [runtime_program(backend)]
+    mut i := 0
+    while i < len(arguments) {
+        argv = push(argv, arguments[i])
+        i = i + 1
+    }
+return argv
+}
+
+func runtime_result(backend, arguments, timeout_ms) {
+    return run_argv(runtime_argv(backend, arguments), timeout_ms)
+}
+
 func docker_result(argv, timeout_ms) {
     return run_argv(argv, timeout_ms)
 }
 
 func verify_daemon_security(definition) {
-    result := docker_result(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
-    if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "inspect Docker security profiles")}
+    backend := definition["runtime"]["backend"]
+    if backend == "podman" {
+        rootless_result := runtime_result(backend, ["info", "--format", "{{.Host.Security.Rootless}}"], 10000)
+        if process_ok(rootless_result) == false {
+            return {"ok": false, "error": process_error(rootless_result, "inspect Podman rootless mode")}
+        }
+    rootless := to_lower(trim(rootless_result.stdout))
+    if definition["trust_profile"] == "native-guarded"&&rootless != "true" {
+        return {"ok": false, "error": "trust_profile native-guarded requires a rootless Podman engine or a stronger VM/microVM runtime"}
     }
+return {"ok": true, "rootless": rootless == "true"}
+}
+format := "{{json .SecurityOptions}}"
+result := runtime_result(backend, ["info", "--format", format], 10000)
+if process_ok(result) == false {
+    return {"ok": false, "error": process_error(result, "inspect Docker security profiles")}
+}
 options := trim(result.stdout)
-if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
+if backend == "docker"&&(contains(options, "seccomp") == 0||contains(options, "apparmor") == 0) {
     return {"ok": false, "error": "Docker daemon does not report both seccomp and AppArmor profiles"}
 }
-if definition["trust_profile"] == "native-guarded"&&contains(options, "rootless") == 0 {
+if definition["trust_profile"] == "native-guarded"&&contains(to_lower(options), "rootless") == 0 {
     return {"ok": false, "error": "trust_profile native-guarded requires a rootless Docker daemon or a stronger VM/microVM runtime"}
 }
 return {"ok": true}
 }
 
 export func doctor_docker() {
-    result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
+    result := runtime_result("docker", ["version", "--format", "{{.Server.Version}}"], 10000)
     if result.timed_out {
         return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
     }
@@ -33,19 +65,19 @@ if result.success == false {
 return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(result.stdout) + ")", "remediation": ""}
 }
 
-export func image_exists(image) {
-    result := docker_result(["docker", "image", "inspect", image], 15000)
+export func image_exists(image, backend) {
+    result := runtime_result(backend, ["image", "inspect", image], 15000)
     return process_ok(result)
 }
 
-export func image_metadata(image) {
-    image_id_result := docker_result(["docker", "image", "inspect", "--format", "{{.Id}}", image], 15000)
+export func image_metadata(image, backend) {
+    image_id_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Id}}", image], 15000)
     if process_ok(image_id_result) == false {
         return {"ok": false, "error": process_error(image_id_result, "inspect Docker image " + image)}
     }
-repo_result := docker_result(["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image], 15000)
-platform_result := docker_result(["docker", "image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], 15000)
-labels_result := docker_result(["docker", "image", "inspect", "--format", "{{json .Config.Labels}}", image], 15000)
+repo_result := runtime_result(backend, ["image", "inspect", "--format", "{{index .RepoDigests 0}}", image], 15000)
+platform_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], 15000)
+labels_result := runtime_result(backend, ["image", "inspect", "--format", "{{json .Config.Labels}}", image], 15000)
 image_id := trim(image_id_result.stdout)
 repo_digest := ""
 if process_ok(repo_result) {
@@ -75,31 +107,32 @@ if process_ok(labels_result)&&trim(labels_result.stdout) != "null" {
 return {"ok": true, "digest": digest, "image_id": image_id, "repo_digest": repo_digest, "digest_source": digest_source, "platform": platform, "labels": labels}
 }
 
-export func image_digest(image) {
-    metadata := image_metadata(image)
+export func image_digest(image, backend) {
+    metadata := image_metadata(image, backend)
     if metadata["ok"] == false {
         return ""
     }
 return metadata["digest"]
 }
 
-export func pull_image(image) {
-    result := docker_result(["docker", "pull", image], 600000)
+export func pull_image(image, backend) {
+    result := runtime_result(backend, ["pull", image], 600000)
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
-}
+    }
 return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
 
 export func build_image(image, context_path, run_identifier, definition) {
     project_label := "dev.kujo.workcell.project=" + definition["name"]
     version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
-    mut args := ["docker", "build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path]
+    backend := definition["runtime"]["backend"]
+    mut args := runtime_argv(backend, ["build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
     buildx := docker_result(["docker", "buildx", "version"], 10000)
-    if process_ok(buildx) {
-        args = ["docker", "buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path]
+    if backend == "docker"&&process_ok(buildx) {
+        args = runtime_argv(backend, ["buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
     }
-result := docker_result(args, 900000)
+result := run_argv(args, 900000)
 if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "docker build"), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
@@ -121,7 +154,7 @@ if signature_key != "" {
     if file_exists(key_path) == false||path_has_symlink(key_path) {
         return {"ok": false, "error": "runtime.signature_key does not exist or contains a symlink: " + key_path}
     }
-signature := docker_result(["cosign", "verify", "--key", key_path, image], 120000)
+signature := run_argv(["cosign", "verify", "--key", key_path, image], 120000)
 if process_ok(signature) == false {
     return {"ok": false, "error": process_error(signature, "cosign verify " + image), "stdout": get_or(signature, "stdout", ""), "stderr": get_or(signature, "stderr", "")}
 }
@@ -130,6 +163,7 @@ return {"ok": true}
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
+    backend := definition["runtime"]["backend"]
     image := definition["runtime"]["image"]
     context := definition["runtime"]["build_context"]
     if context != "" {
@@ -147,8 +181,8 @@ if daemon_security["ok"] == false {
 }
 if context != "" {
     context_path := source_root + "/" + context
-    if rebuild == false&&image_exists(image) {
-        metadata := image_metadata(image)
+    if rebuild == false&&image_exists(image, backend) {
+        metadata := image_metadata(image, backend)
         digest := metadata["digest"]
         verified := verify_image(definition, source_root, image, digest)
         if verified["ok"] == false {return verified}
@@ -158,14 +192,14 @@ built := build_image(image, context_path, run_identifier, definition)
 if built["ok"] == false {
     return built
 }
-metadata := image_metadata(image)
+metadata := image_metadata(image, backend)
 digest := metadata["digest"]
 verified := verify_image(definition, source_root, image, digest)
 if verified["ok"] == false {return verified}
 return {"ok": true, "action": "built", "digest": digest, "image_id": metadata["image_id"], "digest_source": metadata["digest_source"], "platform": metadata["platform"], "labels": metadata["labels"], "stdout": built["stdout"]}
 }
-if image_exists(image) {
-    metadata := image_metadata(image)
+if image_exists(image, backend) {
+    metadata := image_metadata(image, backend)
     digest := metadata["digest"]
     verified := verify_image(definition, source_root, image, digest)
     if verified["ok"] == false {return verified}
@@ -174,11 +208,11 @@ if image_exists(image) {
 if no_pull {
     return {"ok": false, "error": "image is not available locally and --no-pull was requested: " + image}
 }
-pulled := pull_image(image)
+pulled := pull_image(image, backend)
 if pulled["ok"] == false {
     return pulled
 }
-metadata := image_metadata(image)
+metadata := image_metadata(image, backend)
 digest := metadata["digest"]
 verified := verify_image(definition, source_root, image, digest)
 if verified["ok"] == false {return verified}
@@ -196,12 +230,12 @@ if type(stream_options) == "dict" {
         if has_key(stream_options, key) {
             process_options[key] := stream_options[key]
         }
-    }
+}
 options["options"] := process_options
 }
 result := run_argv_options(policy["docker_args"], options["options"])
 if result.success == false&&result.timed_out == false&&result.exitcode == 125 {
-    state_result := docker_result(["docker", "inspect", "--format", "{{.State.Status}}", policy["container_name"]], 10000)
+    state_result := runtime_result(policy["runtime_backend"], ["inspect", "--format", "{{.State.Status}}", policy["container_name"]], 10000)
     if process_ok(state_result)&&trim(state_result.stdout) == "exited" {
         return {
             "ok": true,
@@ -237,8 +271,8 @@ return {
 }
 }
 
-export func stop_container(container_name) {
-    result := docker_result(["docker", "stop", "--time", "10", container_name], 30000)
+export func stop_container(container_name, backend) {
+    result := runtime_result(backend, ["stop", "--time", "10", container_name], 30000)
     if process_ok(result) {
         return {"ok": true, "message": "container stopped gracefully"}
     }
@@ -249,24 +283,24 @@ if contains(message, "No such container") == 1||contains(message, "is not runnin
 return {"ok": false, "message": message, "exit_code": result.exitcode}
 }
 
-export func container_logs(container_name) {
-    result := docker_result(["docker", "logs", container_name], 30000)
+export func container_logs(container_name, backend) {
+    result := runtime_result(backend, ["logs", container_name], 30000)
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "collect container logs")}
     }
 return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
 }
 
-export func remove_container(container_name) {
-    result := docker_result(["docker", "rm", "-f", container_name], 30000)
+export func remove_container(container_name, backend) {
+    result := runtime_result(backend, ["rm", "-f", container_name], 30000)
     if process_ok(result) {
         return {"ok": true, "message": "container removed"}
     }
 return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
 }
 
-export func clean_owned_resources() {
-    return clean_owned_resources_with_options(false)
+export func clean_owned_resources(backend) {
+    return clean_owned_resources_with_options(false, backend)
 }
 
 func resource_ids(argv, operation) {
@@ -289,18 +323,18 @@ i = i + 1
 return {"ok": true, "items": items}
 }
 
-export func owned_resource_inventory() {
-    containers := resource_ids(["docker", "ps", "-aq", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"], "list Workcell containers")
-    images := resource_ids(["docker", "images", "-q", "--filter", "label=dev.kujo.workcell=true"], "list Workcell images")
-    networks := resource_ids(["docker", "network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"], "list Workcell networks")
+export func owned_resource_inventory(backend) {
+    containers := resource_ids(runtime_argv(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"]), "list Workcell containers")
+    images := resource_ids(runtime_argv(backend, ["images", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell images")
+    networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell networks")
     if containers["ok"] == false||images["ok"] == false||networks["ok"] == false {
         return {"ok": false, "containers": containers, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
     }
 return {"ok": true, "containers": containers["items"], "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
 }
 
-export func clean_owned_resources_with_options(prune_images) {
-    listed := docker_result(["docker", "ps", "-aq", "--filter", "label=dev.kujo.workcell=true"], 30000)
+export func clean_owned_resources_with_options(prune_images, backend) {
+    listed := runtime_result(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true"], 30000)
     if process_ok(listed) == false {
         return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
     }
@@ -313,7 +347,7 @@ mut i := 0
 while i < len(ids) {
     id := trim(ids[i])
     if id != "" {
-        result := remove_container(id)
+        result := remove_container(id, backend)
         if result["ok"] {
             removed = removed + 1
         } else {
@@ -322,7 +356,7 @@ while i < len(ids) {
 }
 i = i + 1
 }
-image_list := resource_ids(["docker", "images", "-q", "--filter", "label=dev.kujo.workcell=true"], "list Workcell images")
+image_list := resource_ids(runtime_argv(backend, ["images", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell images")
 if image_list["ok"] == false {
     failed = push(failed, image_list["error"])
 } else {
@@ -330,7 +364,7 @@ if prune_images {
     image_i := 0
     while image_i < len(image_list["items"]) {
         image_id := image_list["items"][image_i]
-        image_result := docker_result(["docker", "rmi", "-f", image_id], 60000)
+        image_result := runtime_result(backend, ["rmi", "-f", image_id], 60000)
         if process_ok(image_result) {
             removed_images = push(removed_images, image_id)
         } else {
@@ -342,7 +376,7 @@ image_i = image_i + 1
 preserved_images = image_list["items"]
 }
 }
-networks := resource_ids(["docker", "network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"], "list Workcell networks")
+networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell networks")
 if networks["ok"] == false {
     failed = push(failed, networks["error"])
 }

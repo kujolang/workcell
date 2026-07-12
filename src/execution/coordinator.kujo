@@ -8,6 +8,7 @@ from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_syml
 from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
+from src.integrations.integrations import run_integrations
 
 func option(flags, name, fallback) {
     if type(flags) == "dict"&&has_key(flags, name) == 1 {
@@ -193,11 +194,11 @@ if container["ok"] == false {
         receipt = add_error(receipt, "recording", logs["error"])
     }
 receipt = add_state(receipt, "cleaning")
-start_stop := stop_container(policy["container_name"])
+start_stop := stop_container(policy["container_name"], definition["runtime"]["backend"])
 if start_stop["ok"] == false {
     receipt = add_error(receipt, "cleaning", start_stop["message"])
 }
-container_cleanup := remove_container(policy["container_name"])
+container_cleanup := remove_container(policy["container_name"], definition["runtime"]["backend"])
 if container_cleanup["ok"] == false {
     receipt = add_error(receipt, "cleaning", container_cleanup["message"])
 }
@@ -243,7 +244,7 @@ if container["stdout_truncated"]||container["stderr_truncated"] {
 mut captured_stdout := container["stdout"]
 mut captured_stderr := container["stderr"]
 if container["timed_out"] {
-    timeout_logs := container_logs(container["container_name"])
+    timeout_logs := container_logs(container["container_name"], definition["runtime"]["backend"])
     if timeout_logs["ok"] {
         captured_stdout = timeout_logs["stdout"]
         captured_stderr = timeout_logs["stderr"]
@@ -320,12 +321,12 @@ receipt = add_state(receipt, "failed")
 receipt = add_state(receipt, "cleaning")
 mut stop_result := {"ok": true, "message": "not required"}
 if container["timed_out"]||get_or(container, "cancelled", false) {
-    stop_result = stop_container(container["container_name"])
+    stop_result = stop_container(container["container_name"], definition["runtime"]["backend"])
     if stop_result["ok"] == false {
         receipt = add_error(receipt, "cleaning", stop_result["message"])
     }
 }
-container_cleanup := remove_container(container["container_name"])
+container_cleanup := remove_container(container["container_name"], definition["runtime"]["backend"])
 if container_cleanup["ok"] == false {
     receipt = add_error(receipt, "cleaning", container_cleanup["message"])
 }
@@ -356,10 +357,10 @@ if container["timed_out"] {
     final_ok = false
     final_error = "container execution exceeded the configured timeout"
 } else if get_or(container, "cancelled", false) {
-    exit_code = 130
-    final_status = "cancelled"
-    final_ok = false
-    final_error = "container execution was cancelled by the parent process or cancellation hook"
+exit_code = 130
+final_status = "cancelled"
+final_ok = false
+final_error = "container execution was cancelled by the parent process or cancellation hook"
 } else if container["success"] == false {
 final_status = "workload-failed"
 final_ok = false
@@ -381,6 +382,16 @@ final_ok = false
 final_error = "Workcell cleanup failed; see receipt errors"
 }
 receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"], receipt["container_image_digest"], changed, patch_path, artifact_list, cleanup_status, current_timestamp() - start_clock, execution_success, artifacts["ok"])
+integration_results := run_integrations(definition, source_info["root"], output_dir, receipt_path, final_status, final_ok)
+receipt["integrations"] := integration_results["results"]
+if integration_results["ok"] {
+    receipt["integration_status"] := "passed"
+} else {
+receipt["integration_status"] := "failed"
+warnings := receipt["warnings"]
+warnings = push(warnings, "one or more opt-in ecosystem integrations failed; see receipt.integrations")
+receipt["warnings"] := warnings
+}
 final_write := write_receipt(receipt, receipt_path)
 if final_write["ok"] == false {
     receipt = add_error(receipt, "recording", final_write["error"])

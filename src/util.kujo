@@ -141,7 +141,7 @@ return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
 
 export func save_json(path, value) {
     parent := parent_of(path)
-    if parent != "" { ensure_dir(parent) }
+    if parent != "" {ensure_dir(parent)}
     return write_file_atomic(path, to_json_pretty(value), true)
 }
 
@@ -360,8 +360,8 @@ export func env_secret_stream_values(names) {
             if len(value) >= 8 {
                 values = push(values, encode_base64(value))
             }
-        }
-    i = i + 1
+    }
+i = i + 1
 }
 return values
 }
@@ -408,9 +408,9 @@ return {"ok": true, "value": parts[0] + ":" + parts[1], "source": "fixed", "uid"
 
 export func process_ok(result) {
     if type(result) == "dict" {
-        return get_or(result, "success", false) == true && get_or(result, "timed_out", false) == false
+        return get_or(result, "success", false) == true&&get_or(result, "timed_out", false) == false
     }
-    return result.success && result.timed_out == false
+return result.success&&result.timed_out == false
 }
 
 export func process_error(result, operation) {
@@ -422,14 +422,14 @@ export func process_error(result, operation) {
         exitcode = get_or(result, "exitcode", 127)
         stderr = get_or(result, "stderr", "")
     } else {
-        timed_out = result.timed_out
-        exitcode = result.exitcode
-        stderr = result.stderr
-    }
-    if type(stderr) != "string" { stderr = "" }
-    if timed_out {
-        return operation + ": timed out"
-    }
+    timed_out = result.timed_out
+    exitcode = result.exitcode
+    stderr = result.stderr
+}
+if type(stderr) != "string" {stderr = ""}
+if timed_out {
+    return operation + ": timed out"
+}
 return operation + " exited with code " + to_string(exitcode) + ": " + trim(stderr)
 }
 

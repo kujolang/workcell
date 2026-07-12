@@ -31,8 +31,8 @@ func check_result(check, container, cleanup_status, secrets) {
         status = "timeout"
     } else if get_or(container, "cancelled", false) {
     status = "cancelled"
-    } else if get_or(container, "success", false) == false {
-    status = "failed"
+} else if get_or(container, "success", false) == false {
+status = "failed"
 }
 return {
     "name": check["name"],
@@ -76,7 +76,7 @@ if container["ok"] == false {
 mut stdout := redact_with_env(get_or(container, "stdout", ""), secrets)
 mut stderr := redact_with_env(get_or(container, "stderr", ""), secrets)
 if get_or(container, "timed_out", false) {
-    logs := container_logs(policy["container_name"])
+    logs := container_logs(policy["container_name"], definition["runtime"]["backend"])
     if logs["ok"] {
         stdout = redact_with_env(logs["stdout"], secrets)
         stderr = redact_with_env(logs["stderr"], secrets)
@@ -84,9 +84,9 @@ if get_or(container, "timed_out", false) {
 }
 mut stop_result := {"ok": true}
 if get_or(container, "timed_out", false) {
-    stop_result = stop_container(policy["container_name"])
+    stop_result = stop_container(policy["container_name"], definition["runtime"]["backend"])
 }
-cleanup := remove_container(policy["container_name"])
+cleanup := remove_container(policy["container_name"], definition["runtime"]["backend"])
 mut cleanup_status := "complete"
 if stop_result["ok"] == false||cleanup["ok"] == false {
     cleanup_status = "failed"

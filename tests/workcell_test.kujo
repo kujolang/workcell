@@ -6,6 +6,7 @@ from src.policy.policy import build_policy
 from src.receipts.receipt import add_error, new_receipt
 from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
+from src.integrations.integrations import run_integrations
 
 mut passed := 0
 mut failed := 0
@@ -45,6 +46,14 @@ func with_artifact(definition, path) {
 func with_image(definition, image) {
     runtime := definition["runtime"]
     runtime["image"] := image
+    definition["runtime"] := runtime
+    return definition
+}
+
+func with_backend(definition, backend, engine_runtime) {
+    runtime := definition["runtime"]
+    runtime["backend"] := backend
+    runtime["engine_runtime"] := engine_runtime
     definition["runtime"] := runtime
     return definition
 }
@@ -152,6 +161,16 @@ func with_build_context(definition, context) {
     return definition
 }
 
+func with_integration(definition, name, enabled, command) {
+    integrations := definition["integrations"]
+    config := integrations[name]
+    config["enabled"] := enabled
+    config["command"] := command
+    integrations[name] := config
+    definition["integrations"] := integrations
+    return definition
+}
+
 func with_tmpfs(definition, path) {
     filesystem := definition["filesystem"]
     filesystem["tmpfs"] := [path]
@@ -185,6 +204,7 @@ expect("custom network requires a name", validate_definition(with_custom_network
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
+expect("podman backend accepted", validate_definition(with_backend(definition, "podman", ""))["ok"])
 expect("valid image digest accepted", validate_definition(with_image_digest(definition, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))["ok"])
 expect("invalid image digest rejected", validate_definition(with_image_digest(definition, "sha256:not-a-digest"))["ok"] == false)
 expect("relative signature key accepted", validate_definition(with_signature_key(definition, "keys/workcell.pub"))["ok"])
@@ -205,6 +225,8 @@ expect("artifact extension policy is validated", validate_definition(with_artifa
 expect("artifact secret action is validated", validate_definition(with_artifact_policy(definition, "secret_action", "leak"))["ok"] == false)
 expect("verification command is accepted", validate_definition(with_verification(definition, [{"name": "smoke", "command": ["sh", "-lc", "true"]}]))["ok"])
 expect("verification command must be non-empty", validate_definition(with_verification(definition, [{"name": "empty", "command": []}]))["ok"] == false)
+expect("optional integrations default disabled", validate_definition(definition)["ok"]&&definition["integrations"]["changebucket"]["enabled"] == false)
+expect("optional integration command is bounded", validate_definition(with_integration(definition, "changebucket", true, ["true", "extra", "args", "allowed", "still", "bounded", "argv", "entries", "too-many"]))["ok"] == false)
 expect("workspace scan file limit is bounded", validate_definition(with_workspace_scan(definition, "max_files", 0))["ok"] == false)
 expect("workspace scan depth limit is bounded", validate_definition(with_workspace_scan(definition, "max_depth", 257))["ok"] == false)
 expect("fixed non-root workspace identity is accepted", validate_definition(with_run_as(definition, "65532:65532"))["ok"])
@@ -234,6 +256,10 @@ expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=t
 expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1&&contains(to_string(args), "private") == 1)
 profile_policy := build_policy(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"), "test-security-profiles", "/tmp/workcell-test-workspace")
 expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1&&contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
+podman_policy := build_policy(with_backend(definition, "podman", "crun"), "test-podman", "/tmp/workcell-test-workspace")
+expect("podman policy uses OCI engine and runtime class", podman_policy["runtime_engine"] == "podman"&&contains(to_string(podman_policy["docker_args"]), "podman") == 1&&contains(to_string(podman_policy["docker_args"]), "crun") == 1)
+podman_receipt := new_receipt(with_backend(definition, "podman", ""), "workcell.json", "test-podman-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, podman_policy, "/tmp/workcell-output")
+expect("receipt records selected runtime backend", podman_receipt["runtime_backend"] == "podman")
 empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)
 expect("empty verification plan succeeds without Docker work", empty_verification["ok"]&&len(empty_verification["checks"]) == 0)
 verification_secret_definition := with_verification(with_secret(definition, "AUDIT_SECRET"), [{"name": "secret-check", "command": ["sh", "-lc", "printf artifact-secret"]}])
@@ -262,6 +288,12 @@ secret_stdout := read_text(secret_log_dir + "/stdout.log")
 secret_stderr := read_text(secret_log_dir + "/stderr.log")
 expect("empty secret does not corrupt logs", secret_logs["ok"]&&secret_stdout["text"] == "hello"&&secret_stderr["text"] == "stderr")
 run_argv(["rm", "-rf", secret_log_dir], 30000)
+
+integration_output := "/tmp/workcell-integration-contract-" + run_id()
+integration_definition := with_secret(with_integration(definition, "changebucket", true, ["sh", "-c", "printf longsecret >/dev/null"]), "LONG_SECRET")
+integration_result := run_integrations(integration_definition, "/tmp", integration_output, integration_output + "/receipt.json", "completed", true)
+expect("opt-in integration writes a separate redacted report", integration_result["ok"]&&integration_result["results"][1]["ok"]&&integration_result["results"][1]["exit_code"] == 0&&file_exists(integration_output + "/integrations/changebucket.json")&&contains(to_json(integration_result["results"][1]), "longsecret") == 0)
+run_argv(["rm", "-rf", integration_output], 30000)
 
 derived_log_dir := "/tmp/workcell-derived-secret-" + run_id()
 ensure_dir(derived_log_dir)

@@ -23,7 +23,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "source_commit": source["source_commit"],
         "workspace_strategy": workspace["strategy"],
         "workspace_path": workspace["workspace_path"],
-        "runtime_backend": "docker",
+        "runtime_backend": policy["runtime_backend"],
         "container_image": definition["runtime"]["image"],
         "container_image_digest": "",
         "container_image_id": "",
@@ -63,6 +63,8 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
             "artifacts_exported": false,
             "cleanup_succeeded": false
         },
+    "integrations": [],
+    "integration_status": "disabled",
     "errors": [],
     "warnings": [],
     "lifecycle": ["created"]

@@ -38,6 +38,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "elapsed_ms": null,
         "exit_code": null,
         "timeout": false,
+        "cancelled": false,
         "stdout_truncated": false,
         "stderr_truncated": false,
         "network_mode": policy["network_mode"],

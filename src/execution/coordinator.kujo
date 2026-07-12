@@ -4,7 +4,7 @@ from src.artifacts.exporter import export_declared_with_policy, write_execution_
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
-from src.util import ensure_dir, get_or, iso_now, path_has_symlink, path_within, redact_with_env, run_id, write_text
+from src.util import ensure_dir, env_secret_stream_values, get_or, iso_now, path_has_symlink, path_within, redact_with_env, run_id, write_text
 from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
@@ -57,7 +57,7 @@ func write_failure_note(output_dir, stage, message) {
     write_text(output_dir + "/failure.txt", "Workcell failure\nStage: " + stage + "\nCause: " + message + "\nRecorded: " + iso_now() + "\n")
 }
 
-func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, error, exit_code, timed_out, cleanup_status) {
+func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, error, exit_code, timed_out, cancelled, cleanup_status) {
     return {
         "ok": ok,
         "run_id": run_identifier,
@@ -68,6 +68,7 @@ func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, 
         "error": error,
         "exit_code": exit_code,
         "timed_out": timed_out,
+        "cancelled": cancelled,
         "cleanup_status": cleanup_status,
         "receipt": receipt
     }
@@ -124,7 +125,7 @@ if initial_write["ok"] == false {
     if cleanup["ok"] {
         cleanup_status = "complete"
     }
-return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", initial_write["error"], 10, false, cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", initial_write["error"], 10, false, false, cleanup_status)
 }
 
 preserve_failed := is_true(option(flags, "keep_failed", definition["cleanup"]["keep_failed"]))
@@ -141,9 +142,9 @@ if is_true(option(flags, "dry_run", false)) {
 receipt = finish_receipt(receipt, "dry-run", 0, false, "", [], null, [], dry_cleanup_status, current_timestamp() - start_clock, false, false)
 dry_write := write_receipt(receipt, receipt_path)
 if dry_write["ok"] == false {
-    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", dry_write["error"], 10, false, dry_cleanup_status)
+    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", dry_write["error"], 10, false, false, dry_cleanup_status)
 }
-return final_result(run_identifier, receipt_path, output_dir, receipt, true, "completed", "", 0, false, dry_cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, true, "completed", "", 0, false, false, dry_cleanup_status)
 }
 
 image := ensure_image(definition, workspace["source_root"], run_identifier, is_true(option(flags, "no_pull", false)), is_true(option(flags, "rebuild", false)))
@@ -168,9 +169,9 @@ receipt = add_state(receipt, "cleaned")
 receipt = finish_receipt(receipt, "failed", 4, false, "", [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
 image_write := write_receipt(receipt, receipt_path)
 if image_write["ok"] == false {
-    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, cleanup_status)
+    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, false, cleanup_status)
 }
-return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", redact_with_env(image["error"], definition["secrets"]), 4, false, cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, false, "preparing", redact_with_env(image["error"], definition["secrets"]), 4, false, false, cleanup_status)
 }
 receipt["container_image_digest"] := get_or(image, "digest", "")
 receipt["container_image_id"] := get_or(image, "image_id", "")
@@ -178,7 +179,12 @@ receipt["container_image_digest_source"] := get_or(image, "digest_source", "")
 receipt["container_image_platform"] := get_or(image, "platform", "")
 receipt["container_image_labels"] := get_or(image, "labels", {})
 receipt = add_state(receipt, "starting")
-container := run_container(definition, policy)
+stream_options := {
+    "stream_stdout_path": output_dir + "/stdout.log",
+    "stream_stderr_path": output_dir + "/stderr.log",
+    "redact_values": env_secret_stream_values(definition["secrets"])
+}
+container := run_container(definition, policy, stream_options)
 if container["ok"] == false {
     receipt = add_error(receipt, "starting", container["error"])
     receipt = add_state(receipt, "failed")
@@ -221,13 +227,14 @@ if cleanup_status == "failed" {
 receipt = finish_receipt(receipt, start_status, start_exit_code, false, receipt["container_image_digest"], [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
 start_write := write_receipt(receipt, receipt_path)
 if start_write["ok"] == false {
-    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, cleanup_status)
+    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, false, cleanup_status)
 }
-return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_status, redact_with_env(start_error, definition["secrets"]), start_exit_code, false, cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_status, redact_with_env(start_error, definition["secrets"]), start_exit_code, false, false, cleanup_status)
 }
 receipt = add_state(receipt, "running")
 receipt["stdout_truncated"] := container["stdout_truncated"]
 receipt["stderr_truncated"] := container["stderr_truncated"]
+receipt["cancelled"] := get_or(container, "cancelled", false)
 if container["stdout_truncated"]||container["stderr_truncated"] {
     warnings := receipt["warnings"]
     warnings = push(warnings, "captured process output exceeded the configured limit")
@@ -276,9 +283,11 @@ if change_report["ok"] == false {
 }
 receipt["change_report_path"] := change_report_path
 receipt = add_state(receipt, "verifying")
-execution_success := container["success"] == true&&container["timed_out"] == false
+execution_success := container["success"] == true&&container["timed_out"] == false&&get_or(container, "cancelled", false) == false
 if container["timed_out"] {
     receipt = add_error(receipt, "running", "container execution exceeded the configured timeout")
+} else if get_or(container, "cancelled", false) {
+receipt = add_error(receipt, "running", "container execution was cancelled by the parent process or cancellation hook")
 } else if container["success"] == false {
 receipt = add_error(receipt, "running", "container exited with code " + to_string(container["exit_code"]))
 }
@@ -310,7 +319,7 @@ receipt = add_state(receipt, "failed")
 }
 receipt = add_state(receipt, "cleaning")
 mut stop_result := {"ok": true, "message": "not required"}
-if container["timed_out"] {
+if container["timed_out"]||get_or(container, "cancelled", false) {
     stop_result = stop_container(container["container_name"])
     if stop_result["ok"] == false {
         receipt = add_error(receipt, "cleaning", stop_result["message"])
@@ -346,6 +355,11 @@ if container["timed_out"] {
     final_status = "timeout"
     final_ok = false
     final_error = "container execution exceeded the configured timeout"
+} else if get_or(container, "cancelled", false) {
+    exit_code = 130
+    final_status = "cancelled"
+    final_ok = false
+    final_error = "container execution was cancelled by the parent process or cancellation hook"
 } else if container["success"] == false {
 final_status = "workload-failed"
 final_ok = false
@@ -370,7 +384,7 @@ receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"
 final_write := write_receipt(receipt, receipt_path)
 if final_write["ok"] == false {
     receipt = add_error(receipt, "recording", final_write["error"])
-    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", final_write["error"], 10, container["timed_out"], cleanup_status)
+    return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", final_write["error"], 10, container["timed_out"], get_or(container, "cancelled", false), cleanup_status)
 }
-return final_result(run_identifier, receipt_path, output_dir, receipt, final_ok, final_status, redact_with_env(final_error, definition["secrets"]), exit_code, container["timed_out"], cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, final_ok, final_status, redact_with_env(final_error, definition["secrets"]), exit_code, container["timed_out"], get_or(container, "cancelled", false), cleanup_status)
 }

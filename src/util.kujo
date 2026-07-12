@@ -364,6 +364,22 @@ export func env_secret_values(names) {
 return values
 }
 
+export func env_secret_stream_values(names) {
+    mut values := []
+    mut i := 0
+    while i < len(names) {
+        value := env(names[i])
+        if type(value) == "string"&&len(value) > 0 {
+            values = push(values, value)
+            if len(value) >= 8 {
+                values = push(values, encode_base64(value))
+            }
+        }
+    i = i + 1
+}
+return values
+}
+
 export func redact_with_env(text, names) {
     return redact(text, env_secret_values(names))
 }

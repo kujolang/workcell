@@ -86,8 +86,12 @@ KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json
 HELLO_RECEIPT="$(find "$OUT_ROOT/hello" -name receipt.json -print -quit)"
 test -f "$HELLO_RECEIPT"
 test -f "$OUT_ROOT/hello"/*/artifacts/hello.txt
+HELLO_RUN_DIR="$(dirname "$HELLO_RECEIPT")"
+test -f "$HELLO_RUN_DIR/stdout.log"
+test -f "$HELLO_RUN_DIR/stderr.log"
 jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
+jq -e '.cancelled == false' "$HELLO_RECEIPT" >/dev/null
 git -C "$TMP_REPO" diff --quiet
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/verification/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/verification"

@@ -29,6 +29,8 @@ func check_result(check, container, cleanup_status, secrets) {
     mut status := "passed"
     if get_or(container, "timed_out", false) {
         status = "timeout"
+    } else if get_or(container, "cancelled", false) {
+    status = "cancelled"
     } else if get_or(container, "success", false) == false {
     status = "failed"
 }
@@ -66,7 +68,7 @@ while i < len(checks) {
         results = push(results, {"name": check["name"], "command": safe_command(check["command"], secrets), "status": "blocked", "exit_code": null, "stdout": "", "stderr": redact_with_env(policy["error"], secrets), "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": "not-started"})
         return {"ok": false, "checks": results, "error": "could not build verification policy for " + check["name"]}
     }
-container := run_container(check_definition, policy)
+container := run_container(check_definition, policy, {})
 if container["ok"] == false {
     results = push(results, {"name": check["name"], "command": safe_command(check["command"], secrets), "status": "blocked", "exit_code": null, "stdout": "", "stderr": redact_with_env(container["error"], secrets), "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": "not-started"})
     return {"ok": false, "checks": results, "error": "verification could not start: " + check["name"]}

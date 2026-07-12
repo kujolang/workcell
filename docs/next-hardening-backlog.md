@@ -6,7 +6,7 @@ This is the next-session work list produced by the codebase review on 2026-07-11
 
 The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, cannot provide true streaming redaction until the Kujo process API exposes stream callbacks, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. A prior Colima integration run passed; the current local daemon is unavailable and must be rerun before claiming host-level integration evidence for this milestone.
 
-The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, and image ownership labels. The current offline suite is 66 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
+The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, and image ownership labels. The current offline suite is 68 policy assertions plus 8 workspace assertions; Docker integration and ecosystem gates remain required release evidence.
 
 ## P0 — Kujo toolchain safety
 

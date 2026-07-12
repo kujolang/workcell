@@ -26,7 +26,7 @@ func flag(parsed, name, fallback) {
     if has_flag(parsed, name) {
         return parsed["flags"][name]
     }
-    return fallback
+return fallback
 }
 
 func parse_args(tokens) {
@@ -45,43 +45,43 @@ func parse_args(tokens) {
                 if name == bool_flags[b] {
                     known = true
                 }
-                b = b + 1
-            }
-            mut v := 0
-            while v < len(value_flags) {
-                if name == value_flags[v] {
-                    known = true
-                    if i + 1 >= len(tokens) || starts_with(tokens[i + 1], "--") {
-                        return {"error": "missing value for --" + name}
-                    }
-                    flags[name] := tokens[i + 1]
-                    i = i + 1
-                }
-                v = v + 1
-            }
-            if known == false {
-                return {"error": "unknown option --" + name}
-            }
-            mut boolean_i := 0
-            while boolean_i < len(bool_flags) {
-                if name == bool_flags[boolean_i] {
-                    flags[name] := true
-                }
-                boolean_i = boolean_i + 1
-            }
-        } else {
-            positionals = push(positionals, token)
+            b = b + 1
         }
+    mut v := 0
+    while v < len(value_flags) {
+        if name == value_flags[v] {
+            known = true
+            if i + 1 >= len(tokens)||starts_with(tokens[i + 1], "--") {
+                return {"error": "missing value for --" + name}
+            }
+        flags[name] := tokens[i + 1]
         i = i + 1
     }
-    return {"positionals": positionals, "flags": flags}
+v = v + 1
+}
+if known == false {
+    return {"error": "unknown option --" + name}
+}
+mut boolean_i := 0
+while boolean_i < len(bool_flags) {
+    if name == bool_flags[boolean_i] {
+        flags[name] := true
+    }
+boolean_i = boolean_i + 1
+}
+} else {
+positionals = push(positionals, token)
+}
+i = i + 1
+}
+return {"positionals": positionals, "flags": flags}
 }
 
 func command_name(parsed) {
     if len(parsed["positionals"]) == 0 {
         return "help"
     }
-    return parsed["positionals"][0]
+return parsed["positionals"][0]
 }
 
 func definition_path(parsed) {
@@ -97,12 +97,12 @@ func help_value() {
         "schema_version": "workcell-cli/v1",
         "version": VERSION,
         "commands": [
-            {"name": "doctor", "options": ["--repo", "--json"]},
-            {"name": "init", "options": ["--file", "--force"]},
-            {"name": "validate", "options": ["--file", "--json", "--schema"]},
-            {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
-            {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
-            {"name": "clean", "options": ["--json", "--dry-run", "--prune-images"]}
+        {"name": "doctor", "options": ["--repo", "--json"]},
+        {"name": "init", "options": ["--file", "--force"]},
+        {"name": "validate", "options": ["--file", "--json", "--schema"]},
+        {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
+        {"name": "clean", "options": ["--json", "--dry-run", "--prune-images"]}
         ],
         "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "Docker or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
@@ -114,30 +114,30 @@ func print_help(json_mode) {
         print(to_json_pretty(help_value()))
         return
     }
-    print_lines([
-        "Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
-        "",
-        "Usage:",
-        "  workcell doctor [--repo <path>] [--json]",
-        "  workcell init [--file <path>] [--force]",
-        "  workcell validate [--file <path>] [--json] [--schema]",
-        "  workcell inspect [--file <path>] [--repo <path>] [--json]",
-        "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
-        "  workcell clean [--json] [--dry-run] [--prune-images]",
-        "",
-        "Run options:",
-        "  --dry-run       Resolve and record the policy without starting Docker",
-        "  --keep-failed   Preserve a failed disposable workspace",
-        "  --no-pull       Do not pull a missing image",
-        "  --rebuild       Rebuild a configured build context",
-        "  --json          Emit one machine-readable JSON object",
-        "  --schema        Emit the versioned Workcell definition schema (validate only)",
-        "",
-        "Security defaults:",
-        "  Docker backend, non-root user, network none, no-new-privileges,",
-        "  dropped capabilities, bounded CPU/memory/PIDs/time, and declared artifacts only.",
-        "  Dirty source repositories and unsafe mounts are rejected by default."
-    ])
+print_lines([
+"Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
+"",
+"Usage:",
+"  workcell doctor [--repo <path>] [--json]",
+"  workcell init [--file <path>] [--force]",
+"  workcell validate [--file <path>] [--json] [--schema]",
+"  workcell inspect [--file <path>] [--repo <path>] [--json]",
+"  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
+"  workcell clean [--json] [--dry-run] [--prune-images]",
+"",
+"Run options:",
+"  --dry-run       Resolve and record the policy without starting Docker",
+"  --keep-failed   Preserve a failed disposable workspace",
+"  --no-pull       Do not pull a missing image",
+"  --rebuild       Rebuild a configured build context",
+"  --json          Emit one machine-readable JSON object",
+"  --schema        Emit the versioned Workcell definition schema (validate only)",
+"",
+"Security defaults:",
+"  Docker backend, non-root user, network none, no-new-privileges,",
+"  dropped capabilities, bounded CPU/memory/PIDs/time, and declared artifacts only.",
+"  Dirty source repositories and unsafe mounts are rejected by default."
+])
 }
 
 func print_check_report(value, json_mode) {
@@ -145,33 +145,33 @@ func print_check_report(value, json_mode) {
         print(to_json_pretty(value))
         return
     }
-    print("Workcell doctor")
-    print("===============")
-    checks := value["checks"]
-    mut i := 0
-    while i < len(checks) {
-        check := checks[i]
-        print("[" + to_upper(check["status"]) + "] " + check["name"] + ": " + check["message"])
-        if check["status"] != "passed" && check["remediation"] != "" {
-            print("  Remediation: " + check["remediation"])
-        }
-        i = i + 1
+print("Workcell doctor")
+print("===============")
+checks := value["checks"]
+mut i := 0
+while i < len(checks) {
+    check := checks[i]
+    print("[" + to_upper(check["status"]) + "] " + check["name"] + ": " + check["message"])
+    if check["status"] != "passed"&&check["remediation"] != "" {
+        print("  Remediation: " + check["remediation"])
     }
-    print("")
-    print("Passed: " + to_string(value["summary"]["passed"]) + "  Warnings: " + to_string(value["summary"]["warnings"]) + "  Blocked: " + to_string(value["summary"]["blocked"]))
+i = i + 1
+}
+print("")
+print("Passed: " + to_string(value["summary"]["passed"]) + "  Warnings: " + to_string(value["summary"]["warnings"]) + "  Blocked: " + to_string(value["summary"]["blocked"]))
 }
 
 func init_command(parsed) {
     path := definition_path(parsed)
-    if file_exists(path) && has_flag(parsed, "force") == false {
+    if file_exists(path)&&has_flag(parsed, "force") == false {
         print("error: refusing to overwrite existing definition: " + path)
         print("Use --force only when replacing it intentionally.")
         return 2
     }
-    save_json(path, default_definition())
-    print("Created " + path)
-    print("Next: edit the definition, then run `workcell validate --file " + path + "`.")
-    return 0
+save_json(path, default_definition())
+print("Created " + path)
+print("Next: edit the definition, then run `workcell validate --file " + path + "`.")
+return 0
 }
 
 func validate_command(parsed) {
@@ -179,26 +179,26 @@ func validate_command(parsed) {
         print(to_json_pretty(definition_schema()))
         return 0
     }
-    path := definition_path(parsed)
-    loaded := load_definition(path)
-    result := {"ok": loaded["ok"], "definition_path": path}
-    if loaded["ok"] {
-        result["definition"] := definition_summary(loaded["definition"])
-    } else {
-        result["error"] := loaded["error"]
-    }
-    if has_flag(parsed, "json") {
-        print(to_json_pretty(result))
-    } else if loaded["ok"] {
-        print("Valid Workcell definition: " + path)
-        print("Name: " + loaded["definition"]["name"] + "  Backend: docker  Network: " + loaded["definition"]["network"]["mode"])
-    } else {
-        print("Validation failed: " + loaded["error"])
-    }
-    if loaded["ok"] {
-        return 0
-    }
-    return 2
+path := definition_path(parsed)
+loaded := load_definition(path)
+result := {"ok": loaded["ok"], "definition_path": path}
+if loaded["ok"] {
+    result["definition"] := definition_summary(loaded["definition"])
+} else {
+result["error"] := loaded["error"]
+}
+if has_flag(parsed, "json") {
+    print(to_json_pretty(result))
+} else if loaded["ok"] {
+print("Valid Workcell definition: " + path)
+print("Name: " + loaded["definition"]["name"] + "  Backend: docker  Network: " + loaded["definition"]["network"]["mode"])
+} else {
+print("Validation failed: " + loaded["error"])
+}
+if loaded["ok"] {
+    return 0
+}
+return 2
 }
 
 func inspect_command(parsed) {
@@ -209,76 +209,76 @@ func inspect_command(parsed) {
         if has_flag(parsed, "json") {
             print(to_json_pretty(value))
         } else {
-            print("Validation failed: " + loaded["error"])
-        }
-        return 2
+        print("Validation failed: " + loaded["error"])
     }
-    repo := inspect_repository(repo_path(parsed))
-    if repo["ok"] == false {
-        print("error: " + repo["error"])
-        return 3
-    }
-    preview_root := env("TMPDIR")
-    if type(preview_root) != "string" || trim(preview_root) == "" {
-        preview_root = "/tmp"
-    }
-    while len(preview_root) > 1 && ends_with(preview_root, "/") {
-        preview_root = substring(preview_root, 0, len(preview_root) - 1)
-    }
-    preview_workspace := preview_root + "/kujo-workcell-inspect"
-    output := flag(parsed, "output", repo["root"] + "/.workcell/runs/inspect")
-    value := inspect_policy(loaded["definition"], "inspect", preview_workspace, output)
-    if has_flag(parsed, "json") {
-        print(to_json_pretty(value))
-    } else {
-        print("Resolved Workcell policy")
-        print("=========================")
-        print("Definition: " + path)
-        print("Repository: " + repo["root"])
-        print("Image: " + value["definition"]["runtime"]["image"])
-        print("Command: " + to_string(value["definition"]["command"]))
-        print("Network: " + value["network_mode"])
-        print("Mount: " + to_string(value["mounts"]))
-        print("Secrets: " + to_string(value["secret_names"]))
-        print("Docker security arguments: " + to_string(value["docker_security_arguments"]))
-        print("Receipt destination: " + value["receipt_destination"])
-    }
-    return 0
+return 2
+}
+repo := inspect_repository(repo_path(parsed))
+if repo["ok"] == false {
+    print("error: " + repo["error"])
+    return 3
+}
+preview_root := env("TMPDIR")
+if type(preview_root) != "string"||trim(preview_root) == "" {
+    preview_root = "/tmp"
+}
+while len(preview_root) > 1&&ends_with(preview_root, "/") {
+    preview_root = substring(preview_root, 0, len(preview_root) - 1)
+}
+preview_workspace := preview_root + "/kujo-workcell-inspect"
+output := flag(parsed, "output", repo["root"] + "/.workcell/runs/inspect")
+value := inspect_policy(loaded["definition"], "inspect", preview_workspace, output)
+if has_flag(parsed, "json") {
+    print(to_json_pretty(value))
+} else {
+print("Resolved Workcell policy")
+print("=========================")
+print("Definition: " + path)
+print("Repository: " + repo["root"])
+print("Image: " + value["definition"]["runtime"]["image"])
+print("Command: " + to_string(value["definition"]["command"]))
+print("Network: " + value["network_mode"])
+print("Mount: " + to_string(value["mounts"]))
+print("Secrets: " + to_string(value["secret_names"]))
+print("Docker security arguments: " + to_string(value["docker_security_arguments"]))
+print("Receipt destination: " + value["receipt_destination"])
+}
+return 0
 }
 
 func run_exit_code(result) {
     if result["ok"] {
         return 0
     }
-    status := get_or(result, "stage", "internal")
-    if status == "validated" {
-        return 2
+status := get_or(result, "stage", "internal")
+if status == "validated" {
+    return 2
+}
+if status == "preparing" {
+    if get_or(result, "exit_code", 3) == 4||contains(get_or(result, "error", ""), "docker") == 1 {
+        return 4
     }
-    if status == "preparing" {
-        if get_or(result, "exit_code", 3) == 4 || contains(get_or(result, "error", ""), "docker") == 1 {
-            return 4
-        }
-        return 3
-    }
-    if status == "starting" {
-        return 5
-    }
-    if status == "timeout" {
-        return 6
-    }
-    if status == "workload-failed" {
-        return 7
-    }
-    if status == "artifact-failed" {
-        return 8
-    }
-    if status == "verification-failed" {
-        return 8
-    }
-    if status == "cleanup-failed" {
-        return 9
-    }
-    return 10
+return 3
+}
+if status == "starting" {
+    return 5
+}
+if status == "timeout" {
+    return 6
+}
+if status == "workload-failed" {
+    return 7
+}
+if status == "artifact-failed" {
+    return 8
+}
+if status == "verification-failed" {
+    return 8
+}
+if status == "cleanup-failed" {
+    return 9
+}
+return 10
 }
 
 func print_run_result(result, json_mode) {
@@ -286,25 +286,25 @@ func print_run_result(result, json_mode) {
         print(to_json_pretty(result))
         return
     }
-    if result["ok"] {
-        print("Workcell completed")
-    } else {
-        print("Workcell failed during " + get_or(result, "stage", "internal"))
-        print("Cause: " + get_or(result, "error", "see receipt"))
-    }
-    print("")
-    print("Run:           " + result["run_id"])
-    print("Exit code:     " + to_string(get_or(result, "exit_code", "-")))
-    print("Receipt:       " + get_or(result, "receipt_path", "-"))
-    print("Patch:         " + get_or(result, "patch_path", "-"))
-    print("Output:        " + get_or(result, "output_dir", "-"))
-    print("Cleanup:       " + get_or(result, "cleanup_status", "unknown"))
-    if has_key(result, "receipt") {
-        receipt := result["receipt"]
-        print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
-        print("Changed files:  " + to_string(len(receipt["changed_files"])))
-        print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
-    }
+if result["ok"] {
+    print("Workcell completed")
+} else {
+print("Workcell failed during " + get_or(result, "stage", "internal"))
+print("Cause: " + get_or(result, "error", "see receipt"))
+}
+print("")
+print("Run:           " + result["run_id"])
+print("Exit code:     " + to_string(get_or(result, "exit_code", "-")))
+print("Receipt:       " + get_or(result, "receipt_path", "-"))
+print("Patch:         " + get_or(result, "patch_path", "-"))
+print("Output:        " + get_or(result, "output_dir", "-"))
+print("Cleanup:       " + get_or(result, "cleanup_status", "unknown"))
+if has_key(result, "receipt") {
+    receipt := result["receipt"]
+    print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
+    print("Changed files:  " + to_string(len(receipt["changed_files"])))
+    print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
+}
 }
 
 func run_command(parsed) {
@@ -313,12 +313,12 @@ func run_command(parsed) {
         "no_pull": has_flag(parsed, "no-pull"),
         "rebuild": has_flag(parsed, "rebuild")
     }
-    if has_flag(parsed, "keep-failed") {
-        run_flags["keep_failed"] := true
-    }
-    result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
-    print_run_result(result, has_flag(parsed, "json"))
-    return run_exit_code(result)
+if has_flag(parsed, "keep-failed") {
+    run_flags["keep_failed"] := true
+}
+result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
+print_run_result(result, has_flag(parsed, "json"))
+return run_exit_code(result)
 }
 
 func clean_command(parsed) {
@@ -330,42 +330,42 @@ func clean_command(parsed) {
         if prune_images {
             image_action = "remove-owned"
         }
-        mut inventory_ok := docker["ok"]
-        if temp["ok"] == false {
-            inventory_ok = false
-        }
-        result := {"ok": inventory_ok, "dry_run": true, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
-        if has_flag(parsed, "json") {
-            print(to_json_pretty(result))
-        } else {
-            print("Workcell resource inventory (dry run)")
-            print("Containers: " + to_string(get_or(docker, "containers", [])))
-            print("Images: " + to_string(get_or(docker, "images", [])))
-            print("Networks preserved: " + to_string(get_or(docker, "networks", [])))
-            print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
-        }
-        if result["ok"] { return 0 }
-        return 9
+    mut inventory_ok := docker["ok"]
+    if temp["ok"] == false {
+        inventory_ok = false
     }
-    docker := clean_owned_resources_with_options(prune_images)
-    temp := clean_stale_workspaces()
-    clean_ok := docker["ok"] && temp["ok"]
-    result := {"ok": clean_ok, "docker": docker, "temporary_workspaces": temp}
-    if has_flag(parsed, "json") {
-        print(to_json_pretty(result))
-    } else {
-        print("Cleaned Workcell-owned resources")
-        print("Docker containers removed: " + to_string(get_or(docker, "removed", 0)))
-        print("Docker images removed: " + to_string(len(get_or(docker, "removed_images", []))))
-        print("Temporary workspaces removed: " + to_string(len(get_or(temp, "removed", []))))
-        if result["ok"] == false {
-            print("Warnings: some owned resources could not be removed")
-        }
-    }
-    if result["ok"] {
-        return 0
-    }
-    return 9
+result := {"ok": inventory_ok, "dry_run": true, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
+if has_flag(parsed, "json") {
+    print(to_json_pretty(result))
+} else {
+print("Workcell resource inventory (dry run)")
+print("Containers: " + to_string(get_or(docker, "containers", [])))
+print("Images: " + to_string(get_or(docker, "images", [])))
+print("Networks preserved: " + to_string(get_or(docker, "networks", [])))
+print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
+}
+if result["ok"] {return 0}
+return 9
+}
+docker := clean_owned_resources_with_options(prune_images)
+temp := clean_stale_workspaces()
+clean_ok := docker["ok"]&&temp["ok"]
+result := {"ok": clean_ok, "docker": docker, "temporary_workspaces": temp}
+if has_flag(parsed, "json") {
+    print(to_json_pretty(result))
+} else {
+print("Cleaned Workcell-owned resources")
+print("Docker containers removed: " + to_string(get_or(docker, "removed", 0)))
+print("Docker images removed: " + to_string(len(get_or(docker, "removed_images", []))))
+print("Temporary workspaces removed: " + to_string(len(get_or(temp, "removed", []))))
+if result["ok"] == false {
+    print("Warnings: some owned resources could not be removed")
+}
+}
+if result["ok"] {
+    return 0
+}
+return 9
 }
 
 export func main(argv) {
@@ -374,39 +374,39 @@ export func main(argv) {
         print("error: " + parsed["error"])
         return 2
     }
-    command := command_name(parsed)
-    if command == "help" || command == "--help" || command == "-h" {
-        print_help(has_flag(parsed, "json"))
-        return 0
-    }
-    if command == "version" || command == "--version" {
-        print("Workcell " + VERSION)
-        return 0
-    }
-    if command == "doctor" {
-        value := report(repo_path(parsed))
-        print_check_report(value, has_flag(parsed, "json"))
-        if value["ok"] {
-            return 0
-        }
-        return 3
-    }
-    if command == "init" {
-        return init_command(parsed)
-    }
-    if command == "validate" {
-        return validate_command(parsed)
-    }
-    if command == "inspect" {
-        return inspect_command(parsed)
-    }
-    if command == "run" {
-        return run_command(parsed)
-    }
-    if command == "clean" {
-        return clean_command(parsed)
-    }
-    print("error: unknown command " + command)
+command := command_name(parsed)
+if command == "help"||command == "--help"||command == "-h" {
     print_help(has_flag(parsed, "json"))
-    return 2
+    return 0
+}
+if command == "version"||command == "--version" {
+    print("Workcell " + VERSION)
+    return 0
+}
+if command == "doctor" {
+    value := report(repo_path(parsed))
+    print_check_report(value, has_flag(parsed, "json"))
+    if value["ok"] {
+        return 0
+    }
+return 3
+}
+if command == "init" {
+    return init_command(parsed)
+}
+if command == "validate" {
+    return validate_command(parsed)
+}
+if command == "inspect" {
+    return inspect_command(parsed)
+}
+if command == "run" {
+    return run_command(parsed)
+}
+if command == "clean" {
+    return clean_command(parsed)
+}
+print("error: unknown command " + command)
+print_help(has_flag(parsed, "json"))
+return 2
 }

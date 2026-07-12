@@ -11,11 +11,11 @@ func command_check(program, arguments, label) {
         argv = push(argv, arguments[i])
         i = i + 1
     }
-    result := run_argv(argv, 10000)
-    if process_ok(result) {
-        return {"name": label, "status": "passed", "message": trim(proc_stdout(result)), "remediation": ""}
-    }
-    return {"name": label, "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Install or expose " + program + " on PATH"}
+result := run_argv(argv, 10000)
+if process_ok(result) {
+    return {"name": label, "status": "passed", "message": trim(proc_stdout(result)), "remediation": ""}
+}
+return {"name": label, "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Install or expose " + program + " on PATH"}
 }
 
 func ecosystem_tools_check(repo_root) {
@@ -27,12 +27,12 @@ func ecosystem_tools_check(repo_root) {
         if path_is_dir(parent + "/" + names[i]) == false {
             missing = push(missing, names[i])
         }
-        i = i + 1
-    }
-    if len(missing) == 0 {
-        return {"name": "Optional Kujo tooling", "status": "passed", "message": "RunLedger, ChangeBucket, ShipCheck, and Fence repositories detected", "remediation": ""}
-    }
-    return {"name": "Optional Kujo tooling", "status": "warning", "message": "optional sibling tools not found: " + to_string(missing), "remediation": "Install sibling tools only when their integrations are needed; core Workcell runtime does not require them"}
+    i = i + 1
+}
+if len(missing) == 0 {
+    return {"name": "Optional Kujo tooling", "status": "passed", "message": "RunLedger, ChangeBucket, ShipCheck, and Fence repositories detected", "remediation": ""}
+}
+return {"name": "Optional Kujo tooling", "status": "warning", "message": "optional sibling tools not found: " + to_string(missing), "remediation": "Install sibling tools only when their integrations are needed; core Workcell runtime does not require them"}
 }
 
 func docker_security_check() {
@@ -40,93 +40,93 @@ func docker_security_check() {
     if process_ok(result) == false {
         return {"name": "Docker security profiles", "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
     }
-    options := trim(proc_stdout(result))
-    if contains(options, "seccomp") == 0 || contains(options, "apparmor") == 0 {
-        return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
-    }
-    if contains(options, "rootless") == 1 {
-        return {"name": "Docker security profiles", "status": "passed", "message": "seccomp, AppArmor, and rootless daemon detected", "remediation": ""}
-    }
-    return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and AppArmor detected; daemon is not rootless", "remediation": "Use a rootless daemon or stronger VM/microVM boundary for multi-tenant untrusted workloads"}
+options := trim(proc_stdout(result))
+if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
+    return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
+}
+if contains(options, "rootless") == 1 {
+    return {"name": "Docker security profiles", "status": "passed", "message": "seccomp, AppArmor, and rootless daemon detected", "remediation": ""}
+}
+return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and AppArmor detected; daemon is not rootless", "remediation": "Use a rootless daemon or stronger VM/microVM boundary for multi-tenant untrusted workloads"}
 }
 
 export func report(repo_path) {
     mut checks := []
     kujo_program := env("KUJO")
-    if type(kujo_program) != "string" || trim(kujo_program) == "" {
+    if type(kujo_program) != "string"||trim(kujo_program) == "" {
         kujo_program = "kujo"
     }
-    checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
-    checks = push(checks, command_check("git", ["--version"], "Git CLI"))
-    checks = push(checks, command_check("docker", ["--version"], "Docker CLI"))
-    checks = push(checks, doctor_docker())
-    checks = push(checks, docker_security_check())
-    repo := inspect_repository(repo_path)
-    if repo["ok"] {
-        status := "passed"
-        message := "Git repository: " + repo["root"]
-        if repo["clean"] == false {
-            status = "warning"
-            message = message + " (dirty; Workcell run rejects dirty sources by default)"
-        }
-        checks = push(checks, {"name": "Source repository", "status": status, "message": message, "remediation": "Commit or otherwise preserve source changes before running Workcell"})
-        checks = push(checks, ecosystem_tools_check(repo["root"]))
-    } else {
-        checks = push(checks, {"name": "Source repository", "status": "blocked", "message": repo["error"], "remediation": "Run Workcell from a Git repository or pass --repo <path>"})
+checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
+checks = push(checks, command_check("git", ["--version"], "Git CLI"))
+checks = push(checks, command_check("docker", ["--version"], "Docker CLI"))
+checks = push(checks, doctor_docker())
+checks = push(checks, docker_security_check())
+repo := inspect_repository(repo_path)
+if repo["ok"] {
+    status := "passed"
+    message := "Git repository: " + repo["root"]
+    if repo["clean"] == false {
+        status = "warning"
+        message = message + " (dirty; Workcell run rejects dirty sources by default)"
     }
-    tmp := env("TMPDIR")
-    if type(tmp) != "string" || trim(tmp) == "" {
-        tmp = "/tmp"
+checks = push(checks, {"name": "Source repository", "status": status, "message": message, "remediation": "Commit or otherwise preserve source changes before running Workcell"})
+checks = push(checks, ecosystem_tools_check(repo["root"]))
+} else {
+checks = push(checks, {"name": "Source repository", "status": "blocked", "message": repo["error"], "remediation": "Run Workcell from a Git repository or pass --repo <path>"})
+}
+tmp := env("TMPDIR")
+if type(tmp) != "string"||trim(tmp) == "" {
+    tmp = "/tmp"
+}
+tmp_status := "blocked"
+if path_is_dir(tmp) {
+    tmp_status = "passed"
+}
+checks = push(checks, {"name": "Temporary directory", "status": tmp_status, "message": tmp, "remediation": "Provide a writable temporary directory"})
+probe := tmp + "/workcell-doctor-" + run_id() + ".probe"
+probe_status := "blocked"
+probe_message := "temporary directory is not writable"
+try {
+    write_text(probe, "workcell doctor probe")
+    if file_exists(probe) {
+        probe_status = "passed"
+        probe_message = "temporary directory is writable"
+        delete_file(probe)
     }
-    tmp_status := "blocked"
-    if path_is_dir(tmp) {
-        tmp_status = "passed"
+} except err {
+probe_message = to_string(err)
+}
+checks = push(checks, {"name": "Temporary directory write", "status": probe_status, "message": probe_message, "remediation": "Provide a writable temporary directory"})
+platform_result := run_argv(["uname", "-s"], 10000)
+if process_ok(platform_result) == false {
+    checks = push(checks, {"name": "Host platform", "status": "blocked", "message": trim(proc_stderr(platform_result)), "remediation": "Run Workcell on a supported Docker host (Linux or macOS)"})
+} else {
+platform := trim(proc_stdout(platform_result))
+if platform == "Linux"||platform == "Darwin" {
+    checks = push(checks, {"name": "Host platform", "status": "passed", "message": platform, "remediation": ""})
+} else {
+checks = push(checks, {"name": "Host platform", "status": "blocked", "message": "unsupported host platform: " + platform, "remediation": "Run Workcell on Linux or macOS with Docker"})
+}
+}
+docker_host := env("DOCKER_HOST")
+if type(docker_host) == "string"&&trim(docker_host) != "" {
+    checks = push(checks, {"name": "Docker host override", "status": "warning", "message": "DOCKER_HOST is set; review daemon trust before running", "remediation": "Use a trusted local Docker daemon"})
+}
+unsafe_override := env("WORKCELL_UNSAFE")
+if type(unsafe_override) == "string"&&(to_lower(trim(unsafe_override)) == "1"||to_lower(trim(unsafe_override)) == "true"||to_lower(trim(unsafe_override)) == "yes") {
+    checks = push(checks, {"name": "Unsafe override", "status": "blocked", "message": "WORKCELL_UNSAFE is set", "remediation": "Unset WORKCELL_UNSAFE; the MVP has no unsafe execution mode"})
+}
+mut blocking := 0
+mut warnings := 0
+mut i := 0
+while i < len(checks) {
+    if checks[i]["status"] == "blocked" {
+        blocking = blocking + 1
     }
-    checks = push(checks, {"name": "Temporary directory", "status": tmp_status, "message": tmp, "remediation": "Provide a writable temporary directory"})
-    probe := tmp + "/workcell-doctor-" + run_id() + ".probe"
-    probe_status := "blocked"
-    probe_message := "temporary directory is not writable"
-    try {
-        write_text(probe, "workcell doctor probe")
-        if file_exists(probe) {
-            probe_status = "passed"
-            probe_message = "temporary directory is writable"
-            delete_file(probe)
-        }
-    } except err {
-        probe_message = to_string(err)
-    }
-    checks = push(checks, {"name": "Temporary directory write", "status": probe_status, "message": probe_message, "remediation": "Provide a writable temporary directory"})
-    platform_result := run_argv(["uname", "-s"], 10000)
-    if process_ok(platform_result) == false {
-        checks = push(checks, {"name": "Host platform", "status": "blocked", "message": trim(proc_stderr(platform_result)), "remediation": "Run Workcell on a supported Docker host (Linux or macOS)"})
-    } else {
-        platform := trim(proc_stdout(platform_result))
-        if platform == "Linux" || platform == "Darwin" {
-            checks = push(checks, {"name": "Host platform", "status": "passed", "message": platform, "remediation": ""})
-        } else {
-            checks = push(checks, {"name": "Host platform", "status": "blocked", "message": "unsupported host platform: " + platform, "remediation": "Run Workcell on Linux or macOS with Docker"})
-        }
-    }
-    docker_host := env("DOCKER_HOST")
-    if type(docker_host) == "string" && trim(docker_host) != "" {
-        checks = push(checks, {"name": "Docker host override", "status": "warning", "message": "DOCKER_HOST is set; review daemon trust before running", "remediation": "Use a trusted local Docker daemon"})
-    }
-    unsafe_override := env("WORKCELL_UNSAFE")
-    if type(unsafe_override) == "string" && (to_lower(trim(unsafe_override)) == "1" || to_lower(trim(unsafe_override)) == "true" || to_lower(trim(unsafe_override)) == "yes") {
-        checks = push(checks, {"name": "Unsafe override", "status": "blocked", "message": "WORKCELL_UNSAFE is set", "remediation": "Unset WORKCELL_UNSAFE; the MVP has no unsafe execution mode"})
-    }
-    mut blocking := 0
-    mut warnings := 0
-    mut i := 0
-    while i < len(checks) {
-        if checks[i]["status"] == "blocked" {
-            blocking = blocking + 1
-        }
-        if checks[i]["status"] == "warning" {
-            warnings = warnings + 1
-        }
-        i = i + 1
-    }
-    return {"ok": blocking == 0, "checks": checks, "summary": {"passed": len(checks) - blocking - warnings, "warnings": warnings, "blocked": blocking}}
+if checks[i]["status"] == "warning" {
+    warnings = warnings + 1
+}
+i = i + 1
+}
+return {"ok": blocking == 0, "checks": checks, "summary": {"passed": len(checks) - blocking - warnings, "warnings": warnings, "blocked": blocking}}
 }

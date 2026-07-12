@@ -15,9 +15,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-        failed = failed + 1
-        print("FAIL " + label)
-    }
+    failed = failed + 1
+    print("FAIL " + label)
+}
 }
 
 func with_network(definition, mode) {
@@ -178,7 +178,7 @@ definition := default_definition()
 valid := validate_definition(definition)
 expect("default definition validates", valid["ok"])
 partial := resolve_definition({"network": {}})
-expect("partial sections receive nested defaults", partial["ok"] && validate_definition(partial["definition"])["ok"] && definition_summary(partial["definition"])["network_mode"] == "none")
+expect("partial sections receive nested defaults", partial["ok"]&&validate_definition(partial["definition"])["ok"]&&definition_summary(partial["definition"])["network_mode"] == "none")
 expect("host networking rejected", validate_definition(with_network(definition, "host"))["ok"] == false)
 expect("custom internal network accepted", validate_definition(with_custom_network(definition, "workcell-internal"))["ok"])
 expect("custom network requires a name", validate_definition(with_custom_network(definition, ""))["ok"] == false)
@@ -219,23 +219,23 @@ expect("proxy environment allow rejected", validate_definition(with_environment_
 env_policy := build_policy(with_environment_set(definition, "WORKCELL_MODE", "check"), "test-env", "/tmp/workcell-test-workspace")
 expect("container environment is explicit", contains(to_string(env_policy["docker_args"]), "WORKCELL_MODE=check") == 1)
 secret_policy := build_policy(with_secret(definition, "WORKCELL_TOKEN"), "test-secret", "/tmp/workcell-test-workspace")
-expect("secret is passed by name only", contains(to_string(secret_policy["docker_args"]), "WORKCELL_TOKEN") == 1 && contains(to_string(secret_policy["docker_args"]), "secret-value") == 0)
+expect("secret is passed by name only", contains(to_string(secret_policy["docker_args"]), "WORKCELL_TOKEN") == 1&&contains(to_string(secret_policy["docker_args"]), "secret-value") == 0)
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
-expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1 && custom_policy["network_mode"] == "workcell-internal")
+expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")
 expect("policy includes read-only root", contains(to_string(args), "--read-only") == 1)
 expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
 expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
 expect("policy never mounts Docker socket", contains(to_string(args), "docker.sock") == 0)
 expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=true") == 1)
-expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1 && contains(to_string(args), "private") == 1)
+expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1&&contains(to_string(args), "private") == 1)
 profile_policy := build_policy(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"), "test-security-profiles", "/tmp/workcell-test-workspace")
-expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1 && contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
+expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1&&contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
 empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)
-expect("empty verification plan succeeds without Docker work", empty_verification["ok"] && len(empty_verification["checks"]) == 0)
+expect("empty verification plan succeeds without Docker work", empty_verification["ok"]&&len(empty_verification["checks"]) == 0)
 verification_secret_definition := with_verification(with_secret(definition, "AUDIT_SECRET"), [{"name": "secret-check", "command": ["sh", "-lc", "printf artifact-secret"]}])
 verification_secret := run_verification_checks(verification_secret_definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", ["AUDIT_SECRET"], false)
 expect("skipped verification receipt redacts command literals", contains(to_string(verification_secret["checks"]), "artifact-secret") == 0)
@@ -260,14 +260,14 @@ ensure_dir(secret_log_dir)
 secret_logs := write_execution_logs(secret_log_dir, "hello", "stderr", ["EMPTY_SECRET"])
 secret_stdout := read_text(secret_log_dir + "/stdout.log")
 secret_stderr := read_text(secret_log_dir + "/stderr.log")
-expect("empty secret does not corrupt logs", secret_logs["ok"] && secret_stdout["text"] == "hello" && secret_stderr["text"] == "stderr")
+expect("empty secret does not corrupt logs", secret_logs["ok"]&&secret_stdout["text"] == "hello"&&secret_stderr["text"] == "stderr")
 run_argv(["rm", "-rf", secret_log_dir], 30000)
 
 derived_log_dir := "/tmp/workcell-derived-secret-" + run_id()
 ensure_dir(derived_log_dir)
 derived_logs := write_execution_logs(derived_log_dir, encode_base64("longsecret"), "", ["LONG_SECRET"])
 derived_stdout := read_text(derived_log_dir + "/stdout.log")
-expect("base64-derived secret is redacted from execution logs", derived_logs["ok"] && derived_stdout["text"] == "[REDACTED]")
+expect("base64-derived secret is redacted from execution logs", derived_logs["ok"]&&derived_stdout["text"] == "[REDACTED]")
 run_argv(["rm", "-rf", derived_log_dir], 30000)
 
 fixture := "/tmp/workcell-contract-fixture.txt"
@@ -288,17 +288,17 @@ ensure_dir(policy_fixture + "/workspace/nested")
 write_text(policy_fixture + "/workspace/nested/result.txt", "artifact-secret\n")
 limited_policy := {"export": ["nested"], "limits": {}, "max_bytes": 4, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}
 limited_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/limited", limited_policy, [])
-expect("artifact byte limit rejects oversized export", limited_export["ok"] == false && contains(limited_export["error"], "max bytes") == 1)
+expect("artifact byte limit rejects oversized export", limited_export["ok"] == false&&contains(limited_export["error"], "max bytes") == 1)
 extension_policy := {"export": ["nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [".md"], "secret_action": "allow"}
 extension_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/extension", extension_policy, [])
-expect("artifact extension policy rejects wrong content type", extension_export["ok"] == false && contains(extension_export["error"], "content type") == 1)
+expect("artifact extension policy rejects wrong content type", extension_export["ok"] == false&&contains(extension_export["error"], "content type") == 1)
 reject_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "reject"}
 reject_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/reject", reject_policy, ["AUDIT_SECRET"])
 expect("artifact secret reject hook blocks declared secret", reject_export["ok"] == false)
 redact_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "redact"}
 redact_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/redact", redact_policy, ["AUDIT_SECRET"])
 redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
-expect("artifact secret redaction hook changes exported content", redact_export["ok"] && redacted_artifact["text"] == "[REDACTED]\n")
+expect("artifact secret redaction hook changes exported content", redact_export["ok"]&&redacted_artifact["text"] == "[REDACTED]\n")
 run_argv(["rm", "-rf", policy_fixture], 30000)
 
 print("Passed: " + to_string(passed))

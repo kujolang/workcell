@@ -9,7 +9,7 @@ func redacted_command(command, secret_names) {
         output = push(output, redact_with_env(to_string(command[i]), secret_names))
         i = i + 1
     }
-    return output
+return output
 }
 
 export func new_receipt(definition, definition_path, run_identifier, source, workspace, policy, output_dir) {
@@ -62,10 +62,10 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
             "artifacts_exported": false,
             "cleanup_succeeded": false
         },
-        "errors": [],
-        "warnings": [],
-        "lifecycle": ["created"]
-    }
+    "errors": [],
+    "warnings": [],
+    "lifecycle": ["created"]
+}
 }
 
 export func add_state(receipt, state) {
@@ -95,9 +95,9 @@ export func finish_receipt(receipt, final_status, exit_code, timed_out, image_di
     receipt["cleanup_status"] := cleanup_status
     receipt["final_status"] := final_status
     verification := receipt["verification"]
-    verification["execution_succeeded"] := final_status != "dry-run" && execution_succeeded && timed_out == false
-    verification["artifacts_exported"] := final_status != "dry-run" && artifacts_succeeded == true
-    verification["cleanup_succeeded"] := cleanup_status == "complete" || cleanup_status == "preserved"
+    verification["execution_succeeded"] := final_status != "dry-run"&&execution_succeeded&&timed_out == false
+    verification["artifacts_exported"] := final_status != "dry-run"&&artifacts_succeeded == true
+    verification["cleanup_succeeded"] := cleanup_status == "complete"||cleanup_status == "preserved"
     receipt["verification"] := verification
     return receipt
 }
@@ -107,6 +107,6 @@ export func write_receipt(receipt, output_path) {
         save_json(output_path, receipt)
         return {"ok": true, "path": output_path}
     } except err {
-        return {"ok": false, "path": output_path, "error": "could not write receipt: " + to_string(err)}
-    }
+    return {"ok": false, "path": output_path, "error": "could not write receipt: " + to_string(err)}
+}
 }

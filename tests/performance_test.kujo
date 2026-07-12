@@ -6,9 +6,9 @@ from src.workspace.workspace import change_details, cleanup_workspace, create_wo
 repo := "/tmp/workcell-performance-fixture-" + run_id()
 mut file_count := 200
 requested_count := env("WORKCELL_PERF_FILES")
-if type(requested_count) == "string" && trim(requested_count) != "" {
+if type(requested_count) == "string"&&trim(requested_count) != "" {
     parsed_count := parse_int(trim(requested_count))
-    if parsed_count > 0 && parsed_count <= 10000 {
+    if parsed_count > 0&&parsed_count <= 10000 {
         file_count = parsed_count
     }
 }
@@ -32,7 +32,7 @@ while i < file_count {
 start := current_timestamp()
 details := change_details(workspace)
 elapsed := current_timestamp() - start
-if details["ok"] == false || details["summary"]["total_files"] != file_count {
+if details["ok"] == false||details["summary"]["total_files"] != file_count {
     print("FAIL performance changed-file collection: " + to_string(details))
     cleanup_workspace(workspace, false)
     run_argv(["rm", "-rf", repo], 30000)

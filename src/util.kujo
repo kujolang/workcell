@@ -4,30 +4,30 @@ export func truthy(value) {
     if type(value) == "bool" {
         return value
     }
-    if type(value) == "int" {
-        return value != 0
-    }
-    if type(value) == "null" {
-        return false
-    }
-    if type(value) == "string" {
-        return trim(value) != ""
-    }
-    return true
+if type(value) == "int" {
+    return value != 0
+}
+if type(value) == "null" {
+    return false
+}
+if type(value) == "string" {
+    return trim(value) != ""
+}
+return true
 }
 
 export func has_key_safe(value, key) {
     if type(value) != "dict" {
         return false
     }
-    return has_key(value, key) == 1
+return has_key(value, key) == 1
 }
 
 export func get_or(value, key, fallback) {
     if has_key_safe(value, key) {
         return value[key]
     }
-    return fallback
+return fallback
 }
 
 export func iso_now() {
@@ -36,17 +36,21 @@ export func iso_now() {
 
 export func project_version() {
     project_root := env("WORKCELL_PROJECT_DIR")
-    if type(project_root) != "string" || trim(project_root) == "" {
+    if type(project_root) != "string"||trim(project_root) == "" {
         project_root = os_getcwd()
     }
-    version_path := project_root + "/VERSION"
-    if file_exists(version_path) {
+version_path := project_root + "/VERSION"
+if file_exists(version_path) {
+    try {
         version := trim(read_file(version_path))
         if version != "" {
             return version
         }
-    }
-    return "unknown"
+} except err {
+return "unknown"
+}
+}
+return "unknown"
 }
 
 export func run_id() {
@@ -54,17 +58,17 @@ export func run_id() {
 }
 
 export func valid_run_id(value) {
-    if type(value) != "string" || len(value) != 35 || substring(value, 0, 3) != "wc-" {
+    if type(value) != "string"||len(value) != 35||substring(value, 0, 3) != "wc-" {
         return false
     }
-    mut i := 3
-    while i < len(value) {
-        if contains("0123456789abcdefABCDEF", substring(value, i, i + 1)) == 0 {
-            return false
-        }
-        i = i + 1
+mut i := 3
+while i < len(value) {
+    if contains("0123456789abcdefABCDEF", substring(value, i, i + 1)) == 0 {
+        return false
     }
-    return true
+i = i + 1
+}
+return true
 }
 
 export func lines_of(text) {
@@ -76,40 +80,40 @@ export func lines_of(text) {
         if ends_with(line, "\r") {
             out = push(out, substring(line, 0, len(line) - 1))
         } else {
-            out = push(out, line)
-        }
-        i = i + 1
+        out = push(out, line)
     }
-    return out
+i = i + 1
+}
+return out
 }
 
 export func ensure_dir(path) {
-    if path == "" || path == "." || path_is_dir(path) {
+    if path == ""||path == "."||path_is_dir(path) {
         return true
     }
-    parts := split(replace(path, "\\", "/"), "/")
-    mut current := ""
-    if starts_with(path, "/") {
-        current = "/"
-    }
-    mut i := 0
-    while i < len(parts) {
-        part := parts[i]
-        if part != "" && part != "." {
-            if current == "" {
-                current = part
-            } else if current == "/" {
-                current = current + part
-            } else {
-                current = current + "/" + part
-            }
-            if path_is_dir(current) == false {
-                create_dir(current)
-            }
-        }
-        i = i + 1
-    }
-    return path_is_dir(path)
+parts := split(replace(path, "\\", "/"), "/")
+mut current := ""
+if starts_with(path, "/") {
+    current = "/"
+}
+mut i := 0
+while i < len(parts) {
+    part := parts[i]
+    if part != ""&&part != "." {
+        if current == "" {
+            current = part
+        } else if current == "/" {
+        current = current + part
+    } else {
+    current = current + "/" + part
+}
+if path_is_dir(current) == false {
+    create_dir(current)
+}
+}
+i = i + 1
+}
+return path_is_dir(path)
 }
 
 export func write_text(path, content) {
@@ -117,21 +121,25 @@ export func write_text(path, content) {
     if parent != "" {
         ensure_dir(parent)
     }
-    if file_exists(path) {
-        delete_file(path)
-    }
-    write_file(path, content)
-    return true
+if file_exists(path) {
+    delete_file(path)
+}
+write_file(path, content)
+return true
 }
 
 export func read_text(path) {
     if file_exists(path) == false {
         return {"ok": false, "error": "file not found: " + path}
     }
-    if path_is_dir(path) {
-        return {"ok": false, "error": "path is a directory: " + path}
-    }
+if path_is_dir(path) {
+    return {"ok": false, "error": "path is a directory: " + path}
+}
+try {
     return {"ok": true, "text": read_file(path)}
+} except err {
+return {"ok": false, "error": "unable to read file: " + to_string(err)}
+}
 }
 
 export func load_json(path) {
@@ -139,12 +147,12 @@ export func load_json(path) {
     if read_result["ok"] == false {
         return read_result
     }
-    try {
-        value := parse_json(read_result["text"])
-        return {"ok": true, "value": value}
-    } except err {
-        return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
-    }
+try {
+    value := parse_json(read_result["text"])
+    return {"ok": true, "value": value}
+} except err {
+return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
+}
 }
 
 export func save_json(path, value) {
@@ -158,9 +166,9 @@ export func parent_of(path) {
         if substring(normalized, i, i + 1) == "/" {
             return substring(normalized, 0, i)
         }
-        i = i - 1
-    }
-    return ""
+    i = i - 1
+}
+return ""
 }
 
 export func base_of(path) {
@@ -170,54 +178,54 @@ export func base_of(path) {
         if substring(normalized, i, i + 1) == "/" {
             return substring(normalized, i + 1, len(normalized))
         }
-        i = i - 1
-    }
-    return normalized
+    i = i - 1
+}
+return normalized
 }
 
 export func join_path_safe(left, right) {
     if left == "" {
         return right
     }
-    if right == "" {
-        return left
-    }
-    if ends_with(left, "/") {
-        return left + right
-    }
-    return left + "/" + right
+if right == "" {
+    return left
+}
+if ends_with(left, "/") {
+    return left + right
+}
+return left + "/" + right
 }
 
 export func normalized_relative(path) {
     value := replace(trim(path), "\\", "/")
-    if value == "" || starts_with(value, "/") || contains(value, ":") == 1 {
+    if value == ""||starts_with(value, "/")||contains(value, ":") == 1 {
         return {"ok": false, "error": "path must be a non-empty relative path: " + path}
     }
-    parts := split(value, "/")
-    mut clean := []
-    mut i := 0
-    while i < len(parts) {
-        part := parts[i]
-        if part == ".." {
-            return {"ok": false, "error": "parent traversal is not allowed: " + path}
-        }
-        if part == "." || part == "" {
-            i = i + 1
-            continue
-        }
-        clean = push(clean, part)
-        i = i + 1
+parts := split(value, "/")
+mut clean := []
+mut i := 0
+while i < len(parts) {
+    part := parts[i]
+    if part == ".." {
+        return {"ok": false, "error": "parent traversal is not allowed: " + path}
     }
-    if len(clean) == 0 {
-        return {"ok": false, "error": "path resolves to an empty path: " + path}
-    }
-    mut output := clean[0]
-    i = 1
-    while i < len(clean) {
-        output = output + "/" + clean[i]
-        i = i + 1
-    }
-    return {"ok": true, "path": output}
+if part == "."||part == "" {
+    i = i + 1
+    continue
+}
+clean = push(clean, part)
+i = i + 1
+}
+if len(clean) == 0 {
+    return {"ok": false, "error": "path resolves to an empty path: " + path}
+}
+mut output := clean[0]
+i = 1
+while i < len(clean) {
+    output = output + "/" + clean[i]
+    i = i + 1
+}
+return {"ok": true, "path": output}
 }
 
 func lexical_absolute(path) {
@@ -226,34 +234,34 @@ func lexical_absolute(path) {
     if absolute == false {
         value = os_getcwd() + "/" + value
     }
-    parts := split(value, "/")
-    mut stack := []
-    mut i := 0
-    while i < len(parts) {
-        part := parts[i]
-        if part == "" || part == "." {
-            i = i + 1
-            continue
-        }
-        if part == ".." {
-            if len(stack) > 0 {
-                stack = slice(stack, 0, len(stack) - 1)
-            }
-        } else {
-            stack = push(stack, part)
-        }
+parts := split(value, "/")
+mut stack := []
+mut i := 0
+while i < len(parts) {
+    part := parts[i]
+    if part == ""||part == "." {
         i = i + 1
+        continue
     }
-    mut output := "/"
-    i = 0
-    while i < len(stack) {
-        output = output + stack[i]
-        if i + 1 < len(stack) {
-            output = output + "/"
-        }
-        i = i + 1
+if part == ".." {
+    if len(stack) > 0 {
+        stack = slice(stack, 0, len(stack) - 1)
     }
-    return output
+} else {
+stack = push(stack, part)
+}
+i = i + 1
+}
+mut output := "/"
+i = 0
+while i < len(stack) {
+    output = output + stack[i]
+    if i + 1 < len(stack) {
+        output = output + "/"
+    }
+i = i + 1
+}
+return output
 }
 
 export func path_within(root, candidate) {
@@ -262,7 +270,7 @@ export func path_within(root, candidate) {
     if candidate_abs == root_abs {
         return true
     }
-    return starts_with(candidate_abs, root_abs + "/")
+return starts_with(candidate_abs, root_abs + "/")
 }
 
 export func path_has_symlink(path) {
@@ -270,44 +278,44 @@ export func path_has_symlink(path) {
     if starts_with(absolute, "/") == false {
         absolute = os_getcwd() + "/" + absolute
     }
-    parts := split(absolute, "/")
-    mut current := ""
-    if starts_with(absolute, "/") {
-        current = "/"
-    }
-    mut i := 0
-    while i < len(parts) {
-        part := parts[i]
-        if part != "" && part != "." {
-            if current == "" {
-                current = part
-            } else if current == "/" {
-                current = current + part
-            } else {
-                current = current + "/" + part
-            }
-            mut is_link := false
-            try {
-                is_link = path_is_symlink(current)
-            } except err {
-                is_link = false
-            }
-            if is_link && current != "/var" && current != "/tmp" {
-                return true
-            }
-        }
-        i = i + 1
-    }
-    return false
+parts := split(absolute, "/")
+mut current := ""
+if starts_with(absolute, "/") {
+    current = "/"
+}
+mut i := 0
+while i < len(parts) {
+    part := parts[i]
+    if part != ""&&part != "." {
+        if current == "" {
+            current = part
+        } else if current == "/" {
+        current = current + part
+    } else {
+    current = current + "/" + part
+}
+mut is_link := false
+try {
+    is_link = path_is_symlink(current)
+} except err {
+is_link = false
+}
+if is_link&&current != "/var"&&current != "/tmp" {
+    return true
+}
+}
+i = i + 1
+}
+return false
 }
 
 export func safe_mount_path(path) {
     value := replace(trim(path), "\\", "/")
     lower := to_lower(value)
-    if value == "/" || starts_with(value, "~/") || contains(lower, "/.ssh") == 1 || contains(lower, "/.aws") == 1 || contains(lower, "/.config/gcloud") == 1 || contains(lower, "docker.sock") == 1 {
+    if value == "/"||starts_with(value, "~/")||contains(lower, "/.ssh") == 1||contains(lower, "/.aws") == 1||contains(lower, "/.config/gcloud") == 1||contains(lower, "docker.sock") == 1 {
         return false
     }
-    return true
+return true
 }
 
 export func contains_text(text, needle) {
@@ -316,9 +324,9 @@ export func contains_text(text, needle) {
 
 export func runtime_env_deny_names() {
     return [
-        "HOME", "SSH_AUTH_SOCK", "DOCKER_HOST", "DOCKER_CONFIG", "KUBECONFIG",
-        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
-        "GIT_ASKPASS", "GIT_SSH_COMMAND", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN", "NPM_CONFIG_USERCONFIG"
+    "HOME", "SSH_AUTH_SOCK", "DOCKER_HOST", "DOCKER_CONFIG", "KUBECONFIG",
+    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "GIT_ASKPASS", "GIT_SSH_COMMAND", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN", "NPM_CONFIG_USERCONFIG"
     ]
 }
 
@@ -337,10 +345,10 @@ export func redact(text, secrets) {
             if len(secret) >= 8 {
                 output = replace(output, encode_base64(secret), "[REDACTED]")
             }
-        }
-        i = i + 1
     }
-    return output
+i = i + 1
+}
+return output
 }
 
 export func env_secret_values(names) {
@@ -348,12 +356,12 @@ export func env_secret_values(names) {
     mut i := 0
     while i < len(names) {
         value := env(names[i])
-        if type(value) == "string" && len(value) > 0 {
+        if type(value) == "string"&&len(value) > 0 {
             values = push(values, value)
         }
-        i = i + 1
-    }
-    return values
+    i = i + 1
+}
+return values
 }
 
 export func redact_with_env(text, names) {
@@ -361,50 +369,50 @@ export func redact_with_env(text, names) {
 }
 
 func valid_identity_number(value) {
-    if type(value) != "string" || trim(value) == "" {
+    if type(value) != "string"||trim(value) == "" {
         return false
     }
-    mut i := 0
-    while i < len(value) {
-        if contains("0123456789", substring(value, i, i + 1)) == 0 {
-            return false
-        }
-        i = i + 1
+mut i := 0
+while i < len(value) {
+    if contains("0123456789", substring(value, i, i + 1)) == 0 {
+        return false
     }
-    number := parse_int(value)
-    return number > 0 && number <= 65534
+i = i + 1
+}
+number := parse_int(value)
+return number > 0&&number <= 65534
 }
 
 export func resolve_run_as(run_as) {
     if run_as == "host" {
         uid_result := run_argv(["id", "-u"], 10000)
         gid_result := run_argv(["id", "-g"], 10000)
-        if process_ok(uid_result) == false || process_ok(gid_result) == false {
+        if process_ok(uid_result) == false||process_ok(gid_result) == false {
             return {"ok": false, "error": "could not resolve the host uid/gid for workspace ownership"}
         }
-        uid := trim(proc_stdout(uid_result))
-        gid := trim(proc_stdout(gid_result))
-        if valid_identity_number(uid) == false || valid_identity_number(gid) == false {
-            return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
-        }
-        return {"ok": true, "value": uid + ":" + gid, "source": "host", "uid": parse_int(uid), "gid": parse_int(gid)}
+    uid := trim(proc_stdout(uid_result))
+    gid := trim(proc_stdout(gid_result))
+    if valid_identity_number(uid) == false||valid_identity_number(gid) == false {
+        return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
     }
-    parts := split(to_string(run_as), ":")
-    if len(parts) != 2 || valid_identity_number(parts[0]) == false || valid_identity_number(parts[1]) == false {
-        return {"ok": false, "error": "workspace.run_as must resolve to a non-root uid:gid pair"}
-    }
-    return {"ok": true, "value": parts[0] + ":" + parts[1], "source": "fixed", "uid": parse_int(parts[0]), "gid": parse_int(parts[1])}
+return {"ok": true, "value": uid + ":" + gid, "source": "host", "uid": parse_int(uid), "gid": parse_int(gid)}
+}
+parts := split(to_string(run_as), ":")
+if len(parts) != 2||valid_identity_number(parts[0]) == false||valid_identity_number(parts[1]) == false {
+    return {"ok": false, "error": "workspace.run_as must resolve to a non-root uid:gid pair"}
+}
+return {"ok": true, "value": parts[0] + ":" + parts[1], "source": "fixed", "uid": parse_int(parts[0]), "gid": parse_int(parts[1])}
 }
 
 export func process_ok(result) {
-    return proc_success(result) && proc_timed_out(result) == false
+    return proc_success(result)&&proc_timed_out(result) == false
 }
 
 export func process_error(result, operation) {
     if proc_timed_out(result) {
         return operation + ": timed out"
     }
-    return operation + " exited with code " + to_string(proc_exitcode(result)) + ": " + trim(proc_stderr(result))
+return operation + " exited with code " + to_string(proc_exitcode(result)) + ": " + trim(proc_stderr(result))
 }
 
 export func run_argv(argv, timeout_ms) {
@@ -415,64 +423,64 @@ export func run_argv_options(argv, options) {
     try {
         return spawn_process(argv, options)
     } except err {
-        return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err), "timed_out": false, "stdout_truncated": false, "stderr_truncated": false}
-    }
+    return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err), "timed_out": false, "stdout_truncated": false, "stderr_truncated": false}
+}
 }
 
 export func proc_success(result) {
     if type(result) == "dict" {
         return get_or(result, "success", false) == true
     }
-    return result.success == true
+return result.success == true
 }
 
 export func proc_timed_out(result) {
     if type(result) == "dict" {
         return get_or(result, "timed_out", false) == true
     }
-    return result.timed_out == true
+return result.timed_out == true
 }
 
 export func proc_exitcode(result) {
     if type(result) == "dict" {
         return get_or(result, "exitcode", 127)
     }
-    return result.exitcode
+return result.exitcode
 }
 
 func text_or_empty(value) {
     if type(value) == "string" {
         return value
     }
-    return ""
+return ""
 }
 
 export func proc_stdout(result) {
     if type(result) == "dict" {
         return text_or_empty(get_or(result, "stdout", ""))
     }
-    return text_or_empty(result.stdout)
+return text_or_empty(result.stdout)
 }
 
 export func proc_stderr(result) {
     if type(result) == "dict" {
         return text_or_empty(get_or(result, "stderr", ""))
     }
-    return text_or_empty(result.stderr)
+return text_or_empty(result.stderr)
 }
 
 export func proc_stdout_truncated(result) {
     if type(result) == "dict" {
         return get_or(result, "stdout_truncated", false)
     }
-    return result.stdout_truncated
+return result.stdout_truncated
 }
 
 export func proc_stderr_truncated(result) {
     if type(result) == "dict" {
         return get_or(result, "stderr_truncated", false)
     }
-    return result.stderr_truncated
+return result.stderr_truncated
 }
 
 export func first_line(text) {
@@ -480,5 +488,5 @@ export func first_line(text) {
     if len(lines) == 0 {
         return ""
     }
-    return trim(lines[0])
+return trim(lines[0])
 }

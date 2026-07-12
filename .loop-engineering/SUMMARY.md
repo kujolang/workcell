@@ -2,34 +2,34 @@
 
 ## Verdict
 
-success
+partial
 
 ## Completed
 
-- Docker CLI 29.6.1 installed with Colima 0.10.3 and QEMU 11.0.2; daemon verified through the `colima` context.
-- Fixed artifact containment checks for paths that do not exist yet.
-- Added a credential-free pinned local-source Kujo image build helper and verified the Kujo project-check example.
-- Pushed commits `3d33f3a` and `0afa2f8` to `origin/main`.
+- Completed the local-fixable hardening backlog: host UID/GID workspace ownership, bounded scans/output/artifacts, declarative verification containers, image provenance fallback, resource inventory and explicit image retention, batched binary probes, schema/help contracts, version consistency, compatibility documentation, and the verification example.
+- Added 66 policy/artifact/verification assertions, 8 workspace assertions, a 200-file default performance signal, and an opt-in 2,000-file signal (32,259 ms on the current macOS host).
+- Restarted Colima 0.10.3 and reran Docker integration successfully against Docker server 29.5.2.
 
 ## Verification
 
-- passed: Kujo checks, 53 policy assertions, 8 workspace assertions, path-safety, dry-run, custom-network, custom security profiles, receipt redaction, duplicate-input validation, ownership-marker validation, example validation, CLI smoke, Docker integration, Docker/Colima doctor, Kennel manifest validation, ShipCheck gate with zero warnings, Fence check with zero violations/warnings, ChangeBucket budget, diff check, and cleanup verification.
-- blocked: none
+- passed: Kujo checks, 66 policy/artifact/verification assertions, 8 workspace assertions, performance signals, path-safety, dry-run, custom-network, custom security profiles, receipt redaction, duplicate-input validation, ownership-marker validation, example validation, CLI schema/help smoke, version consistency, Docker integration including verification and clean inventory, and Docker/Colima doctor.
+- blocked: Kujo formatter semantic-safety repair, linter reachability quality, true streaming redaction, and parent-signal cancellation require coordinated Kujo/toolchain changes; rootless is not enabled on the current Colima daemon.
 - failed: none
 
 ## Commits
 
-- `3d33f3a` — fix: validate artifact paths before containment checks
-- `0afa2f8` — docs: build the Kujo example image from pinned local source
+- `44a691d` — feat: complete local hardening controls
+- Current worktree contains the follow-up documentation/backlog/evidence commit pending push.
 
 ## Remaining
 
-- CI, `kennel.toml`, and an explicit `main.kujo` entry point are now present; ShipCheck reports zero warnings.
+- Optional RunLedger/ChangeBucket/ShipCheck/Fence/PackWrite/Muzzle adapters remain intentionally deferred until stable contracts and explicit integration ownership justify them.
 
 ## External Blockers
 
-- none
+- Toolchain ownership: formatter, linter, streaming process callbacks, and signal cancellation are in the Kujo repository/runtime rather than this Workcell repository.
+- Host ownership: rootless/VM/microVM fleet, egress proxy, signing governance, registry authorization, and vulnerability scanning remain deployment controls.
 
 ## Next Start
 
-- success: Docker-backed integration and final ecosystem gates passed; pushed `main` to `origin/main`.
+- Rerun the final ecosystem gates after committing/pushing the documentation and backlog status update, then coordinate the external Kujo toolchain items.

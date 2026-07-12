@@ -41,7 +41,7 @@ $KUJO check main.kujo
 ./bin/workcell run --file workcell.json --repo .
 ```
 
-`workcell init` creates a restrictive JSON definition. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example.
+`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, verification, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example.
 
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
@@ -60,16 +60,16 @@ cat .workcell/runs/<run-id>/stderr.log
 | --- | --- |
 | `doctor` | Check Kujo, Git, Docker, repository, temp directory, and dangerous environment signals. |
 | `init` | Create a starter `workcell.json`; refuses overwrite unless `--force` is supplied. |
-| `validate` | Parse and semantically validate a definition without running Docker. |
+| `validate` | Parse and semantically validate a definition without running Docker; `--schema` emits the versioned contract. |
 | `inspect` | Display resolved config, mounts, resources, secrets by name, and security arguments. |
 | `run` | Execute the complete validate/prepare/launch/collect/verify/export/record/clean lifecycle. |
-| `clean` | Remove only Workcell-labeled Docker containers and Workcell temporary directories. |
+| `clean` | Remove only Workcell-owned containers and temporary workspaces; `--dry-run` inventories resources, and `--prune-images` explicitly removes labeled images. |
 
-Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`.
+Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`. Verification commands run in separate labeled containers with the same policy and appear under `receipt.json.verification.checks`.
 
 ## Security defaults
 
-The default `contained-standard` profile uses Docker with network `none`, a non-root UID, a read-only root filesystem, bounded CPU/memory/PIDs/time, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted from captured logs.
+The default `contained-standard` profile uses Docker with network `none`, a non-root host-mapped UID/GID, a read-only root filesystem, bounded CPU/memory/PIDs/time/output, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted from captured logs. Artifact limits, extension policies, and reject/redact secret hooks are opt-in.
 
 Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, pin `runtime.image_digest` to a reviewed `sha256:` digest and use `runtime.signature_key` when your organization verifies images with cosign. See [docs/security-model.md](docs/security-model.md) and [docs/enterprise-deployment.md](docs/enterprise-deployment.md).
 
@@ -106,6 +106,7 @@ Docker integration tests are opt-in because the local daemon may not be availabl
 - [Security model](docs/security-model.md)
 - [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Definition reference](docs/workcell-definition.md)
+- [Platform compatibility](docs/compatibility.md)
 - [Lifecycle](docs/runtime-lifecycle.md)
 - [Development](docs/development.md)
 - [Roadmap](docs/roadmap.md)

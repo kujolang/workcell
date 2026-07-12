@@ -26,6 +26,7 @@ Workcell supplies a physical boundary and a durable evidence boundary. Kujo trus
 - `src/policy/policy.kujo`: explicit Docker security arguments and runtime environment policy.
 - `src/runtime/docker.kujo`: Docker availability, image build/pull/inspect, run, and ownership-scoped cleanup.
 - `src/workspace/workspace.kujo`: Git repository inspection, clean-source enforcement, worktree/clone creation, patch and change collection, safe cleanup.
+- `src/verification/verification.kujo`: versioned post-run checks in separate labeled containers using the same runtime policy.
 - `src/execution/coordinator.kujo`: stateful `validate → prepare → launch → execute → collect → verify → export → record → clean` lifecycle.
 - `src/artifacts/exporter.kujo`: declared artifact copying and secret-redacted logs.
 - `src/receipts/receipt.kujo`: structured run receipt shape and finalization.

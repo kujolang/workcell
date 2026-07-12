@@ -1,4 +1,4 @@
-objective: "Build and verify the Kujo-native Workcell Docker-backed local execution MVP from the attached specification."
+objective: "Complete and verify every local-fixable item in docs/next-hardening-backlog.md, and record exact external/toolchain blockers for the remaining items."
 checklist_file: ""
 max_iterations: 8
 max_no_progress: 2
@@ -33,11 +33,11 @@ eval_gates:
     required: true
 
   - id: docker_integration
-    command: "TMPDIR=/var/folders/... KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh"
+    command: "KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh"
     required: true
 
   - id: doctor
-    command: "TMPDIR=/var/folders/... KUJO=../kujo/target/release/kujo ./bin/workcell doctor --json"
+    command: "KUJO=../kujo/target/release/kujo ./bin/workcell doctor --json"
     required: true
 
 commit:

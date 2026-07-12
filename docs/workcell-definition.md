@@ -7,14 +7,15 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
   "version": 1,
   "name": "hello-workcell",
   "runtime": {"backend": "docker", "image": "alpine:3.20", "build_context": ""},
-  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace", "run_as": "host"},
   "command": ["sh", "-lc", "printf 'hello\\n' > hello.txt"],
   "environment": {"allow": [], "set": {}},
   "secrets": [],
-  "resources": {"cpus": 2, "memory": "1g", "pids": 256, "timeout_ms": 300000},
+  "resources": {"cpus": 2, "memory": "1g", "pids": 256, "timeout_ms": 300000, "max_output_bytes": 4000000},
   "network": {"mode": "none"},
   "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
   "artifacts": {"export": ["hello.txt"]},
+  "verification": {"version": 1, "commands": []},
   "cleanup": {"keep_failed": false},
   "trust_profile": "contained-standard",
   "receipt": {"path": ".workcell/runs"}
@@ -26,17 +27,20 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 - `version`: required integer `1`.
 - `name`: required non-empty project name.
 - `runtime.backend`: required `docker`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch; optional `signature_key` verifies the image with `cosign verify --key` before launch.
-- `workspace.strategy`: `git-worktree` (default) or `isolated-clone`; `mount_path` must be a safe absolute container path and defaults to `/workspace`.
+- `workspace.strategy`: `git-worktree` (default) or `isolated-clone`; `mount_path` must be a safe absolute container path and defaults to `/workspace`. `run_as` defaults to `host`, resolving the invoking non-root UID/GID and avoiding world-writable temporary workspaces; explicit non-root `uid:gid` pairs are supported when the host can assign ownership.
+- `workspace.scan`: bounded post-run workspace inspection with `max_files`, `max_bytes`, and `max_depth`; limits fail verification with receipt diagnostics rather than silently truncating evidence.
 - `command`: required non-empty argv array. Arguments may begin with `-`; host-side Workcell commands never use shell interpolation.
 - `environment.allow`: host environment names explicitly passed into the container with Docker's `--env NAME` form. Host-control variables such as `PATH`, `HOME`, `DOCKER_HOST`, and credential selectors are rejected.
 - `environment.set`: explicit non-secret container values passed as `--env NAME=value`; a configured name cannot override a declared secret.
 - `secrets`: environment-variable names read at execution time and passed into the container by name, without placing their values in Docker argv. Missing names fail the run.
-- `resources.cpus`, `memory`, `pids`, `timeout_ms`: bounded Docker resource values. CPUs range from 1–64, memory accepts integer `k`, `m`, or `g` values up to 64g, PIDs range from 1–65536, and timeouts are capped at 24 hours. Timeout strings ending in `s`, `m`, or `h` are normalized to milliseconds.
+- `resources.cpus`, `memory`, `pids`, `timeout_ms`, `max_output_bytes`: bounded Docker/process values. CPUs range from 1–64, memory accepts integer `k`, `m`, or `g` values up to 64g, PIDs range from 1–65536, output is capped at 16 MB per stream, and timeouts are capped at 24 hours. Timeout strings ending in `s`, `m`, or `h` are normalized to milliseconds.
 - `network.mode`: `none` (default), explicit `default`, or `custom`; `custom` attaches to a pre-created Docker network named by `network.name`, allowing operators to enforce an internal network or egress proxy boundary outside Workcell.
 - `network.name`: required and Docker-safe when `network.mode` is `custom`; forbidden otherwise.
 - `filesystem.read_only_root`: default `true`; `tmpfs` targets must be `/tmp` or a descendant beneath `/tmp`.
 - `filesystem.seccomp_profile` and `filesystem.apparmor_profile`: optional bounded profile names installed on the Docker host; `unconfined` and unsafe names are rejected. Empty values keep Docker's built-in defaults.
 - `artifacts.export`: relative paths only; traversal, absolute paths, and escapes are rejected.
+- `artifacts.limits`: optional per-export path limits for `max_bytes`, `max_files`, and `max_depth`. Global `max_bytes`, `max_files`, and `max_depth` bound the complete export; `allowed_extensions` provides a simple content-type policy; `secret_action` may `allow`, `reject`, or `redact` declared secret values before export.
+- `verification`: versioned post-run checks. Each command has a stable `name` and argv array, runs in a separate labeled container with the same security policy, and is recorded independently from workload execution. Verification failures return exit code `8`.
 - `cleanup.keep_failed`: default `false`; failed workspace preservation is explicit.
 - `trust_profile`: `contained-standard` (default), `contained-open`, or `native-guarded`; `native-guarded` fails closed unless Docker reports seccomp, AppArmor, and a rootless daemon (or a stronger VM/microVM runtime is used).
 - `receipt.path`: relative project output root, default `.workcell/runs`.

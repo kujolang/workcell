@@ -1,6 +1,6 @@
 # Workcell Roadmap
 
-Implemented now: local Docker backend, JSON v1 definitions, disposable Git workspaces, restrictive default policy, bounded resources/timeouts, declared artifact export, receipts, doctor/clean, offline tests, and example definitions.
+Implemented now: local Docker backend, JSON v1 definitions and schema/help contracts, disposable Git workspaces with host UID/GID mapping, restrictive default policy, bounded resources/timeouts/output/scans, declared artifact export policies, versioned verification checks, image provenance, resource inventory, receipts, doctor/clean, performance signals, offline tests, compatibility documentation, and example definitions.
 
 Future possibilities, not current behavior:
 

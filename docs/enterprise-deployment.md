@@ -4,6 +4,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 
 ## Isolation
 
+- Leave `workspace.run_as` at its default `host` value for least-privilege owner-only bind-mount access. Use a fixed non-root `uid:gid` only when the host can assign that ownership; Workcell refuses root identities and fails closed when fixed ownership cannot be applied.
 - Prefer a rootless Docker or Colima daemon for untrusted workloads where the image and workload compatibility permits it.
 - For higher-risk multi-tenant workloads, place the daemon behind a VM, Kata/gVisor runtime, or microVM service. Workcell's container policy remains useful inside that stronger boundary, but it does not create the boundary itself.
 - Keep the daemon socket private to the operator and do not mount it into workloads.

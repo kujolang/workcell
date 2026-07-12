@@ -14,8 +14,10 @@ Additional hardening completed in this pass:
 - Nested default filling is centralized in one helper instead of repeating field-by-field logic at each call site.
 - Host-control environment policy is centralized and now rejects proxy, Git credential-helper, GitHub, npm-token, and existing Docker/cloud control variables.
 - Docker-built image resources now carry Workcell ownership, run ID, project, and version labels for auditable resource boundaries.
-- Binary change classification indexes Git's binary paths before updating file metadata, avoiding the previous nested file/numstat scan for tracked changes.
-- Offline contracts cover custom network and security-profile validation, partial defaults, empty-secret logs, exact/base64-derived secret redaction, secret-safe receipts/errors, binary change metadata, digest/signature-key validation, namespace policy, null process output, and bounded absolute output paths; CLI smoke covers the preparation exit-code and Docker-profile contracts.
+- Binary change classification indexes Git's binary paths before updating file metadata, and untracked files use batched MIME probes in bounded chunks rather than one probe per file.
+- The current 65 policy/artifact/verification and 8 workspace contracts cover custom network and security-profile validation, partial defaults, empty-secret logs, exact/base64-derived secret redaction, secret-safe receipts/errors, binary change metadata, digest/signature-key validation, namespace policy, null process output, bounded absolute output paths, host UID/GID mapping, workspace scan limits, artifact policies, verification plans, schema/help output, and version consistency.
+
+The follow-up hardening pass also added declarative verification containers, bounded artifact export policies, host-mapped workspace ownership, bounded workspace scans, image ID/platform/label provenance, `clean --dry-run` inventory with explicit image retention, a first-class verification example, version-source validation, a compatibility matrix, and a 2,000-file opt-in performance signal.
 
 Verification on the local Docker/Colima daemon passed the full offline suite and `tests/docker_integration.sh`. The integration run covered successful execution, declared artifacts, controlled edits, runtime image builds, digest verification and mismatch failure, workload failure, timeout cleanup, symlink rejection, and ownership-scoped cleanup. Docker buildx 0.35.0 is installed locally and the integration suite now exercises BuildKit.
 

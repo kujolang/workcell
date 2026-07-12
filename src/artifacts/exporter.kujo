@@ -1,6 +1,6 @@
 # Copy only declared workspace outputs into a run-owned host directory.
 
-from src.util import ensure_dir, env_secret_values, get_or, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv, write_text
+from src.util import ensure_dir, env_secret_values, get_or, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv
 
 export func export_declared(workspace_path, output_dir, declared) {
     return export_declared_with_policy(workspace_path, output_dir, {"export": declared, "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
@@ -100,7 +100,7 @@ return {"ok": true}
 }
 text_result := read_text(path)
 if text_result["ok"] {
-    write_text(path, redact(text_result["text"], secrets))
+    write_file_atomic(path, redact(text_result["text"], secrets), true)
 }
 return {"ok": true}
 }
@@ -185,8 +185,8 @@ export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) 
     redacted_stdout := redact(stdout_text, secret_values)
     redacted_stderr := redact(stderr_text, secret_values)
     try {
-        write_text(output_dir + "/stdout.log", redacted_stdout)
-        write_text(output_dir + "/stderr.log", redacted_stderr)
+        write_file_atomic(output_dir + "/stdout.log", redacted_stdout, true)
+        write_file_atomic(output_dir + "/stderr.log", redacted_stderr, true)
         return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
     } except err {
     return {"ok": false, "error": "could not write execution logs: " + to_string(err)}

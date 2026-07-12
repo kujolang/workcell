@@ -1,6 +1,6 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
-from src.util import ensure_dir, load_json, read_text, run_argv, run_id, write_text
+from src.util import ensure_dir, load_json, read_text, run_argv, run_id
 from src.workspace.workspace import cleanup_workspace, clean_stale_workspaces, create_workspace, inspect_repository, make_patch, temp_root, write_change_report
 
 mut passed := 0
@@ -21,7 +21,7 @@ ensure_dir(repo)
 run_argv(["git", "-C", repo, "init", "-q"], 30000)
 run_argv(["git", "-C", repo, "config", "user.email", "workcell@example.invalid"], 30000)
 run_argv(["git", "-C", repo, "config", "user.name", "Workcell"], 30000)
-write_text(repo + "/tracked.txt", "tracked\n")
+write_file_atomic(repo + "/tracked.txt", "tracked\n", true)
 run_argv(["git", "-C", repo, "add", "tracked.txt"], 30000)
 run_argv(["git", "-C", repo, "commit", "-qm", "initial"], 30000)
 
@@ -49,7 +49,7 @@ run_argv(["rm", "-rf", repo], 30000)
 
 spoof := temp_root() + "/kujo-workcell-not-a-real-run"
 ensure_dir(spoof)
-write_text(spoof + ".owner", "workcell-run-id=not-a-real-run\n")
+write_file_atomic(spoof + ".owner", "workcell-run-id=not-a-real-run\n", true)
 stale := clean_stale_workspaces()
 expect("spoofed workspace marker is not removed", file_exists(spoof)&&contains(to_string(stale["skipped"]), spoof) == 1)
 run_argv(["rm", "-rf", spoof, spoof + ".owner"], 30000)

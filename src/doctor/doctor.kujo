@@ -1,7 +1,7 @@
 # Environment diagnostics for Workcell.
 
 from src.runtime.docker import doctor_docker
-from src.util import parent_of, process_ok, proc_stderr, proc_stdout, run_argv, run_id, write_text
+from src.util import parent_of, process_ok, run_argv, run_id
 from src.workspace.workspace import inspect_repository
 
 func command_check(program, arguments, label) {
@@ -13,9 +13,9 @@ func command_check(program, arguments, label) {
     }
 result := run_argv(argv, 10000)
 if process_ok(result) {
-    return {"name": label, "status": "passed", "message": trim(proc_stdout(result)), "remediation": ""}
+    return {"name": label, "status": "passed", "message": trim(result.stdout), "remediation": ""}
 }
-return {"name": label, "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Install or expose " + program + " on PATH"}
+return {"name": label, "status": "blocked", "message": process_error(result, program), "remediation": "Install or expose " + program + " on PATH"}
 }
 
 func ecosystem_tools_check(repo_root) {
@@ -38,9 +38,9 @@ return {"name": "Optional Kujo tooling", "status": "warning", "message": "option
 func docker_security_check() {
     result := run_argv(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
     if process_ok(result) == false {
-        return {"name": "Docker security profiles", "status": "blocked", "message": trim(proc_stderr(result)), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
+        return {"name": "Docker security profiles", "status": "blocked", "message": trim(result.stderr), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
     }
-options := trim(proc_stdout(result))
+options := trim(result.stdout)
 if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
     return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
 }
@@ -87,7 +87,7 @@ probe := tmp + "/workcell-doctor-" + run_id() + ".probe"
 probe_status := "blocked"
 probe_message := "temporary directory is not writable"
 try {
-    write_text(probe, "workcell doctor probe")
+    write_file_atomic(probe, "workcell doctor probe", true)
     if file_exists(probe) {
         probe_status = "passed"
         probe_message = "temporary directory is writable"
@@ -99,9 +99,9 @@ probe_message = to_string(err)
 checks = push(checks, {"name": "Temporary directory write", "status": probe_status, "message": probe_message, "remediation": "Provide a writable temporary directory"})
 platform_result := run_argv(["uname", "-s"], 10000)
 if process_ok(platform_result) == false {
-    checks = push(checks, {"name": "Host platform", "status": "blocked", "message": trim(proc_stderr(platform_result)), "remediation": "Run Workcell on a supported Docker host (Linux or macOS)"})
+    checks = push(checks, {"name": "Host platform", "status": "blocked", "message": trim(platform_result.stderr), "remediation": "Run Workcell on a supported Docker host (Linux or macOS)"})
 } else {
-platform := trim(proc_stdout(platform_result))
+platform := trim(platform_result.stdout)
 if platform == "Linux"||platform == "Darwin" {
     checks = push(checks, {"name": "Host platform", "status": "passed", "message": platform, "remediation": ""})
 } else {

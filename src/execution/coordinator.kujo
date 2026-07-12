@@ -4,7 +4,7 @@ from src.artifacts.exporter import export_declared_with_policy, write_execution_
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
-from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_symlink, path_within, redact_with_env, run_id, write_text
+from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_symlink, path_within, redact_with_env, run_id
 from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
@@ -54,7 +54,7 @@ return path_within(temp_root(), requested)||path_within(repo_root + "/.workcell"
 
 func write_failure_note(output_dir, stage, message) {
     ensure_dir(output_dir)
-    write_text(output_dir + "/failure.txt", "Workcell failure\nStage: " + stage + "\nCause: " + message + "\nRecorded: " + now_utc() + "\n")
+    write_file_atomic(output_dir + "/failure.txt", "Workcell failure\nStage: " + stage + "\nCause: " + message + "\nRecorded: " + now_utc() + "\n", true)
 }
 
 func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, error, exit_code, timed_out, cancelled, cleanup_status) {

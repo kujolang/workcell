@@ -1,6 +1,6 @@
 # Local performance signal for batched changed-file collection.
 
-from src.util import ensure_dir, run_argv, run_id, write_text
+from src.util import ensure_dir, run_argv, run_id
 from src.workspace.workspace import change_details, cleanup_workspace, create_workspace, inspect_repository
 
 repo := "/tmp/workcell-performance-fixture-" + run_id()
@@ -16,7 +16,7 @@ ensure_dir(repo)
 run_argv(["git", "-C", repo, "init", "-q"], 30000)
 run_argv(["git", "-C", repo, "config", "user.email", "workcell@example.invalid"], 30000)
 run_argv(["git", "-C", repo, "config", "user.name", "Workcell"], 30000)
-write_text(repo + "/tracked.txt", "tracked\n")
+write_file_atomic(repo + "/tracked.txt", "tracked\n", true)
 run_argv(["git", "-C", repo, "add", "tracked.txt"], 30000)
 run_argv(["git", "-C", repo, "commit", "-qm", "initial"], 30000)
 workspace := create_workspace(repo, "git-worktree", run_id())
@@ -25,8 +25,9 @@ if workspace["ok"] == false {
     exit(1)
 }
 mut i := 0
+ensure_dir(workspace["workspace_path"] + "/generated")
 while i < file_count {
-    write_text(workspace["workspace_path"] + "/generated/file-" + to_string(i) + ".txt", "file\n")
+    write_file_atomic(workspace["workspace_path"] + "/generated/file-" + to_string(i) + ".txt", "file\n", true)
     i = i + 1
 }
 start := current_timestamp()

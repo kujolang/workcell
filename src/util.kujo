@@ -112,18 +112,6 @@ i = i + 1
 return path_is_dir(path)
 }
 
-export func write_text(path, content) {
-    parent := parent_of(path)
-    if parent != "" {
-        ensure_dir(parent)
-    }
-if file_exists(path) {
-    delete_file(path)
-}
-write_file(path, content)
-return true
-}
-
 export func read_text(path) {
     if file_exists(path) == false {
         return {"ok": false, "error": "file not found: " + path}
@@ -152,7 +140,9 @@ return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
 }
 
 export func save_json(path, value) {
-    return write_text(path, to_json_pretty(value))
+    parent := parent_of(path)
+    if parent != "" { ensure_dir(parent) }
+    return write_file_atomic(path, to_json_pretty(value), true)
 }
 
 export func parent_of(path) {
@@ -402,8 +392,8 @@ export func resolve_run_as(run_as) {
         if process_ok(uid_result) == false||process_ok(gid_result) == false {
             return {"ok": false, "error": "could not resolve the host uid/gid for workspace ownership"}
         }
-    uid := trim(proc_stdout(uid_result))
-    gid := trim(proc_stdout(gid_result))
+    uid := trim(uid_result.stdout)
+    gid := trim(gid_result.stdout)
     if valid_identity_number(uid) == false||valid_identity_number(gid) == false {
         return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
     }
@@ -417,14 +407,30 @@ return {"ok": true, "value": parts[0] + ":" + parts[1], "source": "fixed", "uid"
 }
 
 export func process_ok(result) {
-    return proc_success(result)&&proc_timed_out(result) == false
+    if type(result) == "dict" {
+        return get_or(result, "success", false) == true && get_or(result, "timed_out", false) == false
+    }
+    return result.success && result.timed_out == false
 }
 
 export func process_error(result, operation) {
-    if proc_timed_out(result) {
+    mut timed_out := false
+    mut exitcode := 127
+    mut stderr := ""
+    if type(result) == "dict" {
+        timed_out = get_or(result, "timed_out", false)
+        exitcode = get_or(result, "exitcode", 127)
+        stderr = get_or(result, "stderr", "")
+    } else {
+        timed_out = result.timed_out
+        exitcode = result.exitcode
+        stderr = result.stderr
+    }
+    if type(stderr) != "string" { stderr = "" }
+    if timed_out {
         return operation + ": timed out"
     }
-return operation + " exited with code " + to_string(proc_exitcode(result)) + ": " + trim(proc_stderr(result))
+return operation + " exited with code " + to_string(exitcode) + ": " + trim(stderr)
 }
 
 export func run_argv(argv, timeout_ms) {
@@ -437,62 +443,6 @@ export func run_argv_options(argv, options) {
     } except err {
     return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err), "timed_out": false, "stdout_truncated": false, "stderr_truncated": false}
 }
-}
-
-export func proc_success(result) {
-    if type(result) == "dict" {
-        return get_or(result, "success", false) == true
-    }
-return result.success == true
-}
-
-export func proc_timed_out(result) {
-    if type(result) == "dict" {
-        return get_or(result, "timed_out", false) == true
-    }
-return result.timed_out == true
-}
-
-export func proc_exitcode(result) {
-    if type(result) == "dict" {
-        return get_or(result, "exitcode", 127)
-    }
-return result.exitcode
-}
-
-func text_or_empty(value) {
-    if type(value) == "string" {
-        return value
-    }
-return ""
-}
-
-export func proc_stdout(result) {
-    if type(result) == "dict" {
-        return text_or_empty(get_or(result, "stdout", ""))
-    }
-return text_or_empty(result.stdout)
-}
-
-export func proc_stderr(result) {
-    if type(result) == "dict" {
-        return text_or_empty(get_or(result, "stderr", ""))
-    }
-return text_or_empty(result.stderr)
-}
-
-export func proc_stdout_truncated(result) {
-    if type(result) == "dict" {
-        return get_or(result, "stdout_truncated", false)
-    }
-return result.stdout_truncated
-}
-
-export func proc_stderr_truncated(result) {
-    if type(result) == "dict" {
-        return get_or(result, "stderr_truncated", false)
-    }
-return result.stderr_truncated
 }
 
 export func first_line(text) {

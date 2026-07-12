@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, read_text, resolve_run_as, run_argv, save_json, valid_run_id, write_text
+from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, read_text, resolve_run_as, run_argv, save_json, valid_run_id
 
 export func temp_root() {
     candidate := env("TMPDIR")
@@ -26,7 +26,7 @@ export func inspect_repository(repo_path) {
     if process_ok(root_result) == false {
         return {"ok": false, "error": "not a Git repository: " + repo_path}
     }
-root := trim(proc_stdout(root_result))
+root := trim(root_result.stdout)
 commit_result := git_result(["git", "-C", root, "rev-parse", "HEAD"], 10000)
 if process_ok(commit_result) == false {
     return {"ok": false, "error": process_error(commit_result, "resolve source commit")}
@@ -38,9 +38,9 @@ if process_ok(status_result) == false {
 return {
     "ok": true,
     "root": root,
-    "commit": trim(proc_stdout(commit_result)),
-    "status": trim(proc_stdout(status_result)),
-    "clean": trim(proc_stdout(status_result)) == ""
+    "commit": trim(commit_result.stdout),
+    "status": trim(status_result.stdout),
+    "clean": trim(status_result.stdout) == ""
 }
 }
 
@@ -128,9 +128,9 @@ if strategy == "git-worktree" {
 result = git_result(["git", "clone", "--no-local", root, path], 120000)
 }
 if process_ok(result) == false {
-    return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+    return {"ok": false, "stage": "preparing", "error": process_error(result, "create disposable " + strategy), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
-write_text(path + ".owner", "workcell-run-id=" + run_identifier + "\n")
+write_file_atomic(path + ".owner", "workcell-run-id=" + run_identifier + "\n", true)
 symlinks := find_symlink(path)
 if symlinks["ok"] == false {
     cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
@@ -196,7 +196,7 @@ func binary_paths_for_batch(workspace_path, paths) {
     }
 result := run_argv(args, 60000)
 if process_ok(result) {
-    mime_lines := lines_of(trim(proc_stdout(result)))
+    mime_lines := lines_of(trim(result.stdout))
     mut mime_i := 0
     while mime_i < len(batch)&&mime_i < len(mime_lines) {
         mime := to_lower(trim(mime_lines[mime_i]))
@@ -240,7 +240,7 @@ export func change_details(workspace) {
     if process_ok(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
     }
-lines := lines_of(trim(proc_stdout(status_result)))
+lines := lines_of(trim(status_result.stdout))
 mut files := []
 mut known_paths := {}
 mut i := 0
@@ -257,7 +257,7 @@ i = i + 1
 }
 untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
 if process_ok(untracked_result) {
-    untracked := lines_of(trim(proc_stdout(untracked_result)))
+    untracked := lines_of(trim(untracked_result.stdout))
     mut untracked_paths := []
     mut j := 0
     while j < len(untracked) {
@@ -284,7 +284,7 @@ untracked_file_i = untracked_file_i + 1
 }
 numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", workspace["source_commit"]], 30000)
 if process_ok(numstat_result) {
-    numstat_lines := lines_of(trim(proc_stdout(numstat_result)))
+    numstat_lines := lines_of(trim(numstat_result.stdout))
     binary_paths := {}
     mut numstat_i := 0
     while numstat_i < len(numstat_lines) {
@@ -340,21 +340,21 @@ export func make_patch(workspace, patch_path) {
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "generate Git patch")}
     }
-mut patch_text := proc_stdout(result)
+mut patch_text := result.stdout
 untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
 if process_ok(untracked_result) == false {
     return {"ok": false, "error": process_error(untracked_result, "collect untracked files for Git patch")}
 }
-untracked := lines_of(trim(proc_stdout(untracked_result)))
+untracked := lines_of(trim(untracked_result.stdout))
 mut i := 0
 while i < len(untracked) {
     relative := trim(untracked[i])
     if relative != "" {
         added := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", "--no-index", "--", "/dev/null", relative], 60000)
-        if proc_exitcode(added) != 0&&proc_exitcode(added) != 1 {
+        if added.exitcode != 0&&added.exitcode != 1 {
             return {"ok": false, "error": process_error(added, "generate Git patch for " + relative)}
         }
-    patch_text = patch_text + proc_stdout(added)
+    patch_text = patch_text + added.stdout
 }
 i = i + 1
 }
@@ -433,7 +433,7 @@ while i < len(entries) {
             run_argv(["rm", "-f", owner_path], 30000)
             removed = push(removed, path)
         } else {
-        skipped = push(skipped, path + ": " + trim(proc_stderr(result)))
+        skipped = push(skipped, path + ": " + trim(result.stderr))
     }
 }
 } else if starts_with(name, "kujo-workcell-")&&path_is_dir(path) {

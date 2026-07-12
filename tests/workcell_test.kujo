@@ -4,7 +4,7 @@ from src.artifacts.exporter import export_declared, export_declared_with_policy,
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy
 from src.receipts.receipt import add_error, new_receipt
-from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id, write_text
+from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
 
 mut passed := 0
@@ -271,13 +271,13 @@ expect("base64-derived secret is redacted from execution logs", derived_logs["ok
 run_argv(["rm", "-rf", derived_log_dir], 30000)
 
 fixture := "/tmp/workcell-contract-fixture.txt"
-write_text(fixture, "fixture")
+write_file_atomic(fixture, "fixture", true)
 expect("fixture write is readable by exporter", file_exists(fixture))
 delete_file(fixture)
 
 export_fixture := "/tmp/workcell-export-fixture-" + run_id()
 ensure_dir(export_fixture + "/workspace")
-write_text(export_fixture + "/outside.txt", "outside\n")
+write_file_atomic(export_fixture + "/outside.txt", "outside\n", true)
 run_argv(["ln", "-s", export_fixture + "/outside.txt", export_fixture + "/workspace/escape.txt"], 30000)
 symlink_export := export_declared(export_fixture + "/workspace", export_fixture + "/output", ["escape.txt"])
 expect("symlink artifact source rejected", symlink_export["ok"] == false)
@@ -285,7 +285,7 @@ run_argv(["rm", "-rf", export_fixture], 30000)
 
 policy_fixture := "/tmp/workcell-artifact-policy-" + run_id()
 ensure_dir(policy_fixture + "/workspace/nested")
-write_text(policy_fixture + "/workspace/nested/result.txt", "artifact-secret\n")
+write_file_atomic(policy_fixture + "/workspace/nested/result.txt", "artifact-secret\n", true)
 limited_policy := {"export": ["nested"], "limits": {}, "max_bytes": 4, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}
 limited_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/limited", limited_policy, [])
 expect("artifact byte limit rejects oversized export", limited_export["ok"] == false&&contains(limited_export["error"], "max bytes") == 1)

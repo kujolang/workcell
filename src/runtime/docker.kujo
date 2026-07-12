@@ -1,6 +1,6 @@
 # Docker runtime adapter. All host commands use structured argv.
 
-from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, proc_exitcode, proc_stderr, proc_stdout, proc_stderr_truncated, proc_stdout_truncated, proc_success, proc_timed_out, run_argv, run_argv_options
+from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 
 func docker_result(argv, timeout_ms) {
@@ -12,7 +12,7 @@ func verify_daemon_security(definition) {
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "inspect Docker security profiles")}
     }
-options := trim(proc_stdout(result))
+options := trim(result.stdout)
 if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
     return {"ok": false, "error": "Docker daemon does not report both seccomp and AppArmor profiles"}
 }
@@ -24,13 +24,13 @@ return {"ok": true}
 
 export func doctor_docker() {
     result := docker_result(["docker", "version", "--format", "{{.Server.Version}}"], 10000)
-    if proc_timed_out(result) {
+    if result.timed_out {
         return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon check timed out", "remediation": "Start Docker Desktop or the Docker daemon"}
     }
-if proc_success(result) == false {
-    return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon is not reachable: " + trim(proc_stderr(result)), "remediation": "Start Docker Desktop or the Docker daemon"}
+if result.success == false {
+    return {"name": "Docker daemon", "status": "blocked", "message": "Docker daemon is not reachable: " + trim(result.stderr), "remediation": "Start Docker Desktop or the Docker daemon"}
 }
-return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(proc_stdout(result)) + ")", "remediation": ""}
+return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon reachable (server " + trim(result.stdout) + ")", "remediation": ""}
 }
 
 export func image_exists(image) {
@@ -46,10 +46,10 @@ export func image_metadata(image) {
 repo_result := docker_result(["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image], 15000)
 platform_result := docker_result(["docker", "image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], 15000)
 labels_result := docker_result(["docker", "image", "inspect", "--format", "{{json .Config.Labels}}", image], 15000)
-image_id := trim(proc_stdout(image_id_result))
+image_id := trim(image_id_result.stdout)
 repo_digest := ""
 if process_ok(repo_result) {
-    repo_digest = trim(proc_stdout(repo_result))
+    repo_digest = trim(repo_result.stdout)
     if repo_digest == "<no value>" {
         repo_digest = ""
     }
@@ -62,12 +62,12 @@ if repo_digest != "" {
 }
 platform := "unknown"
 if process_ok(platform_result) {
-    platform = trim(proc_stdout(platform_result))
+    platform = trim(platform_result.stdout)
 }
 labels := {}
-if process_ok(labels_result)&&trim(proc_stdout(labels_result)) != "null" {
+if process_ok(labels_result)&&trim(labels_result.stdout) != "null" {
     try {
-        labels = parse_json(trim(proc_stdout(labels_result)))
+        labels = parse_json(trim(labels_result.stdout))
     } except err {
     labels = {}
 }
@@ -86,9 +86,9 @@ return metadata["digest"]
 export func pull_image(image) {
     result := docker_result(["docker", "pull", image], 600000)
     if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
-    }
-return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
+}
+return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
 
 export func build_image(image, context_path, run_identifier, definition) {
@@ -101,9 +101,9 @@ export func build_image(image, context_path, run_identifier, definition) {
     }
 result := docker_result(args, 900000)
 if process_ok(result) == false {
-    return {"ok": false, "error": process_error(result, "docker build"), "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+    return {"ok": false, "error": process_error(result, "docker build"), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
-return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
 
 func digest_matches(actual, expected) {
@@ -123,7 +123,7 @@ if signature_key != "" {
     }
 signature := docker_result(["cosign", "verify", "--key", key_path, image], 120000)
 if process_ok(signature) == false {
-    return {"ok": false, "error": process_error(signature, "cosign verify " + image), "stdout": proc_stdout(signature), "stderr": proc_stderr(signature)}
+    return {"ok": false, "error": process_error(signature, "cosign verify " + image), "stdout": get_or(signature, "stdout", ""), "stderr": get_or(signature, "stderr", "")}
 }
 }
 return {"ok": true}
@@ -200,19 +200,19 @@ if type(stream_options) == "dict" {
 options["options"] := process_options
 }
 result := run_argv_options(policy["docker_args"], options["options"])
-if proc_success(result) == false&&proc_timed_out(result) == false&&proc_exitcode(result) == 125 {
+if result.success == false&&result.timed_out == false&&result.exitcode == 125 {
     state_result := docker_result(["docker", "inspect", "--format", "{{.State.Status}}", policy["container_name"]], 10000)
-    if process_ok(state_result)&&trim(proc_stdout(state_result)) == "exited" {
+    if process_ok(state_result)&&trim(state_result.stdout) == "exited" {
         return {
             "ok": true,
             "success": false,
             "exit_code": 125,
-            "stdout": proc_stdout(result),
-            "stderr": proc_stderr(result),
+            "stdout": result.stdout,
+            "stderr": result.stderr,
             "timed_out": false,
             "cancelled": get_or(result, "cancelled", false),
-            "stdout_truncated": proc_stdout_truncated(result),
-            "stderr_truncated": proc_stderr_truncated(result),
+            "stdout_truncated": result.stdout_truncated,
+            "stderr_truncated": result.stderr_truncated,
             "container_name": policy["container_name"]
         }
 }
@@ -225,14 +225,14 @@ return {
 }
 return {
     "ok": true,
-    "success": proc_success(result),
-    "exit_code": proc_exitcode(result),
-    "stdout": proc_stdout(result),
-    "stderr": proc_stderr(result),
-    "timed_out": proc_timed_out(result),
+    "success": result.success,
+    "exit_code": result.exitcode,
+    "stdout": result.stdout,
+    "stderr": result.stderr,
+    "timed_out": result.timed_out,
     "cancelled": get_or(result, "cancelled", false),
-    "stdout_truncated": proc_stdout_truncated(result),
-    "stderr_truncated": proc_stderr_truncated(result),
+    "stdout_truncated": result.stdout_truncated,
+    "stderr_truncated": result.stderr_truncated,
     "container_name": policy["container_name"]
 }
 }
@@ -242,11 +242,11 @@ export func stop_container(container_name) {
     if process_ok(result) {
         return {"ok": true, "message": "container stopped gracefully"}
     }
-message := trim(proc_stderr(result))
+message := trim(result.stderr)
 if contains(message, "No such container") == 1||contains(message, "is not running") == 1 {
     return {"ok": true, "message": message}
 }
-return {"ok": false, "message": message, "exit_code": proc_exitcode(result)}
+return {"ok": false, "message": message, "exit_code": result.exitcode}
 }
 
 export func container_logs(container_name) {
@@ -254,7 +254,7 @@ export func container_logs(container_name) {
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "collect container logs")}
     }
-return {"ok": true, "stdout": proc_stdout(result), "stderr": proc_stderr(result)}
+return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
 }
 
 export func remove_container(container_name) {
@@ -262,7 +262,7 @@ export func remove_container(container_name) {
     if process_ok(result) {
         return {"ok": true, "message": "container removed"}
     }
-return {"ok": false, "message": trim(proc_stderr(result)), "exit_code": proc_exitcode(result)}
+return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
 }
 
 export func clean_owned_resources() {
@@ -274,7 +274,7 @@ func resource_ids(argv, operation) {
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, operation)}
     }
-values := lines_of(trim(proc_stdout(result)))
+values := lines_of(trim(result.stdout))
 mut items := []
 mut seen := {}
 mut i := 0
@@ -304,7 +304,7 @@ export func clean_owned_resources_with_options(prune_images) {
     if process_ok(listed) == false {
         return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
     }
-ids := lines_of(trim(proc_stdout(listed)))
+ids := lines_of(trim(listed.stdout))
 mut removed := 0
 mut failed := []
 mut removed_images := []
@@ -334,7 +334,7 @@ if prune_images {
         if process_ok(image_result) {
             removed_images = push(removed_images, image_id)
         } else {
-        failed = push(failed, "image " + image_id + ": " + trim(proc_stderr(image_result)))
+        failed = push(failed, "image " + image_id + ": " + trim(image_result.stderr))
     }
 image_i = image_i + 1
 }

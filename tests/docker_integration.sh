@@ -83,9 +83,16 @@ test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell
 test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "1"
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/hello"
-test -f "$OUT_ROOT/hello"/*/receipt.json
+HELLO_RECEIPT="$(find "$OUT_ROOT/hello" -name receipt.json -print -quit)"
+test -f "$HELLO_RECEIPT"
 test -f "$OUT_ROOT/hello"/*/artifacts/hello.txt
+jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
+jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
 git -C "$TMP_REPO" diff --quiet
+
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/verification/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/verification"
+VERIFICATION_RECEIPT="$(find "$OUT_ROOT/verification" -name receipt.json -print -quit)"
+jq -e '.verification.execution_succeeded == true and .verification.verification_succeeded == true and .verification.checks[0].status == "passed" and .artifact_files == 1' "$VERIFICATION_RECEIPT" >/dev/null
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/controlled-edit/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/edit"
 PATCH="$(find "$OUT_ROOT/edit" -name changes.patch -print -quit)"
@@ -152,6 +159,7 @@ KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
 test -n "$(docker ps -aq --filter "name=^/${UNRELATED_NAME}$")"
 docker rm -f "$UNRELATED_NAME" >/dev/null
 test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --dry-run --json | jq -e '.dry_run == true and .actions.images == "preserve" and (.docker.image_retention | contains("preserved"))' >/dev/null
 KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
 test ! -e "$FAILED_WORKSPACE"
 test ! -e "$FAILED_WORKSPACE.owner"

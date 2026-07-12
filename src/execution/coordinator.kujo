@@ -5,7 +5,7 @@ from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
 from src.util import ensure_dir, get_or, iso_now, path_has_symlink, path_within, redact_with_env, run_id, write_text
-from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink, inspect_repository, make_patch, temp_root, write_change_report
+from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 

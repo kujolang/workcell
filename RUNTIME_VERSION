@@ -1,1 +1,1 @@
-0f7778115c39231c4af48c9a41d22c978d107885
+$(git -C ../kujo rev-parse HEAD)

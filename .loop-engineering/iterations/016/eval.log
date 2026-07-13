@@ -1,0 +1,5 @@
+`tests/quality.sh`, shell syntax, Kujo check, format, lint, and git diff checks passed.
+Offline suite passed: 99 policy, 11 workspace, and 5 stress assertions; adversarial, path-safety, dry-run, examples, CLI, schema, report, version, and Podman security contracts passed.
+Release report passed with workcell-report/v1 and 115 total assertions.
+The new four-run concurrent load contract passed on rootful Docker locally, rootless Docker in the Colima Linux VM, and rootless Podman 4.9.3 in the same VM. Each run had a unique ID, verified artifacts/manifests, unchanged source, and cleaned workspace/container.
+Hosted CI billing and larger production load profiles remain external prerequisites.

@@ -1,0 +1,5 @@
+Deployment load and release quality:
+
+- `tests/load_integration.sh`: bounded concurrent run evidence with cleanup and integrity checks.
+- `tests/quality.sh`: shared Kujo format/lint and shell syntax gate.
+- CI, default suite, API compatibility, compatibility evidence, security/build docs, and backlog records updated.

@@ -6,7 +6,7 @@ from src.policy.policy import build_policy, inspect_policy, labels_for, spawn_op
 from src.receipts.manifest import verify_manifest, write_manifest
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
-from src.util import ensure_dir, get_or, load_json, normalized_relative, process_error, read_text, redact, run_argv, run_id
+from src.util import ensure_dir, env_secret_stream_values, env_secret_values, first_line, get_or, lines_of, load_json, normalized_relative, process_error, process_ok, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
 from src.integrations.integrations import dry_run_integrations, run_integrations
 
@@ -349,6 +349,12 @@ partial_error := add_error({}, "stage", "message")
 expect("partial receipt error input is rejected without runtime crash", partial_error["ok"] == false)
 partial_finish := finish_receipt({}, "failed", 1, false, "", [], "", [], "failed", 1, false, false)
 expect("partial receipt finish input is rejected without runtime crash", partial_finish["ok"] == false)
+expect("null lines input is handled without runtime crash", len(lines_of(null)) == 0)
+expect("null process result is handled without runtime crash", process_ok(null) == false)
+expect("null process error is handled without runtime crash", contains(process_error(null, "probe"), "invalid process result") == 1)
+expect("invalid redaction secrets are handled without runtime crash", redact("safe", null) == "safe")
+expect("invalid environment secrets are handled without runtime crash", len(env_secret_values(null)) == 0&&len(env_secret_stream_values(null)) == 0)
+expect("null first-line input is handled without runtime crash", first_line(null) == "")
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

@@ -68,16 +68,19 @@ return true
 }
 
 export func lines_of(text) {
-    raw := split(text, "\n")
-    mut out := []
-    mut i := 0
-    while i < len(raw) {
-        line := raw[i]
-        if ends_with(line, "\r") {
-            out = push(out, substring(line, 0, len(line) - 1))
-        } else {
-        out = push(out, line)
+    if type(text) != "string" {
+        return []
     }
+raw := split(text, "\n")
+mut out := []
+mut i := 0
+while i < len(raw) {
+    line := raw[i]
+    if ends_with(line, "\r") {
+        out = push(out, substring(line, 0, len(line) - 1))
+    } else {
+    out = push(out, line)
+}
 i = i + 1
 }
 return out
@@ -322,45 +325,57 @@ export func host_control_env_names() {
 }
 
 export func redact(text, secrets) {
-    mut output := text
-    mut i := 0
-    while i < len(secrets) {
-        secret := to_string(secrets[i])
-        if secret != "" {
-            output = replace(output, secret, "[REDACTED]")
-            if len(secret) >= 8 {
-                output = replace(output, encode_base64(secret), "[REDACTED]")
-            }
+    if type(text) != "string" {
+        return ""
     }
+if type(secrets) != "array" {
+    return text
+}
+mut output := text
+mut i := 0
+while i < len(secrets) {
+    secret := to_string(secrets[i])
+    if secret != "" {
+        output = replace(output, secret, "[REDACTED]")
+        if len(secret) >= 8 {
+            output = replace(output, encode_base64(secret), "[REDACTED]")
+        }
+}
 i = i + 1
 }
 return output
 }
 
 export func env_secret_values(names) {
-    mut values := []
-    mut i := 0
-    while i < len(names) {
-        value := env(names[i])
-        if type(value) == "string"&&len(value) > 0 {
-            values = push(values, value)
-        }
-    i = i + 1
+    if type(names) != "array" {
+        return []
+    }
+mut values := []
+mut i := 0
+while i < len(names) {
+    value := env(names[i])
+    if type(value) == "string"&&len(value) > 0 {
+        values = push(values, value)
+    }
+i = i + 1
 }
 return values
 }
 
 export func env_secret_stream_values(names) {
-    mut values := []
-    mut i := 0
-    while i < len(names) {
-        value := env(names[i])
-        if type(value) == "string"&&len(value) > 0 {
-            values = push(values, value)
-            if len(value) >= 8 {
-                values = push(values, encode_base64(value))
-            }
+    if type(names) != "array" {
+        return []
     }
+mut values := []
+mut i := 0
+while i < len(names) {
+    value := env(names[i])
+    if type(value) == "string"&&len(value) > 0 {
+        values = push(values, value)
+        if len(value) >= 8 {
+            values = push(values, encode_base64(value))
+        }
+}
 i = i + 1
 }
 return values
@@ -418,6 +433,9 @@ export func process_ok(result) {
     if type(result) == "dict" {
         return get_or(result, "success", false) == true&&get_or(result, "timed_out", false) == false
     }
+if type(result) != "struct" {
+    return false
+}
 return result.success&&result.timed_out == false
 }
 
@@ -430,9 +448,12 @@ export func process_error(result, operation) {
         exitcode = get_or(result, "exitcode", 127)
         stderr = get_or(result, "stderr", "")
     } else {
-    timed_out = result.timed_out
-    exitcode = result.exitcode
-    stderr = result.stderr
+    if type(result) != "struct" {
+        return operation + ": invalid process result"
+    }
+timed_out = result.timed_out
+exitcode = result.exitcode
+stderr = result.stderr
 }
 if type(stderr) != "string" {stderr = ""}
 if timed_out {
@@ -454,9 +475,12 @@ export func run_argv_options(argv, options) {
 }
 
 export func first_line(text) {
-    lines := split(text, "\n")
-    if len(lines) == 0 {
+    if type(text) != "string" {
         return ""
     }
+lines := split(text, "\n")
+if len(lines) == 0 {
+    return ""
+}
 return trim(lines[0])
 }

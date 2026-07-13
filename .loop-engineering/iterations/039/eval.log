@@ -1,0 +1,7 @@
+targeted probes before fix: null cleanup selected Docker implicitly and malformed container log input reached the process layer with a spawn error; invalid image existence/resource inventory inputs also reached runtime helpers
+targeted probes after fix: invalid runtime inputs return stable structured/boolean failures without runtime invocation
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 167, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 190 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

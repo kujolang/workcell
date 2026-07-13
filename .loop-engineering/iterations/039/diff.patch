@@ -1,0 +1,6 @@
+diff --git a/src/runtime/docker.kujo b/src/runtime/docker.kujo
+@@
++runtime helpers now require an explicit docker or podman backend before invoking external commands
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++runtime boundary invalid-input regressions added

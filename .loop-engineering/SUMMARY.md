@@ -23,6 +23,7 @@ success
 ## Remaining
 
 - local P3 review backlog completed: Kujo-native release report, expanded example matrix, and versioned API compatibility policy
+- OCI smoke evidence and required CI Podman gate added in iteration 009; rootless Linux and egress enforcement remain deployment-owned
 
 ## External Blockers
 
@@ -36,4 +37,4 @@ success
 
 ## Next Start
 
-- manual-gates-2026-07-12: local P3 gates passed; rootless/Podman/egress/image-governance evidence remains deployment-owned
+- iteration 009: OCI Docker smoke and all local/ecosystem gates passed; run the required CI Podman job to obtain rootless Linux evidence

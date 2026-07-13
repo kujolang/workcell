@@ -1,0 +1,10 @@
+offline suite: passed 88 policy/artifact/verification, 11 workspace, 5 stress assertions
+docker integration: passed
+OCI Docker smoke: passed; workcell-oci-evidence/v1; rootless=false on Colima
+release report: passed; workcell-report/v1; totals.passed=104; totals.failed=0
+schema contract: passed
+Kennel validation: passed
+ShipCheck gate: passed; 16/16; warnings=0
+Fence check: passed; violations=0; warnings=0
+format/lint/diff checks: passed
+Podman rootless smoke: not run locally; Podman unavailable on macOS host

@@ -14,6 +14,8 @@ The next work should preserve the current contract: Docker remains the default, 
 
 Run the full Docker and Podman matrix on rootless Linux and one VM-backed host. Capture `doctor --backend ... --json`, success/failure/timeout/cleanup receipts, and resource-inventory evidence.
 
+The repository now provides `tests/oci_smoke.sh` and a required CI Podman gate. The gate emits `workcell-oci-evidence/v1`, including backend, observed rootless status, and receipt/manifest hashes; the acceptance item remains open until a Linux rootless run is observed and reviewed.
+
 Acceptance: the same offline, adversarial, and Docker integration contracts pass on each supported deployment class; compatibility claims are updated with observed results.
 
 ### [x] Image supply-chain policy

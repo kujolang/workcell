@@ -1,10 +1,25 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
 from src.util import ensure_dir, load_json, read_text, run_argv, run_id
-from src.workspace.workspace import cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
+from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report, write_change_report_from_details
 
 mut passed := 0
 mut failed := 0
+
+partial_change_details := change_details({})
+expect("partial change details workspace is rejected without runtime crash", partial_change_details["ok"] == false)
+partial_changed_files := changed_files({})
+expect("partial changed files workspace is rejected without runtime crash", partial_changed_files["ok"] == false)
+partial_details := changed_files_from_details({})
+expect("partial changed details input is rejected without runtime crash", partial_details["ok"] == false)
+partial_report := write_change_report_from_details({}, "/tmp/workcell-partial-report.json", 0, {})
+expect("partial change report input is rejected without runtime crash", partial_report["ok"] == false)
+partial_patch := make_patch({}, "/tmp/workcell-partial.patch")
+expect("partial patch workspace is rejected without runtime crash", partial_patch["ok"] == false)
+partial_cleanup := cleanup_workspace({}, false)
+expect("partial cleanup workspace is rejected without runtime crash", partial_cleanup["ok"] == false)
+partial_scan_limits := find_symlink_with_limits("/tmp", {})
+expect("partial workspace scan limits are rejected without runtime crash", partial_scan_limits["ok"] == false)
 
 func expect(label, condition) {
     if condition {

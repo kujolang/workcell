@@ -49,20 +49,29 @@ export func find_symlink(root) {
 }
 
 export func find_symlink_with_limits(root, limits) {
-    mut queue := [root]
-    mut depths := [0]
-    mut queue_i := 0
-    mut scanned_files := 0
-    mut scanned_bytes := 0
-    while queue_i < len(queue) {
-        current := queue[queue_i]
-        depth := depths[queue_i]
-        if depth > limits["max_depth"] {
-            return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(limits["max_depth"]) + ": " + current}
-        }
-    if path_is_dir(current) == false {
-        return {"ok": false, "error": "workspace disappeared during scan: " + current}
+    if type(limits) != "dict" {
+        return {"ok": false, "error": "workspace scan limits must be an object"}
     }
+max_files := get_or(limits, "max_files", 0)
+max_bytes := get_or(limits, "max_bytes", 0)
+max_depth := get_or(limits, "max_depth", 0)
+if type(max_files) != "int"||max_files <= 0||type(max_bytes) != "int"||max_bytes <= 0||type(max_depth) != "int"||max_depth <= 0 {
+    return {"ok": false, "error": "workspace scan limits must define positive max_files, max_bytes, and max_depth"}
+}
+mut queue := [root]
+mut depths := [0]
+mut queue_i := 0
+mut scanned_files := 0
+mut scanned_bytes := 0
+while queue_i < len(queue) {
+    current := queue[queue_i]
+    depth := depths[queue_i]
+    if depth > max_depth {
+        return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(max_depth) + ": " + current}
+    }
+if path_is_dir(current) == false {
+    return {"ok": false, "error": "workspace disappeared during scan: " + current}
+}
 entries := list_dir(current)
 mut entry_i := 0
 while entry_i < len(entries) {
@@ -83,18 +92,18 @@ if path_is_dir(candidate) {
 } else {
 scanned_files = scanned_files + 1
 scanned_bytes = scanned_bytes + file_size(candidate)
-if scanned_files > limits["max_files"] {
-    return {"ok": false, "error": "workspace scan exceeded max files " + to_string(limits["max_files"])}
+if scanned_files > max_files {
+    return {"ok": false, "error": "workspace scan exceeded max files " + to_string(max_files)}
 }
-if scanned_bytes > limits["max_bytes"] {
-    return {"ok": false, "error": "workspace scan exceeded max bytes " + to_string(limits["max_bytes"])}
+if scanned_bytes > max_bytes {
+    return {"ok": false, "error": "workspace scan exceeded max bytes " + to_string(max_bytes)}
 }
 }
 entry_i = entry_i + 1
 }
 queue_i = queue_i + 1
 }
-return {"ok": true, "files": scanned_files, "bytes": scanned_bytes, "depth": limits["max_depth"]}
+return {"ok": true, "files": scanned_files, "bytes": scanned_bytes, "depth": max_depth}
 }
 
 export func create_workspace(repo_path, strategy, run_identifier) {
@@ -242,11 +251,35 @@ i = i + 1
 return summary
 }
 
-export func change_details(workspace) {
-    status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
-    if process_ok(status_result) == false {
-        return {"ok": false, "error": process_error(status_result, "collect changed files")}
+func workspace_input_check(workspace, require_commit) {
+    if type(workspace) != "dict"||get_or(workspace, "workspace_path", "") == "" {
+        return {"ok": false, "error": "workspace input is missing workspace_path"}
     }
+if require_commit&&get_or(workspace, "source_commit", "") == "" {
+    return {"ok": false, "error": "workspace input is missing source_commit"}
+}
+return {"ok": true}
+}
+
+func change_details_check(details) {
+    if type(details) != "dict"||get_or(details, "ok", false) != true {
+        return {"ok": false, "error": "change details input is incomplete"}
+    }
+if type(get_or(details, "files", null)) != "array"||type(get_or(details, "summary", null)) != "dict" {
+    return {"ok": false, "error": "change details input is incomplete"}
+}
+return {"ok": true}
+}
+
+export func change_details(workspace) {
+    workspace_check := workspace_input_check(workspace, true)
+    if workspace_check["ok"] == false {
+        return workspace_check
+    }
+status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
+if process_ok(status_result) == false {
+    return {"ok": false, "error": process_error(status_result, "collect changed files")}
+}
 lines := lines_of(trim(status_result.stdout))
 mut files := []
 mut known_paths := {}
@@ -324,8 +357,9 @@ return changed_files_from_details(details)
 }
 
 export func changed_files_from_details(details) {
-    if details["ok"] == false {
-        return details
+    details_check := change_details_check(details)
+    if details_check["ok"] == false {
+        return details_check
     }
 mut paths := []
 mut i := 0
@@ -342,9 +376,14 @@ export func write_change_report(workspace, output_path, patch_bytes) {
 }
 
 export func write_change_report_from_details(workspace, output_path, patch_bytes, details) {
-    if details["ok"] == false {
-        return details
+    workspace_check := workspace_input_check(workspace, true)
+    if workspace_check["ok"] == false {
+        return workspace_check
     }
+details_check := change_details_check(details)
+if details_check["ok"] == false {
+    return details_check
+}
 try {
     written := save_json(output_path, {"source_commit": workspace["source_commit"], "patch_bytes": patch_bytes, "summary": details["summary"], "files": details["files"]})
     if written != true {
@@ -357,10 +396,14 @@ return {"ok": true, "path": output_path, "files": details["files"]}
 }
 
 export func make_patch(workspace, patch_path) {
-    result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
-    if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "generate Git patch")}
+    workspace_check := workspace_input_check(workspace, true)
+    if workspace_check["ok"] == false {
+        return workspace_check
     }
+result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
+if process_ok(result) == false {
+    return {"ok": false, "error": process_error(result, "generate Git patch")}
+}
 mut patch_text := result.stdout
 untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
 if process_ok(untracked_result) == false {
@@ -391,9 +434,13 @@ return {"ok": true, "path": patch_path, "bytes": len(patch_text)}
 }
 
 export func cleanup_workspace(workspace, preserve) {
-    if preserve {
-        return {"ok": true, "preserved": true, "path": workspace["workspace_path"], "message": "failed workspace preserved by policy"}
+    workspace_check := workspace_input_check(workspace, false)
+    if workspace_check["ok"] == false {
+        return workspace_check
     }
+if preserve {
+    return {"ok": true, "preserved": true, "path": workspace["workspace_path"], "message": "failed workspace preserved by policy"}
+}
 path := workspace["workspace_path"]
 if starts_with(path, temp_root() + "/kujo-workcell-") == false {
     return {"ok": false, "error": "refusing to remove workspace outside Workcell temporary root: " + path}

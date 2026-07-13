@@ -56,18 +56,18 @@ func network_policy_for(definition) {
     if network["mode"] == "none" {
         effective_egress = {"policy": "deny-by-default", "dns": "blocked", "proxy": "none", "enforcement_profile": "none"}
     }
-    mut warnings := []
-    if network["mode"] != "none"&&configured_egress["policy"] == "unmanaged" {
-        warnings = push(warnings, "network egress is unmanaged; enforce a host firewall or transparent proxy before production use")
-    }
-    return {
-        "mode": network["mode"],
-        "name": network["name"],
-        "egress": effective_egress,
-        "configured_egress": configured_egress,
-        "enforcement_profile": effective_egress["enforcement_profile"],
-        "warnings": warnings
-    }
+mut warnings := []
+if network["mode"] != "none"&&configured_egress["policy"] == "unmanaged" {
+    warnings = push(warnings, "network egress is unmanaged; enforce a host firewall or transparent proxy before production use")
+}
+return {
+    "mode": network["mode"],
+    "name": network["name"],
+    "egress": effective_egress,
+    "configured_egress": configured_egress,
+    "enforcement_profile": effective_egress["enforcement_profile"],
+    "warnings": warnings
+}
 }
 
 export func labels_for(definition, run_identifier) {

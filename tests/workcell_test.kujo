@@ -387,6 +387,16 @@ expect("invalid doctor input is handled without runtime crash", report(null, nul
 expect("invalid policy construction input is handled without runtime crash", build_policy(default_definition(), null, null)["ok"] == false&&inspect_policy(default_definition(), null, null, null)["ok"] == false)
 expect("null coordinator output input is handled without runtime crash", run_workcell("examples/hello/workcell.json", ".", null, {"dry_run": true})["ok"] == false)
 expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
+invalid_integration_definition := default_definition()
+invalid_integration_config := invalid_integration_definition["integrations"]
+invalid_integration_config["changebucket"] := {"enabled": true, "command": ["true"], "timeout_ms": 1000}
+invalid_integration_definition["integrations"] := invalid_integration_config
+expect("invalid integration path input is handled without runtime crash", run_integrations(invalid_integration_definition, null, null, null, null, null)["ok"] == false)
+invalid_context_definition := default_definition()
+invalid_context_runtime := invalid_context_definition["runtime"]
+invalid_context_runtime["build_context"] := "."
+invalid_context_definition["runtime"] := invalid_context_runtime
+expect("invalid image source input is handled without runtime crash", ensure_image(invalid_context_definition, null, null, true, false)["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

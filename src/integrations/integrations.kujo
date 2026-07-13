@@ -136,6 +136,9 @@ export func run_integrations(definition, source_root, output_dir, receipt_path, 
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(source_root) != "string"||type(output_dir) != "string"||type(receipt_path) != "string"||type(final_status) != "string"||type(final_ok) != "bool"||source_root == ""||output_dir == ""||receipt_path == ""||final_status == "" {
+    return {"ok": false, "error": "integration source, output, receipt, status, and result inputs must have valid types"}
+}
 integrations := get_or(definition, "integrations", {})
 secrets := definition["secrets"]
 mut results := []

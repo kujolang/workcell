@@ -253,6 +253,9 @@ export func ensure_image(definition, source_root, run_identifier, no_pull, rebui
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(source_root) != "string"||type(run_identifier) != "string"||source_root == ""||run_identifier == "" {
+    return {"ok": false, "error": "image source root and run identifier must be non-empty strings"}
+}
 backend := definition["runtime"]["backend"]
 image := definition["runtime"]["image"]
 context := definition["runtime"]["build_context"]

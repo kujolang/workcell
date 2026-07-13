@@ -376,6 +376,7 @@ expect("invalid artifact export input is handled without runtime crash", export_
 expect("malformed artifact policy input is handled without runtime crash", export_declared_with_policy("/tmp", "/tmp/workcell-output", {"export": null}, [])["ok"] == false&&export_declared_with_policy("/tmp", "/tmp/workcell-output", {"export": [null]}, [])["ok"] == false)
 expect("invalid execution log input is handled without runtime crash", write_execution_logs(null, null, null, null)["ok"] == false)
 expect("invalid manifest write input is handled without runtime crash", write_manifest(null, null)["ok"] == false)
+expect("missing manifest directory is handled without runtime crash", write_manifest("/tmp/workcell-missing-manifest", "run-id")["ok"] == false&&verify_manifest("/tmp/workcell-missing-manifest")["ok"] == false)
 expect("invalid manifest verify input is handled without runtime crash", verify_manifest(null)["ok"] == false)
 expect("invalid image metadata input is handled without runtime crash", image_metadata(null, "docker")["ok"] == false)
 expect("invalid image existence input is handled without runtime invocation", image_exists(null, null) == false)

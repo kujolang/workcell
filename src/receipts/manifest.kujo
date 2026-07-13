@@ -63,6 +63,9 @@ export func write_manifest(output_dir, run_identifier) {
     if type(output_dir) != "string"||output_dir == ""||type(run_identifier) != "string"||run_identifier == "" {
         return {"ok": false, "error": "manifest output directory and run identifier must be non-empty strings"}
     }
+if path_is_dir(output_dir) == false||path_has_symlink(output_dir) {
+    return {"ok": false, "error": "manifest output directory must be an existing non-symlink directory"}
+}
 manifest := collect_files(output_dir, "", 0)
 if manifest["ok"] == false {return manifest}
 value := {
@@ -91,6 +94,9 @@ export func verify_manifest(output_dir) {
     if type(output_dir) != "string"||output_dir == "" {
         return {"ok": false, "error": "manifest output directory must be a non-empty string"}
     }
+if path_is_dir(output_dir) == false||path_has_symlink(output_dir) {
+    return {"ok": false, "error": "manifest output directory must be an existing non-symlink directory"}
+}
 manifest_path := output_dir + "/manifest.json"
 if path_has_symlink(manifest_path) {
     return {"ok": false, "error": "integrity manifest path contains a symlink"}

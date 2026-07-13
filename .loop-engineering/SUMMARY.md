@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, diff_check, doctor, docker_integration, workcell assertions (88), workspace assertions (8), performance assertions (5), adversarial/path-safety, Docker integration, doctor, final clean-tree and push verification
+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (88), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, final clean-tree and push verification
 - blocked: none
 - failed: none after the registry validation fix and receipt/cleanup hardening
 
@@ -22,7 +22,7 @@ success
 
 ## Remaining
 
-- none
+- local P3 review backlog completed: Kujo-native release report, expanded example matrix, and versioned API compatibility policy
 
 ## External Blockers
 
@@ -31,7 +31,9 @@ success
 - kujo-linter-reachability: Evolve the pass to AST/control-flow analysis for branch-sensitive reachability.
 - docker-rootless-host: Use a rootless Docker/VM/microVM deployment for multi-tenant untrusted workloads.
 - podman-live-host: Run the backend integration suite on a supported rootless Podman host.
+- egress-enforcement: Prove deployment-owned allow/deny proxy/firewall behavior on a supported host.
+- image-governance: Supply live signed-image, key-rotation, and vulnerability-scan evidence.
 
 ## Next Start
 
-- manual-gates-2026-07-12: all local-fixable gates passed; external deployment/toolchain boundaries remain listed above
+- manual-gates-2026-07-12: local P3 gates passed; rootless/Podman/egress/image-governance evidence remains deployment-owned

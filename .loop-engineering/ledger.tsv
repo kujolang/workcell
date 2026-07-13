@@ -11,3 +11,4 @@ iteration	action	verdict	progress	evidence	justification
 002	configured-gates	failed	0	iterations/002/eval.log	required gate failed
 003	configured-gates	failed	0	iterations/003/eval.log	required gate failed
 004	manual-gates	success	1	iterations/004/eval.log	local hardening gates passed; external deployment/toolchain boundaries retained
+008	p3-showcase-and-contracts	success	1	manual-gates-2026-07-12	Release report, expanded examples, versioned API contracts, null-safe human failure output, orphan cleanup recovery, disappearing-workspace handling, full offline suite, and Docker integration passed; rootless/egress/image-governance evidence remains host-owned

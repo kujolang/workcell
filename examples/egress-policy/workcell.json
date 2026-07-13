@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "managed-egress-workcell",
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-base:local", "build_context": ""},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "printf 'managed egress policy\\n' > egress.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000},
+  "network": {
+    "mode": "custom",
+    "name": "workcell-egress-demo",
+    "egress": {
+      "policy": "deny-by-default",
+      "dns": "operator-managed",
+      "proxy": "operator-managed",
+      "enforcement_profile": "corp-egress-v1"
+    }
+  },
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["egress.txt"]},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

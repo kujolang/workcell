@@ -33,6 +33,14 @@ func with_custom_network(definition, name) {
     network := definition["network"]
     network["mode"] := "custom"
     network["name"] := name
+    network["egress"] := {"policy": "unmanaged", "dns": "inherited", "proxy": "none", "enforcement_profile": "none"}
+    definition["network"] := network
+    return definition
+}
+
+func with_egress(definition, policy, dns, proxy, profile) {
+    network := definition["network"]
+    network["egress"] := {"policy": policy, "dns": dns, "proxy": proxy, "enforcement_profile": profile}
     definition["network"] := network
     return definition
 }
@@ -225,6 +233,13 @@ expect("partial sections receive nested defaults", partial["ok"]&&validate_defin
 expect("host networking rejected", validate_definition(with_network(definition, "host"))["ok"] == false)
 expect("custom internal network accepted", validate_definition(with_custom_network(definition, "workcell-internal"))["ok"])
 expect("custom network requires a name", validate_definition(with_custom_network(definition, ""))["ok"] == false)
+legacy_custom := resolve_definition({"network": {"mode": "custom", "name": "legacy-network"}})
+expect("legacy custom network receives explicit unmanaged egress", legacy_custom["ok"]&&legacy_custom["definition"]["network"]["egress"]["policy"] == "unmanaged"&&validate_definition(legacy_custom["definition"])["ok"])
+managed_egress_definition := with_egress(with_custom_network(default_definition(), "workcell-egress"), "deny-by-default", "operator-managed", "operator-managed", "corp-egress-v1")
+expect("managed egress contract is accepted", validate_definition(managed_egress_definition)["ok"])
+expect("managed egress requires an enforcement profile", validate_definition(with_egress(with_custom_network(default_definition(), "workcell-egress"), "deny-by-default", "operator-managed", "operator-managed", "none"))["ok"] == false)
+expect("managed egress cannot inherit DNS", validate_definition(with_egress(with_custom_network(default_definition(), "workcell-egress"), "operator-managed", "inherited", "operator-managed", "corp-egress-v1"))["ok"] == false)
+expect("unmanaged egress is explicit", validate_definition(with_egress(with_custom_network(default_definition(), "workcell-egress"), "unmanaged", "inherited", "none", "none"))["ok"])
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
@@ -278,6 +293,10 @@ args := policy["docker_args"]
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")
+expect("none network records deny-by-default egress", policy["network_policy"]["egress"]["policy"] == "deny-by-default"&&policy["network_policy"]["egress"]["dns"] == "blocked")
+expect("unmanaged egress emits a deployment warning", len(custom_policy["warnings"]) == 1&&contains(to_string(custom_policy["warnings"]), "unmanaged") == 1)
+managed_policy := build_policy(managed_egress_definition, "test-managed-egress", "/tmp/workcell-test-workspace")
+expect("managed egress records host enforcement profile", managed_policy["network_policy"]["enforcement_profile"] == "corp-egress-v1"&&managed_policy["network_policy"]["egress"]["proxy"] == "operator-managed")
 expect("policy includes read-only root", contains(to_string(args), "--read-only") == 1)
 expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
 expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
@@ -290,6 +309,8 @@ podman_policy := build_policy(with_backend(definition, "podman", "crun"), "test-
 expect("podman policy uses OCI engine and runtime class", podman_policy["runtime_engine"] == "podman"&&contains(to_string(podman_policy["docker_args"]), "podman") == 1&&contains(to_string(podman_policy["docker_args"]), "crun") == 1)
 podman_receipt := new_receipt(with_backend(definition, "podman", ""), "workcell.json", "test-podman-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, podman_policy, "/tmp/workcell-output")
 expect("receipt records version and selected runtime backend", podman_receipt["schema_version"] == "workcell-receipt/v1"&&podman_receipt["runtime_backend"] == "podman")
+managed_receipt := new_receipt(managed_egress_definition, "workcell.json", "test-managed-egress-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, managed_policy, "/tmp/workcell-output")
+expect("receipt records egress policy and enforcement profile", managed_receipt["network_policy"]["enforcement_profile"] == "corp-egress-v1"&&managed_receipt["network_policy"]["egress"]["policy"] == "deny-by-default")
 empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)
 expect("empty verification plan succeeds without Docker work", empty_verification["ok"]&&len(empty_verification["checks"]) == 0)
 verification_secret_definition := with_verification(with_secret(definition, "AUDIT_SECRET"), [{"name": "secret-check", "command": ["sh", "-lc", "printf artifact-secret"]}])

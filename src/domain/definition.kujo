@@ -42,7 +42,13 @@ export func default_definition() {
 },
 "network": {
     "mode": "none",
-    "name": ""
+    "name": "",
+    "egress": {
+        "policy": "deny-by-default",
+        "dns": "blocked",
+        "proxy": "none",
+        "enforcement_profile": "none"
+    }
 },
 "filesystem": {
     "read_only_root": true,
@@ -228,6 +234,52 @@ while i < len(value) {
         return {"ok": false, "error": label + " contains unsafe characters"}
     }
 i = i + 1
+}
+return {"ok": true}
+}
+
+func validate_network_egress(value, network_mode) {
+    if type(value) != "dict" {
+        return {"ok": false, "error": "network.egress must be an object"}
+    }
+keys_check := validate_keys(value, ["policy", "dns", "proxy", "enforcement_profile"], "network.egress")
+if keys_check["ok"] == false {
+    return keys_check
+}
+policy := get_or(value, "policy", "")
+if policy != "deny-by-default"&&policy != "operator-managed"&&policy != "unmanaged" {
+    return {"ok": false, "error": "network.egress.policy must be deny-by-default, operator-managed, or unmanaged"}
+}
+dns := get_or(value, "dns", "")
+if dns != "blocked"&&dns != "operator-managed"&&dns != "inherited" {
+    return {"ok": false, "error": "network.egress.dns must be blocked, operator-managed, or inherited"}
+}
+proxy := get_or(value, "proxy", "")
+if proxy != "none"&&proxy != "operator-managed" {
+    return {"ok": false, "error": "network.egress.proxy must be none or operator-managed"}
+}
+profile := get_or(value, "enforcement_profile", "")
+if profile != "none" {
+    profile_check := valid_runtime_class(profile, "network.egress.enforcement_profile")
+    if profile_check["ok"] == false {return profile_check}
+}
+if network_mode == "none" {
+    if policy != "deny-by-default"||dns != "blocked"||proxy != "none"||profile != "none" {
+        return {"ok": false, "error": "network.mode none requires deny-by-default, blocked DNS, no proxy, and no enforcement profile"}
+    }
+    return {"ok": true}
+}
+if policy == "unmanaged" {
+    if dns != "inherited"||proxy != "none"||profile != "none" {
+        return {"ok": false, "error": "unmanaged network egress requires inherited DNS, no proxy, and no enforcement profile"}
+    }
+    return {"ok": true}
+}
+if profile == "none" {
+    return {"ok": false, "error": "network.egress.enforcement_profile is required for managed egress"}
+}
+if dns == "inherited" {
+    return {"ok": false, "error": "managed network egress cannot inherit DNS policy"}
 }
 return {"ok": true}
 }
@@ -756,7 +808,7 @@ if type(get_or(resources, "max_output_bytes", 0)) != "int"||resources["max_outpu
 }
 
 network := get_or(raw, "network", {})
-network_keys := validate_keys(network, ["mode", "name"], "network")
+network_keys := validate_keys(network, ["mode", "name", "egress"], "network")
 if network_keys["ok"] == false {
     return network_keys
 }
@@ -772,6 +824,10 @@ if network_mode == "custom" {
     }
 } else if network_name != "" {
 return {"ok": false, "error": "network.name is only allowed when network.mode is custom"}
+}
+egress_check := validate_network_egress(get_or(network, "egress", {"policy": "deny-by-default", "dns": "blocked", "proxy": "none", "enforcement_profile": "none"}), network_mode)
+if egress_check["ok"] == false {
+    return egress_check
 }
 
 filesystem := get_or(raw, "filesystem", {})
@@ -935,7 +991,23 @@ value = fill_section_defaults(value, defaults, "runtime", ["backend", "engine_ru
 value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "scan"])
 value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
 value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"])
-value = fill_section_defaults(value, defaults, "network", ["mode", "name"])
+mut network_had_egress := false
+if type(value["network"]) == "dict" {
+    network_had_egress = has_key_safe(value["network"], "egress")
+}
+value = fill_section_defaults(value, defaults, "network", ["mode", "name", "egress"])
+if network_had_egress == false&&value["network"]["mode"] != "none" {
+    network_value := value["network"]
+    network_value["egress"] := {"policy": "unmanaged", "dns": "inherited", "proxy": "none", "enforcement_profile": "none"}
+    value["network"] := network_value
+}
+network_value := value["network"]
+egress_value := network_value["egress"]
+if type(egress_value) == "dict" {
+    egress_value = fill_section_defaults({"egress": egress_value}, {"egress": defaults["network"]["egress"]}, "egress", ["policy", "dns", "proxy", "enforcement_profile"])["egress"]
+    network_value["egress"] := egress_value
+    value["network"] := network_value
+}
 value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"])
 value = fill_section_defaults(value, defaults, "artifacts", ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"])
 value = fill_section_defaults(value, defaults, "cleanup", ["keep_failed"])
@@ -988,6 +1060,7 @@ export func definition_summary(definition) {
         "registry_allowlist": definition["runtime"]["registry_allowlist"],
         "command": definition["command"],
         "network_mode": definition["network"]["mode"],
+        "network_egress": definition["network"]["egress"],
         "timeout_ms": definition["resources"]["timeout_ms"],
         "max_output_bytes": definition["resources"]["max_output_bytes"],
         "workspace_run_as": definition["workspace"]["run_as"],
@@ -1014,7 +1087,7 @@ export func definition_schema() {
             "environment": {"type": "object", "fields": ["allow", "set"]},
             "secrets": {"type": "array", "items": "environment variable name"},
             "resources": {"type": "object", "fields": ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"]},
-            "network": {"type": "object", "fields": ["mode", "name"]},
+            "network": {"type": "object", "fields": ["mode", "name", "egress"], "egress": {"fields": ["policy", "dns", "proxy", "enforcement_profile"], "policy_enum": ["deny-by-default", "operator-managed", "unmanaged"], "dns_enum": ["blocked", "operator-managed", "inherited"], "proxy_enum": ["none", "operator-managed"]}},
             "filesystem": {"type": "object", "fields": ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"]},
             "artifacts": {"type": "object", "fields": ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"]},
             "verification": {"type": "object", "version": 1, "commands": "array of named argv checks"},

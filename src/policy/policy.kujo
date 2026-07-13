@@ -49,6 +49,27 @@ while secret_i < len(secrets) {
 return out
 }
 
+func network_policy_for(definition) {
+    network := definition["network"]
+    configured_egress := network["egress"]
+    mut effective_egress := configured_egress
+    if network["mode"] == "none" {
+        effective_egress = {"policy": "deny-by-default", "dns": "blocked", "proxy": "none", "enforcement_profile": "none"}
+    }
+    mut warnings := []
+    if network["mode"] != "none"&&configured_egress["policy"] == "unmanaged" {
+        warnings = push(warnings, "network egress is unmanaged; enforce a host firewall or transparent proxy before production use")
+    }
+    return {
+        "mode": network["mode"],
+        "name": network["name"],
+        "egress": effective_egress,
+        "configured_egress": configured_egress,
+        "enforcement_profile": effective_egress["enforcement_profile"],
+        "warnings": warnings
+    }
+}
+
 export func labels_for(definition, run_identifier) {
     return {
         "dev.kujo.workcell": "true",
@@ -69,6 +90,7 @@ backend := definition["runtime"]["backend"]
 engine := "docker"
 if backend == "podman" {engine = "podman"}
 mut docker := [engine, "run"]
+network_policy := network_policy_for(definition)
 network_mode := definition["network"]["mode"]
 if network_mode == "custom" {
     network_mode = definition["network"]["name"]
@@ -124,6 +146,8 @@ return {
     "network_mode": network_mode,
     "runtime_backend": backend,
     "runtime_engine": engine,
+    "network_policy": network_policy,
+    "warnings": network_policy["warnings"],
     "resource_limits": definition["resources"],
     "secret_names": definition["secrets"],
     "effective_security_policy": {
@@ -140,6 +164,7 @@ return {
         "no_new_privileges": true,
         "capabilities_dropped": "ALL",
         "network_mode": network_mode,
+        "network_policy": network_policy,
         "workspace_mount": mount_path + ":rw",
         "artifact_export_boundary": "host output directory only"
     },
@@ -222,6 +247,7 @@ export func inspect_policy(definition, run_identifier, host_workspace, output_ro
     "container_name": policy["container_name"],
     "mounts": policy["mounts"],
     "network_mode": policy["network_mode"],
+    "network_policy": policy["network_policy"],
     "resource_limits": policy["resource_limits"],
     "secret_names": policy["secret_names"],
     "docker_security_arguments": policy["docker_args"],

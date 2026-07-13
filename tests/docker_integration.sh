@@ -64,7 +64,12 @@ KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/internal-network.json" -
 jq --arg network "$INTERNAL_NETWORK" '.network.name = $network' "$ROOT/examples/custom-network/workcell.json" > "$OUT_ROOT/custom-network-example.json"
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/custom-network-example.json" --repo "$TMP_REPO" --output "$OUT_ROOT/custom-network-example"
 CUSTOM_NETWORK_RECEIPT="$(find "$OUT_ROOT/custom-network-example" -name receipt.json -print -quit)"
-jq --arg network "$INTERNAL_NETWORK" -e '.network_mode == $network and .artifact_files == 1' "$CUSTOM_NETWORK_RECEIPT" >/dev/null
+jq --arg network "$INTERNAL_NETWORK" -e '.network_mode == $network and .network_policy.mode == "custom" and .network_policy.egress.policy == "unmanaged" and (.warnings | any(. == "network egress is unmanaged; enforce a host firewall or transparent proxy before production use")) and .artifact_files == 1' "$CUSTOM_NETWORK_RECEIPT" >/dev/null
+
+jq --arg network "$INTERNAL_NETWORK" '.network.name = $network' "$ROOT/examples/egress-policy/workcell.json" > "$OUT_ROOT/egress-policy-example.json"
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/egress-policy-example.json" --repo "$TMP_REPO" --output "$OUT_ROOT/egress-policy-example"
+EGRESS_POLICY_RECEIPT="$(find "$OUT_ROOT/egress-policy-example" -name receipt.json -print -quit)"
+jq -e '.network_policy.mode == "custom" and .network_policy.egress.policy == "deny-by-default" and .network_policy.egress.proxy == "operator-managed" and .network_policy.enforcement_profile == "corp-egress-v1" and (.warnings | length) == 0 and .artifact_files == 1' "$EGRESS_POLICY_RECEIPT" >/dev/null
 
 WORKCELL_GREETING="secret-example-value" KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/secrets/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/secrets-example"
 SECRETS_RECEIPT="$(find "$OUT_ROOT/secrets-example" -name receipt.json -print -quit)"

@@ -48,6 +48,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
     "stdout_truncated": false,
     "stderr_truncated": false,
     "network_mode": policy["network_mode"],
+    "network_policy": policy["network_policy"],
     "resource_limits": policy["resource_limits"],
     "secret_names": policy["secret_names"],
     "mounts": policy["mounts"],
@@ -74,7 +75,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
 "integrations": [],
 "integration_status": "disabled",
 "errors": [],
-"warnings": [],
+"warnings": policy["warnings"],
 "lifecycle": ["created"]
 }
 }

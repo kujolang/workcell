@@ -22,6 +22,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 ## Image trust
 
 - Pin `runtime.image_digest` for every release definition.
+- Set `runtime.require_digest: true`, `runtime.require_signature: true`, and an explicit `runtime.registry_allowlist` in release definitions so missing provenance or an unapproved registry fails validation instead of relying on operator convention.
 - Set `runtime.signature_key` when the organization signs images with cosign. Workcell fails image preparation if the key is missing, cosign is unavailable, or verification fails.
 - Manage public-key rotation, Rekor/transparency policy, registry authorization, and vulnerability scanning outside the Workcell definition.
 

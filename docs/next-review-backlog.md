@@ -16,11 +16,11 @@ Run the full Docker and Podman matrix on rootless Linux and one VM-backed host. 
 
 Acceptance: the same offline, adversarial, and Docker integration contracts pass on each supported deployment class; compatibility claims are updated with observed results.
 
-### [ ] Image supply-chain policy
+### [x] Image supply-chain policy
 
 Add an explicit release policy for base-image digest pinning, registry allowlists, signature-key rotation, cosign verification receipts, and vulnerability-scan evidence. Keep local tags available for examples, but make release definitions fail closed when policy requires provenance.
 
-Acceptance: CI demonstrates a pinned, signed image path and a deliberate, tested mismatch failure; documentation identifies who owns key and registry rotation.
+Acceptance: CI demonstrates a pinned, signed image path and a deliberate, tested mismatch failure; documentation identifies who owns key and registry rotation. The definition now supports fail-closed `require_digest`, `require_signature`, and `registry_allowlist` controls; live signing and vulnerability-scan evidence remain deployment-owned.
 
 ### [ ] Egress and proxy enforcement
 
@@ -28,11 +28,11 @@ Add a deployment-owned egress contract for `network.mode: default` and custom ne
 
 Acceptance: a supported deployment test proves allowed and denied destinations, and the receipt records the selected network policy and host enforcement profile.
 
-### [ ] Resource and output stress limits
+### [x] Resource and output stress limits
 
 Exercise maximum files, bytes, depth, output truncation, artifact trees, concurrent runs, and cancellation under load. Record wall time, peak disk usage, and cleanup latency.
 
-Acceptance: bounded behavior is deterministic, receipts remain valid under truncation/failure, and the performance budget is documented for representative repository sizes.
+Acceptance: bounded behavior is deterministic, receipts remain valid under truncation/failure, and the performance budget is documented for representative repository sizes. Added deterministic file/byte/depth, output-truncation, and timeout stress contracts; full deployment load testing remains open.
 
 ## Priority 2 — functionality and interoperability
 

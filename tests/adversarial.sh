@@ -32,6 +32,8 @@ reject_definition "invalid-timeout" '.resources.timeout_ms = 0'
 reject_definition "unbounded-memory" '.resources.memory = "128g"'
 reject_definition "host-control-secret" '.environment.allow = ["DOCKER_HOST"]'
 reject_definition "build-context-traversal" '.runtime.build_context = "../escape"'
+reject_definition "required-digest-without-pin" '.runtime.require_digest = true'
+reject_definition "unapproved-registry" '.runtime.registry_allowlist = ["ghcr.io"]'
 
 inspect_output="$($KUJO run "$ROOT/main.kujo" -- inspect --file "$ROOT/workcell.json" --repo "$ROOT" --json)"
 printf '%s' "$inspect_output" | jq -e '

@@ -180,6 +180,8 @@ while i < len(value) {
     }
 i = i + 1
 }
+return {"ok": true}
+}
 
 func valid_registry(value, label) {
     if type(value) != "string"||trim(value) == ""||len(value) > 255||starts_with(value, "-") {
@@ -214,8 +216,6 @@ func registry_allowed(image, allowlist) {
         i = i + 1
     }
 return false
-}
-return {"ok": true}
 }
 
 func valid_network_name(value, label) {

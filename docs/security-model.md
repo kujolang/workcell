@@ -20,6 +20,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.
 - Definitions may pin `runtime.image_digest`; Workcell verifies the observed Docker image digest before launch and fails closed on mismatch.
 - Definitions may set `runtime.signature_key` to a repository-relative cosign public key; missing keys, unavailable cosign, and failed verification all fail image preparation closed.
+- Release definitions may require both controls with `runtime.require_digest` and `runtime.require_signature`, and restrict image origins with `runtime.registry_allowlist`; these checks fail closed during definition validation.
 - `workcell doctor --backend docker|podman` checks engine-specific security signals; Docker must report seccomp/AppArmor and Podman reports rootless state. Rootless status is surfaced as a deployment warning rather than silently assumed.
 - `trust_profile: native-guarded` turns that rootless requirement into a run-time gate and fails image preparation when the daemon does not meet it.
 - Optional seccomp/AppArmor profile names are validated and attached to the container; `unconfined` is rejected.

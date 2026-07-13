@@ -66,6 +66,20 @@ func with_image_digest(definition, digest) {
     return definition
 }
 
+func with_runtime_flag(definition, name, value) {
+    runtime := definition["runtime"]
+    runtime[name] := value
+    definition["runtime"] := runtime
+    return definition
+}
+
+func with_registry_allowlist(definition, registries) {
+    runtime := definition["runtime"]
+    runtime["registry_allowlist"] := registries
+    definition["runtime"] := runtime
+    return definition
+}
+
 func with_signature_key(definition, key_path) {
     runtime := definition["runtime"]
     runtime["signature_key"] := key_path
@@ -208,8 +222,14 @@ expect("image shell metacharacter rejected", validate_definition(with_image(defi
 expect("podman backend accepted", validate_definition(with_backend(definition, "podman", ""))["ok"])
 expect("valid image digest accepted", validate_definition(with_image_digest(definition, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))["ok"])
 expect("invalid image digest rejected", validate_definition(with_image_digest(definition, "sha256:not-a-digest"))["ok"] == false)
+expect("required digest fails closed without a digest", validate_definition(with_runtime_flag(default_definition(), "require_digest", true))["ok"] == false)
+expect("required digest accepts a valid digest", validate_definition(with_runtime_flag(with_image_digest(default_definition(), "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"), "require_digest", true))["ok"])
 expect("relative signature key accepted", validate_definition(with_signature_key(definition, "keys/workcell.pub"))["ok"])
 expect("absolute signature key rejected", validate_definition(with_signature_key(definition, "/tmp/workcell.pub"))["ok"] == false)
+expect("required signature fails closed without a key", validate_definition(with_runtime_flag(default_definition(), "require_signature", true))["ok"] == false)
+expect("required signature accepts a relative key", validate_definition(with_runtime_flag(with_signature_key(default_definition(), "keys/workcell.pub"), "require_signature", true))["ok"])
+expect("registry allowlist accepts Docker Hub", validate_definition(with_registry_allowlist(default_definition(), ["docker.io"]))["ok"])
+expect("registry allowlist rejects an unapproved registry", validate_definition(with_registry_allowlist(with_image(default_definition(), "ghcr.io/example/workcell"), ["docker.io"]))["ok"] == false)
 expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
 expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
 expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)

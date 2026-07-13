@@ -26,7 +26,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 
 - `version`: required integer `1`.
 - `name`: required non-empty project name.
-- `runtime.backend`: `docker` (default) or `podman`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch; optional `signature_key` verifies the image with `cosign verify --key` before launch.
+- `runtime.backend`: `docker` (default) or `podman`; `runtime.image` is the image name; optional `build_context` is a safe repository-relative directory; optional `image_digest` pins the observed image to a `sha256:` digest and fails preparation on mismatch; optional `signature_key` verifies the image with `cosign verify --key` before launch. `require_digest` and `require_signature` make those provenance controls fail closed, and `registry_allowlist` restricts the image registry host (unqualified images resolve to `docker.io`).
 - `workspace.strategy`: `git-worktree` (default) or `isolated-clone`; `mount_path` must be a safe absolute container path and defaults to `/workspace`. `run_as` defaults to `host`, resolving the invoking non-root UID/GID and avoiding world-writable temporary workspaces; explicit non-root `uid:gid` pairs are supported when the host can assign ownership.
 - `workspace.scan`: bounded post-run workspace inspection with `max_files`, `max_bytes`, and `max_depth`; limits fail verification with receipt diagnostics rather than silently truncating evidence.
 - `command`: required non-empty argv array. Arguments may begin with `-`; host-side Workcell commands never use shell interpolation.

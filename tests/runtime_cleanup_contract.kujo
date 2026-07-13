@@ -13,10 +13,18 @@ func expect(label, condition) {
 }
 }
 
-removed := remove_container("missing-container", "docker")
-expect("missing container removal is idempotent", removed["ok"]&&contains(to_lower(removed["message"]), "no such container") == 1)
-stopped := stop_container("missing-container", "docker")
-expect("missing container stop is idempotent", stopped["ok"])
+removed_no_such := remove_container("missing-no-such", "docker")
+expect("missing container removal accepts no-such variant", removed_no_such["ok"])
+removed_no_container := remove_container("missing-no-container", "docker")
+expect("missing container removal accepts no-container variant", removed_no_container["ok"])
+removed_not_found := remove_container("missing-not-found", "docker")
+expect("missing container removal accepts not-found variant", removed_not_found["ok"])
+stopped_no_such := stop_container("missing-no-such", "docker")
+expect("missing container stop accepts no-such variant", stopped_no_such["ok"])
+stopped_no_container := stop_container("missing-no-container", "docker")
+expect("missing container stop accepts no-container variant", stopped_no_container["ok"])
+stopped_not_found := stop_container("missing-not-found", "docker")
+expect("missing container stop accepts not-found variant", stopped_not_found["ok"])
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

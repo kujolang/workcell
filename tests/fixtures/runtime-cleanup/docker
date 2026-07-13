@@ -3,11 +3,19 @@ set -euo pipefail
 
 case "${1:-}" in
   rm)
-    echo "Error response from daemon: No such container: ${3:-missing-container}" >&2
+    case "${3:-}" in
+      missing-no-container) echo "Error response from daemon: no container with name or ID" >&2 ;;
+      missing-not-found) echo "container not found" >&2 ;;
+      *) echo "Error response from daemon: No such container" >&2 ;;
+    esac
     exit 1
     ;;
   stop)
-    echo "Error response from daemon: No such container: ${3:-missing-container}" >&2
+    case "${4:-}" in
+      missing-no-container) echo "Error response from daemon: no container with name or ID" >&2 ;;
+      missing-not-found) echo "container not found" >&2 ;;
+      *) echo "Error response from daemon: No such container" >&2 ;;
+    esac
     exit 1
     ;;
   *)

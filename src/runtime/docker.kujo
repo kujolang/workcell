@@ -387,7 +387,8 @@ if process_ok(result) {
     return {"ok": true, "message": "container stopped gracefully"}
 }
 message := trim(result.stderr)
-if contains(message, "No such container") == 1||contains(message, "is not running") == 1 {
+message_lower := to_lower(message)
+if contains(message_lower, "no such container") == 1||contains(message_lower, "no container with") == 1||contains(message_lower, "container not found") == 1||contains(message_lower, "is not running") == 1 {
     return {"ok": true, "message": message}
 }
 return {"ok": false, "message": message, "exit_code": result.exitcode}

@@ -19,6 +19,10 @@ func runtime_program(backend) {
     return "docker"
 }
 
+func valid_backend(backend) {
+    return type(backend) == "string"&&(backend == "docker"||backend == "podman")
+}
+
 func runtime_argv(backend, arguments) {
     mut argv := [runtime_program(backend)]
     mut i := 0
@@ -122,26 +126,30 @@ return {"name": "Docker daemon", "status": "passed", "message": "Docker daemon r
 }
 
 export func doctor_runtime(backend) {
-    if backend == "podman" {
-        result := runtime_result(backend, ["version", "--format", "{{.Server.Version}}"], 10000)
-        if process_field(result, "timed_out", false) {
-            return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine check timed out", "remediation": "Start a Podman machine or rootless Podman service"}
-        }
-    if process_ok(result) == false {
-        return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine is not reachable: " + trim(process_field(result, "stderr", "")), "remediation": "Start a Podman machine or rootless Podman service"}
+    if valid_backend(backend) == false {
+        return {"name": "container runtime", "status": "blocked", "message": "container backend must be docker or podman", "remediation": "Set runtime.backend to docker or podman"}
     }
+if backend == "podman" {
+    result := runtime_result(backend, ["version", "--format", "{{.Server.Version}}"], 10000)
+    if process_field(result, "timed_out", false) {
+        return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine check timed out", "remediation": "Start a Podman machine or rootless Podman service"}
+    }
+if process_ok(result) == false {
+    return {"name": "Podman daemon", "status": "blocked", "message": "Podman engine is not reachable: " + trim(process_field(result, "stderr", "")), "remediation": "Start a Podman machine or rootless Podman service"}
+}
 return {"name": "Podman daemon", "status": "passed", "message": "Podman engine reachable (server " + trim(process_field(result, "stdout", "")) + ")", "remediation": ""}
 }
 return doctor_docker()
 }
 
 export func image_exists(image, backend) {
+    if type(image) != "string"||image == ""||valid_backend(backend) == false {return false}
     result := runtime_result(backend, ["image", "inspect", image], 15000)
     return process_ok(result)
 }
 
 export func image_metadata(image, backend) {
-    if type(image) != "string"||type(backend) != "string"||image == ""||backend == "" {
+    if type(image) != "string"||image == ""||valid_backend(backend) == false {
         return {"ok": false, "error": "image and backend must be non-empty strings"}
     }
 image_id_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Id}}", image], 15000)
@@ -192,7 +200,7 @@ return metadata["digest"]
 }
 
 export func pull_image(image, backend) {
-    if type(image) != "string"||type(backend) != "string"||image == ""||backend == "" {
+    if type(image) != "string"||image == ""||valid_backend(backend) == false {
         return {"ok": false, "error": "image and backend must be non-empty strings"}
     }
 result := runtime_result(backend, ["pull", image], 600000)
@@ -203,10 +211,13 @@ return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(res
 }
 
 export func build_image(image, context_path, run_identifier, definition) {
-    definition_check := validate_definition(definition)
-    if definition_check["ok"] == false {
-        return definition_check
+    if type(image) != "string"||type(context_path) != "string"||type(run_identifier) != "string"||image == ""||context_path == ""||run_identifier == "" {
+        return {"ok": false, "error": "image, build context, and run identifier must be non-empty strings"}
     }
+definition_check := validate_definition(definition)
+if definition_check["ok"] == false {
+    return definition_check
+}
 project_label := "dev.kujo.workcell.project=" + definition["name"]
 version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
 backend := definition["runtime"]["backend"]
@@ -368,7 +379,7 @@ return {
 }
 
 export func stop_container(container_name, backend) {
-    if type(container_name) != "string"||type(backend) != "string"||container_name == ""||backend == "" {
+    if type(container_name) != "string"||container_name == ""||valid_backend(backend) == false {
         return {"ok": false, "message": "container name and backend must be non-empty strings"}
     }
 result := runtime_result(backend, ["stop", "--time", "10", container_name], 30000)
@@ -383,15 +394,18 @@ return {"ok": false, "message": message, "exit_code": result.exitcode}
 }
 
 export func container_logs(container_name, backend) {
-    result := runtime_result(backend, ["logs", container_name], 30000)
-    if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "collect container logs")}
+    if type(container_name) != "string"||container_name == ""||valid_backend(backend) == false {
+        return {"ok": false, "error": "container name and backend must be non-empty valid strings"}
     }
+result := runtime_result(backend, ["logs", container_name], 30000)
+if process_ok(result) == false {
+    return {"ok": false, "error": process_error(result, "collect container logs")}
+}
 return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
 }
 
 export func remove_container(container_name, backend) {
-    if type(container_name) != "string"||type(backend) != "string"||container_name == ""||backend == "" {
+    if type(container_name) != "string"||container_name == ""||valid_backend(backend) == false {
         return {"ok": false, "message": "container name and backend must be non-empty strings"}
     }
 result := runtime_result(backend, ["rm", "-f", container_name], 30000)
@@ -426,20 +440,26 @@ return {"ok": true, "items": items}
 }
 
 export func owned_resource_inventory(backend) {
-    containers := resource_ids(runtime_argv(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"]), "list Workcell containers")
-    images := resource_ids(runtime_argv(backend, ["images", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell images")
-    networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell networks")
-    if containers["ok"] == false||images["ok"] == false||networks["ok"] == false {
-        return {"ok": false, "containers": containers, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
+    if valid_backend(backend) == false {
+        return {"ok": false, "error": "container backend must be docker or podman"}
     }
+containers := resource_ids(runtime_argv(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"]), "list Workcell containers")
+images := resource_ids(runtime_argv(backend, ["images", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell images")
+networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell networks")
+if containers["ok"] == false||images["ok"] == false||networks["ok"] == false {
+    return {"ok": false, "containers": containers, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
+}
 return {"schema_version": "workcell-runtime-inventory/v1", "ok": true, "containers": containers["items"], "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
 }
 
 export func clean_owned_resources_with_options(prune_images, backend) {
-    listed := runtime_result(backend, ["ps", "-a", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Status}}\\t{{.Names}}"], 30000)
-    if process_ok(listed) == false {
-        return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
+    if valid_backend(backend) == false {
+        return {"ok": false, "error": "container backend must be docker or podman"}
     }
+listed := runtime_result(backend, ["ps", "-a", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Status}}\\t{{.Names}}"], 30000)
+if process_ok(listed) == false {
+    return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
+}
 ids := lines_of(trim(listed.stdout))
 mut removed := 0
 mut failed := []

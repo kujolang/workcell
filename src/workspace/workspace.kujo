@@ -457,7 +457,17 @@ while i < len(entries) {
 }
 }
 } else if starts_with(name, "kujo-workcell-")&&path_is_dir(path) {
+entries_in_orphan := list_dir(path)
+if len(entries_in_orphan) == 0&&path_is_symlink(path) == false {
+    orphan_result := run_argv(["rmdir", path], 30000)
+    if process_ok(orphan_result) {
+        removed = push(removed, path + " (empty orphan recovered)")
+    } else {
+    skipped = push(skipped, path + ": empty orphan could not be removed")
+}
+} else {
 skipped = push(skipped, path + ": ownership marker missing or path is a symlink")
+}
 }
 }
 i = i + 1

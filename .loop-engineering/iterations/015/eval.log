@@ -1,0 +1,6 @@
+Shell syntax, Kujo check, format, lint, and git diff checks passed.
+Offline suite passed: 99 policy, 11 workspace, and 5 stress assertions; adversarial, path-safety, dry-run, examples, CLI, schema, report, version, and Podman security contracts passed.
+Release report passed with workcell-report/v1 and 115 total assertions.
+Rootful Docker full integration and temporary internal-network egress evidence passed.
+The new deployment contract passed against a pre-created Docker internal network, proving an allowed fixture and blocked external URL without mutating the network.
+Hosted CI and real production default-network/host-firewall/transparent-proxy evidence remain external prerequisites.

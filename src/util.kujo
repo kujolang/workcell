@@ -110,7 +110,11 @@ while i < len(parts) {
     current = current + "/" + part
 }
 if path_is_dir(current) == false {
-    create_dir(current)
+    try {
+        create_dir(current)
+    } except err {
+    return false
+}
 }
 }
 i = i + 1

@@ -395,6 +395,11 @@ expect("invalid change report output input is handled without runtime crash", wr
 expect("invalid doctor input is handled without runtime crash", report(null, null)["ok"] == false)
 expect("invalid policy construction input is handled without runtime crash", build_policy(default_definition(), null, null)["ok"] == false&&inspect_policy(default_definition(), null, null, null)["ok"] == false)
 expect("null coordinator output input is handled without runtime crash", run_workcell("examples/hello/workcell.json", ".", null, {"dry_run": true})["ok"] == false)
+occupied_output := env("TMPDIR") + "/workcell-output-file"
+save_json(occupied_output, {"occupied": true})
+expect("occupied directory creation input is handled without runtime crash", ensure_dir(occupied_output) == false)
+expect("occupied coordinator output input is handled without runtime crash", run_workcell("examples/hello/workcell.json", ".", occupied_output, {"dry_run": true})["ok"] == false)
+run_argv(["rm", "-f", occupied_output], 10000)
 expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
 invalid_integration_definition := default_definition()
 invalid_integration_config := invalid_integration_definition["integrations"]

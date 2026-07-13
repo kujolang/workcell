@@ -100,8 +100,13 @@ output_root := output_root_for(source_info["root"], definition, requested_output
 if path_has_symlink(output_root) {
     return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "output path contains a symlink and is not safe: " + output_root, "exit_code": 3}
 }
+if ensure_dir(output_root) == false||path_is_dir(output_root) == false {
+    return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "output path is not a writable directory: " + output_root, "exit_code": 3}
+}
 output_dir := output_root + "/" + run_identifier
-ensure_dir(output_dir)
+if ensure_dir(output_dir) == false||path_is_dir(output_dir) == false {
+    return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "run output directory could not be created: " + output_dir, "exit_code": 3}
+}
 workspace := create_workspace_for_user(source_info["root"], definition["workspace"]["strategy"], run_identifier, definition["workspace"]["run_as"])
 if workspace["ok"] == false {
     write_failure_note(output_dir, get_or(workspace, "stage", "preparing"), workspace["error"])

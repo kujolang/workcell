@@ -259,6 +259,8 @@ expect("registry allowlist rejects an unapproved registry", validate_definition(
 expect("unknown fields rejected", validate_definition(with_unknown_field(definition))["ok"] == false)
 expect("invalid timeout rejected", validate_definition(with_timeout(definition, "10x"))["ok"] == false)
 expect("fractional timeout rejected", validate_definition(with_timeout(definition, "1.5m"))["ok"] == false)
+expect("overflow timeout rejected without runtime crash", validate_definition(with_timeout(definition, "999999999999999999999h"))["ok"] == false)
+expect("multiplication overflow timeout rejected without runtime crash", validate_definition(with_timeout(definition, "9223372036854775807h"))["ok"] == false)
 expect("repository build context is allowed", validate_definition(with_build_context(definition, "."))["ok"])
 expect("tmpfs outside /tmp rejected", validate_definition(with_tmpfs(definition, "/etc"))["ok"] == false)
 expect("custom security profiles accepted", validate_definition(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"))["ok"])

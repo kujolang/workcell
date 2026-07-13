@@ -134,7 +134,12 @@ while digit_i < len(amount_text) {
     }
 digit_i = digit_i + 1
 }
-amount := parse_int(amount_text)
+mut amount := 0
+try {
+    amount = parse_int(amount_text)
+} except err {
+return {"ok": false, "error": "invalid timeout: " + value}
+}
 mut multiplier := 0
 if suffix == "s" {
     multiplier = 1000
@@ -148,7 +153,13 @@ return {"ok": false, "error": "timeout must end in s, m, or h: " + value}
 if amount <= 0 {
     return {"ok": false, "error": "timeout must be positive: " + value}
 }
-return {"ok": true, "value": amount * multiplier}
+mut milliseconds := 0
+try {
+    milliseconds = amount * multiplier
+} except err {
+return {"ok": false, "error": "invalid timeout: " + value}
+}
+return {"ok": true, "value": milliseconds}
 }
 
 func valid_token(value, label) {

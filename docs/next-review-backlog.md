@@ -14,9 +14,9 @@ The next work should preserve the current contract: Docker remains the default, 
 
 Run the full Docker and Podman matrix on rootless Linux and one VM-backed host. Capture `doctor --backend ... --json`, success/failure/timeout/cleanup receipts, and resource-inventory evidence.
 
-The repository now provides `tests/oci_smoke.sh` and a required CI Podman gate. A Linux rootless Docker daemon was observed through a Colima VM: doctor passed with an explicit AppArmor-advertisement warning, the OCI smoke emitted `workcell-oci-evidence/v1`, and the full Docker integration matrix passed with `workspace.run_as: rootless`. See `docs/compatibility/rootless-docker-colima-2026-07-13.md`.
+The repository now provides `tests/oci_smoke.sh` and required CI Docker/Podman deployment gates. Rootless Docker and rootless Podman were observed through a Colima Linux VM: doctor passed with the expected security signals, both OCI smokes emitted `workcell-oci-evidence/v1`, both full integration matrices passed with `workspace.run_as: rootless`, and both egress suites proved allowlisted internal access plus blocked external DNS. See `docs/compatibility/rootless-docker-colima-2026-07-13.md`.
 
-Acceptance remains open for the complete matrix: Podman rootless Linux evidence and a hosted CI run are still required before claiming every supported deployment class.
+Acceptance remains open only for the hosted CI run and deployment-owned production host controls; the rootless Docker/Podman VM-backed evidence is now recorded.
 
 ### [x] Image supply-chain policy
 

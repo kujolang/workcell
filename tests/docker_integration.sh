@@ -264,6 +264,7 @@ test -z "$($BACKEND ps -aq --filter label=dev.kujo.workcell=true)"
 ACTIVE_NAME="workcell-active-$$"
 "$BACKEND" run -d --name "$ACTIVE_NAME" --label dev.kujo.workcell=true kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
 KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" --json | jq -e --arg name "$ACTIVE_NAME" '.runtime.preserved_active | any(.[]; contains($name))' >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" --dry-run --json | jq -e --arg name "$ACTIVE_NAME" '.runtime.container_details | any(.[]; .name == $name and (.id | length) > 0)' >/dev/null
 test -n "$($BACKEND ps -q --filter "name=^/${ACTIVE_NAME}$")"
 remove_test_container "$ACTIVE_NAME"
 test -z "$($BACKEND ps -aq --filter label=dev.kujo.workcell=true)"

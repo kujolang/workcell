@@ -439,17 +439,34 @@ i = i + 1
 return {"ok": true, "items": items}
 }
 
+func container_details(items) {
+    mut details := []
+    mut i := 0
+    while i < len(items) {
+        columns := split(items[i], "\t")
+        id := trim(columns[0])
+        name := id
+        if len(columns) > 1 {
+            name = trim(columns[1])
+        }
+    details = push(details, {"id": id, "name": name})
+    i = i + 1
+}
+return details
+}
+
 export func owned_resource_inventory(backend) {
     if valid_backend(backend) == false {
         return {"ok": false, "error": "container backend must be docker or podman"}
     }
-containers := resource_ids(runtime_argv(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"]), "list Workcell containers")
+containers := resource_ids(runtime_argv(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell containers")
+container_listing := resource_ids(runtime_argv(backend, ["ps", "-a", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Names}}"]), "list Workcell container details")
 images := resource_ids(runtime_argv(backend, ["images", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell images")
 networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter", "label=dev.kujo.workcell=true"]), "list Workcell networks")
-if containers["ok"] == false||images["ok"] == false||networks["ok"] == false {
-    return {"ok": false, "containers": containers, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
+if containers["ok"] == false||container_listing["ok"] == false||images["ok"] == false||networks["ok"] == false {
+    return {"ok": false, "containers": containers, "container_listing": container_listing, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
 }
-return {"schema_version": "workcell-runtime-inventory/v1", "ok": true, "containers": containers["items"], "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
+return {"schema_version": "workcell-runtime-inventory/v1", "ok": true, "containers": containers["items"], "container_details": container_details(container_listing["items"]), "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
 }
 
 export func clean_owned_resources_with_options(prune_images, backend) {

@@ -1,0 +1,13 @@
+iteration: 055
+objective: prevent duplicate and overlapping artifact declarations from corrupting exported evidence
+verdict: success
+progress: 1
+local_gates: passed
+artifact_declaration_regressions: passed
+release_report: passed
+docker_integration: passed
+docker_egress: passed
+docker_load: passed
+oci_smoke: passed
+hosted_ci: external_billing_blocker
+external_boundaries: hosted_ci_billing_and_production_controls

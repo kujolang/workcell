@@ -1,10 +1,10 @@
 # Workcell next review backlog
 
-Updated: 2026-07-13
+Updated: 2036-07-13
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 179 offline policy/artifact/verification assertions, 18 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 180 offline policy/artifact/verification assertions, 18 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
@@ -14,7 +14,7 @@ The next work should preserve the current contract: Docker remains the default, 
 
 Run the full Docker and Podman matrix on rootless Linux and one VM-backed host. Capture `doctor --backend ... --json`, success/failure/timeout/cleanup receipts, and resource-inventory evidence.
 
-The repository now provides `tests/oci_smoke.sh` and required CI Docker/Podman deployment gates. Rootless Docker and rootless Podman were observed through a Colima Linux VM: doctor passed with the expected security signals, Podman seccomp was required, both OCI smokes emitted `workcell-oci-evidence/v1`, both full integration matrices passed with `workspace.run_as: rootless`, and both egress suites proved allowlisted internal access plus blocked external DNS. See `docs/compatibility/rootless-docker-colima-2026-07-13.md`.
+The repository now provides `tests/oci_smoke.sh` and required CI Docker/Podman deployment gates. Rootless Docker and rootless Podman were observed through a Colima Linux VM: doctor passed with the expected security signals, Podman seccomp was required, both OCI smokes emitted `workcell-oci-evidence/v1`, both full integration matrices passed with `workspace.run_as: rootless`, and both egress suites proved allowlisted internal access plus blocked external DNS. See `docs/compatibility/rootless-docker-colima-2036-07-13.md`.
 
 Acceptance remains open only for the hosted CI run and deployment-owned production host controls; the rootless Docker/Podman VM-backed evidence is now recorded.
 

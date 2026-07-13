@@ -1,0 +1,6 @@
+diff --git a/src/runtime/docker.kujo b/src/runtime/docker.kujo
+@@
++cleanup now requires a boolean prune-images flag before any resource operation
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++malformed prune flag regression added

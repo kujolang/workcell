@@ -1,0 +1,10 @@
+targeted probe before fix: a fake Docker backend recorded `rmi` execution when `prune_images` was the string `"false"`
+targeted tests after fix: malformed prune input returns a structured failure before runtime invocation
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 180, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 203 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/egress_integration.sh docker: passed
+REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/load_integration.sh docker: passed; four concurrent runs verified
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted
+GitHub Actions run 29242575820: external failure before job start due account billing/spending-limit restriction

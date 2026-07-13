@@ -126,10 +126,11 @@ export KUJO=/path/to/kujo/target/release/kujo
 ./tests/run.sh
 ./tests/run.sh --check-only
 KUJO="$KUJO" ./tests/docker_integration.sh
+REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh
 git diff --check
 ```
 
-Docker integration tests are opt-in because the local daemon may not be available. On supported Linux/CI hosts, `tests/oci_smoke.sh podman` adds explicit OCI backend evidence. See [docs/development.md](docs/development.md) and [docs/runtime-lifecycle.md](docs/runtime-lifecycle.md).
+Docker integration tests are opt-in because the local daemon may not be available. `tests/egress_integration.sh` emits `workcell-egress-evidence/v1` after proving an allowed internal destination and blocked external DNS on a temporary Docker internal network; it does not replace host firewall or proxy validation. On supported Linux/CI hosts, `tests/oci_smoke.sh podman` adds explicit OCI backend evidence. See [docs/development.md](docs/development.md) and [docs/runtime-lifecycle.md](docs/runtime-lifecycle.md).
 
 ## Architecture and roadmap
 

@@ -45,6 +45,10 @@ jobs:
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/docker_integration.sh
 
+      - name: Run Docker egress enforcement evidence
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/egress_integration.sh
+
       - name: Install Podman for OCI backend evidence
         shell: bash
         run: |

@@ -14,7 +14,9 @@ The offline suite checks every `.kujo` file, runs 97 policy/validation/path/reda
 
 Kujo lint is currently clean across Workcell source modules. Kujo format is syntax-preserving and `format --check` passes across source and test files; wrapping remains intentionally conservative until Kujo has an AST-aware formatting pass.
 
-CI reads the pinned Kujo commit from `RUNTIME_VERSION`, checks that the Kujo example Dockerfiles use the same commit, requires Docker BuildKit/buildx, runs the offline suite, Docker integration suite, doctor check, and a required Podman OCI smoke. Local Docker hosts without buildx use the legacy builder as a compatibility fallback and will emit Docker's deprecation warning.
+CI reads the pinned Kujo commit from `RUNTIME_VERSION`, checks that the Kujo example Dockerfiles use the same commit, requires Docker BuildKit/buildx, runs the offline suite, Docker integration suite, Docker egress evidence, doctor check, and a required Podman OCI smoke. Local Docker hosts without buildx use the legacy builder as a compatibility fallback and will emit Docker's deprecation warning.
+
+For a deployment-owned network acceptance signal, run `REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh`. It creates a temporary Docker internal network, proves an allowlisted fixture is reachable while external DNS is blocked, verifies the managed egress policy in the receipt, and emits `workcell-egress-evidence/v1`. This does not install or validate a host firewall, transparent proxy, or default-network policy; those remain deployment controls.
 
 For supported Linux/CI hosts, `REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/oci_smoke.sh podman` produces a `workcell-oci-evidence/v1` receipt and records whether the engine reports rootless mode. The local macOS Docker path can run `./tests/oci_smoke.sh docker`; this does not substitute for a rootless Linux receipt.
 

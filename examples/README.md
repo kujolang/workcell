@@ -19,7 +19,7 @@ docker/kujo/build-local.sh /path/to/kujo-source
 - `timeout/workcell.json`: exceeds a short timeout and exercises termination.
 - `secrets/workcell.json`: passes a declared secret by name and redacts it from exported text.
 - `custom-network/workcell.json`: attaches to a pre-created operator-owned internal network.
-- `egress-policy/workcell.json`: declares a host-enforced deny-by-default egress policy, DNS/proxy ownership, and an enforcement profile; Workcell records the declaration but does not install the firewall or proxy.
+- `egress-policy/workcell.json`: declares a host-enforced deny-by-default egress policy, DNS/proxy ownership, and an enforcement profile; Workcell records the declaration but does not install the firewall or proxy. Run `tests/egress_integration.sh` to exercise the managed policy on a temporary Docker internal network.
 - `provenance/workcell.json`: demonstrates fail-closed digest and registry policy; replace the placeholder digest before a successful run.
 - `signature/workcell.json`: demonstrates fail-closed cosign verification; replace `signature/workcell.pub` with an approved key and sign the selected image.
 - `artifact-policy/workcell.json`: demonstrates declared secret rejection during artifact export.

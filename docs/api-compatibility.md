@@ -14,6 +14,7 @@ Workcell exposes versioned JSON contracts for definitions, CLI metadata, receipt
 | Cleanup result | `workcell-clean/v1` | `clean --json` | `runtime_backend` and `runtime` are canonical; legacy aliases remain during the v1 compatibility period. |
 | Integration evidence | `workcell-integration/v1` | `receipt.integrations[]` and `integrations/*.json` | Adapter reports are isolated, bounded, and additive to the primary result. |
 | OCI smoke evidence | `workcell-oci-evidence/v1` | `tests/oci_smoke.sh` stdout | Deployment validation records the selected OCI backend and observed rootless status. |
+| Egress evidence | `workcell-egress-evidence/v1` | `tests/egress_integration.sh` stdout | Deployment validation records an allowed internal destination, a blocked external DNS destination, the selected enforcement profile, and receipt/manifest hashes. |
 | Local release report | `workcell-report/v1` | `tests/release_report.sh` | Suite and deployment-gate status is additive; skipped deployment gates are explicit. |
 
 ## Exit-code stability

@@ -36,13 +36,19 @@ if type(policy) != "dict"||type(get_or(policy, "runtime_backend", "")) != "strin
 if type(output_dir) != "string"||output_dir == "" {
     return {"ok": false, "error": "receipt output directory is missing"}
 }
+mut definition_hash := ""
+try {
+    definition_hash = sha256_file(definition_path)
+} except err {
+return {"ok": false, "error": "receipt definition could not be hashed: " + to_string(err)}
+}
 return {
     "schema_version": "workcell-receipt/v1",
     "run_id": run_identifier,
     "workcell_name": definition["name"],
     "workcell_version": definition["version"],
     "workcell_definition_path": definition_path,
-    "workcell_definition_hash": sha256_file(definition_path),
+    "workcell_definition_hash": definition_hash,
     "source_repository": source["source_root"],
     "source_commit": source["source_commit"],
     "workspace_strategy": workspace["strategy"],

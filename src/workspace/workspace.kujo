@@ -511,7 +511,12 @@ export func clean_stale_workspaces(active_run_ids) {
     if path_is_dir(root) == false {
         return {"ok": true, "removed": [], "skipped": []}
     }
-entries := list_dir(root)
+mut entries := []
+try {
+    entries = list_dir(root)
+} except err {
+return {"ok": false, "removed": [], "skipped": [root + ": could not list temporary workspace root: " + to_string(err)]}
+}
 mut removed := []
 mut skipped := []
 mut i := 0
@@ -541,7 +546,14 @@ while i < len(entries) {
 }
 }
 } else if starts_with(name, "kujo-workcell-")&&path_is_dir(path) {
-entries_in_orphan := list_dir(path)
+mut entries_in_orphan := []
+try {
+    entries_in_orphan = list_dir(path)
+} except err {
+skipped = push(skipped, path + ": could not inspect orphan workspace: " + to_string(err))
+i = i + 1
+continue
+}
 if len(entries_in_orphan) == 0&&path_is_symlink(path) == false {
     orphan_result := run_argv(["rmdir", path], 30000)
     if process_ok(orphan_result) {
@@ -564,7 +576,12 @@ export func workspace_inventory() {
     if path_is_dir(root) == false {
         return {"ok": true, "workspaces": []}
     }
-entries := list_dir(root)
+mut entries := []
+try {
+    entries = list_dir(root)
+} except err {
+return {"ok": false, "workspaces": [], "error": root + ": could not list temporary workspace root: " + to_string(err)}
+}
 mut workspaces := []
 mut i := 0
 while i < len(entries) {

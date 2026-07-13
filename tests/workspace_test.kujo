@@ -90,6 +90,14 @@ ensure_dir(orphan_workspace)
 orphan_cleanup := clean_stale_workspaces([])
 expect("empty orphan workspace is safely recovered", file_exists(orphan_workspace) == false&&contains(to_string(orphan_cleanup["removed"]), "empty orphan recovered") == 1)
 
+denied_orphan := temp_root() + "/kujo-workcell-" + run_id()
+ensure_dir(denied_orphan)
+run_argv(["chmod", "000", denied_orphan], 10000)
+denied_cleanup := clean_stale_workspaces([])
+run_argv(["chmod", "700", denied_orphan], 10000)
+expect("permission-denied orphan cleanup is handled without runtime crash", denied_cleanup["ok"] == false&&contains(to_string(denied_cleanup["skipped"]), denied_orphan) == 1)
+run_argv(["rm", "-rf", denied_orphan], 30000)
+
 missing_scan := find_symlink_with_limits(temp_root() + "/kujo-workcell-missing-" + run_id(), {"max_files": 100, "max_bytes": 1000000, "max_depth": 8})
 expect("missing workspace scan fails with a structured result", missing_scan["ok"] == false&&contains(missing_scan["error"], "workspace disappeared during scan") == 1)
 

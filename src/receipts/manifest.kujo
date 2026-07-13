@@ -20,32 +20,42 @@ func collect_files(root, relative, depth) {
         if current_depth > 256 {
             return {"ok": false, "error": "manifest source exceeds maximum depth: " + current_relative}
         }
-    entries := list_dir(path)
-    mut entry_i := 0
-    while entry_i < len(entries) {
-        name := to_string(entries[entry_i])
-        child_relative := name
-        if current_relative != "" {child_relative = current_relative + "/" + name}
-        if child_relative != "manifest.json" {
-            child_path := path + "/" + name
-            if path_has_symlink(child_path) {
-                return {"ok": false, "error": "manifest source contains a symlink: " + child_relative}
-            }
-        if path_is_dir(child_path) {
-            queue_paths = push(queue_paths, child_path)
-            queue_relative = push(queue_relative, child_relative)
-            queue_depths = push(queue_depths, current_depth + 1)
-        } else {
-        if path_within(root, child_path) == false {
-            return {"ok": false, "error": "manifest source escapes the run directory: " + child_relative}
-        }
-    mut digest := ""
+    mut entries := []
     try {
-        digest = sha256_file(child_path)
+        entries = list_dir(path)
     } except err {
-    return {"ok": false, "error": "could not hash manifest source " + child_relative + ": " + to_string(err)}
+    return {"ok": false, "error": "manifest source could not list directory " + current_relative + ": " + to_string(err)}
 }
-bytes := file_size(child_path)
+mut entry_i := 0
+while entry_i < len(entries) {
+    name := to_string(entries[entry_i])
+    child_relative := name
+    if current_relative != "" {child_relative = current_relative + "/" + name}
+    if child_relative != "manifest.json" {
+        child_path := path + "/" + name
+        if path_has_symlink(child_path) {
+            return {"ok": false, "error": "manifest source contains a symlink: " + child_relative}
+        }
+    if path_is_dir(child_path) {
+        queue_paths = push(queue_paths, child_path)
+        queue_relative = push(queue_relative, child_relative)
+        queue_depths = push(queue_depths, current_depth + 1)
+    } else {
+    if path_within(root, child_path) == false {
+        return {"ok": false, "error": "manifest source escapes the run directory: " + child_relative}
+    }
+mut digest := ""
+try {
+    digest = sha256_file(child_path)
+} except err {
+return {"ok": false, "error": "could not hash manifest source " + child_relative + ": " + to_string(err)}
+}
+mut bytes := 0
+try {
+    bytes = file_size(child_path)
+} except err {
+return {"ok": false, "error": "could not inspect manifest source " + child_relative + ": " + to_string(err)}
+}
 files = push(files, {"path": child_relative, "sha256": digest, "bytes": bytes})
 total_bytes = total_bytes + bytes
 if len(files) > 100000 {return {"ok": false, "error": "manifest exceeds 100000 files"}}
@@ -128,11 +138,22 @@ if path_within(output_dir, path) == false||path_has_symlink(path)||file_exists(p
     return {"ok": false, "error": "integrity manifest file is missing or unsafe: " + relative}
 }
 expected_bytes := get_or(entry, "bytes", - 1)
-if type(expected_bytes) != "int"||file_size(path) != expected_bytes {
+mut actual_bytes :=  - 1
+try {
+    actual_bytes = file_size(path)
+} except err {
+return {"ok": false, "error": "could not inspect integrity manifest file: " + relative + ": " + to_string(err)}
+}
+if type(expected_bytes) != "int"||actual_bytes != expected_bytes {
     return {"ok": false, "error": "integrity manifest byte count mismatch: " + relative}
 }
 expected_digest := get_or(entry, "sha256", "")
-actual_digest := sha256_file(path)
+mut actual_digest := ""
+try {
+    actual_digest = sha256_file(path)
+} except err {
+return {"ok": false, "error": "could not hash integrity manifest file: " + relative + ": " + to_string(err)}
+}
 if expected_digest == ""||actual_digest != expected_digest {
     return {"ok": false, "error": "integrity manifest digest mismatch: " + relative}
 }

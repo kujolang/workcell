@@ -48,9 +48,12 @@ return true
 }
 
 func absolute_output_safe(repo_root, requested) {
-    if starts_with(requested, "/") == false {
+    if type(requested) != "string"||trim(requested) == "" {
         return true
     }
+if starts_with(requested, "/") == false {
+    return true
+}
 return path_within(temp_root(), requested)||path_within(repo_root + "/.workcell", requested)
 }
 

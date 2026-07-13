@@ -1,0 +1,6 @@
+diff --git a/src/util.kujo b/src/util.kujo
+@@
++JSON persistence now returns false for invalid parent directories or atomic-write exceptions
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++occupied JSON parent regression added

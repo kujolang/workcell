@@ -1,0 +1,6 @@
+diff --git a/src/artifacts/exporter.kujo b/src/artifacts/exporter.kujo
+@@
++artifact export now validates policy shape and limit values before traversal or copy operations
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++malformed artifact-policy invalid-input regression added

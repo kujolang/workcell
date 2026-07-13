@@ -86,12 +86,13 @@ if max_files > 0&&files > max_files {
 return {"ok": true, "bytes": bytes, "files": files}
 }
 
-func redact_tree(path, secrets) {
+func redact_tree(path, secrets, relative) {
     if path_is_dir(path) {
         entries := list_dir(path)
         mut i := 0
         while i < len(entries) {
-            result := redact_tree(path + "/" + to_string(entries[i]), secrets)
+            child_relative := relative + "/" + to_string(entries[i])
+            result := redact_tree(path + "/" + to_string(entries[i]), secrets, child_relative)
             if result["ok"] == false {return result}
             i = i + 1
         }
@@ -172,7 +173,7 @@ if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "export artifact " + relative)}
 }
 if get_or(policy, "secret_action", "allow") == "redact"&&len(secret_values) > 0 {
-    redaction := redact_tree(destination, secret_values)
+    redaction := redact_tree(destination, secret_values, relative)
     if redaction["ok"] == false {
         return {"ok": false, "error": "could not redact exported artifact: " + relative}
     }

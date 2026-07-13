@@ -33,7 +33,7 @@ exclude = [
 
 [zones.cli]
 paths = ["src/cli/**"]
-can_depend_on = ["doctor", "domain", "execution", "policy", "runtime", "workspace", "shared"]
+can_depend_on = ["doctor", "domain", "execution", "policy", "receipts", "runtime", "workspace", "shared"]
 cannot_depend_on = []
 severity = "error"
 

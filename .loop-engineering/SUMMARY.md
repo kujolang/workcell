@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (101), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, final clean-tree and push verification
+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (102), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, final clean-tree and push verification
 - blocked: none
 - failed: none after the registry validation fix and receipt/cleanup hardening
 
@@ -39,4 +39,4 @@ success
 
 ## Next Start
 
-- iteration 019: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls
+- iteration 020: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls

@@ -1,0 +1,11 @@
+iteration: 019
+objective: reject malformed network sections without resolver crashes and preserve artifact redaction error paths
+verdict: success
+progress: 1
+local_gates: passed
+malformed_network_regression: passed
+artifact_redaction_error_path: fixed
+rootful_docker: passed
+rootful_egress: passed
+rootful_load: passed
+external_boundaries: hosted_ci_billing_and_production_controls

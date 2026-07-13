@@ -1,0 +1,7 @@
+targeted probe before fix: missing manifest directory produced a successful empty manifest instead of a structured input failure
+targeted tests after fix: missing manifest directory returns structured failures for write and verify
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 173, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 196 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

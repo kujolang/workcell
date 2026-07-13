@@ -1,0 +1,6 @@
+diff --git a/src/receipts/manifest.kujo b/src/receipts/manifest.kujo
+@@
++manifest write/verify now require an existing non-symlink output directory
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++missing manifest directory regression added

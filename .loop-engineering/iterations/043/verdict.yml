@@ -1,0 +1,10 @@
+iteration: 043
+objective: require existing safe manifest directories
+verdict: success
+progress: 1
+local_gates: passed
+manifest_directory_regression: passed
+release_report: passed
+docker_integration: passed
+oci_smoke: passed
+external_boundaries: hosted_ci_billing_and_production_controls

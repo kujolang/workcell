@@ -267,13 +267,13 @@ if network_mode == "none" {
     if policy != "deny-by-default"||dns != "blocked"||proxy != "none"||profile != "none" {
         return {"ok": false, "error": "network.mode none requires deny-by-default, blocked DNS, no proxy, and no enforcement profile"}
     }
-    return {"ok": true}
+return {"ok": true}
 }
 if policy == "unmanaged" {
     if dns != "inherited"||proxy != "none"||profile != "none" {
         return {"ok": false, "error": "unmanaged network egress requires inherited DNS, no proxy, and no enforcement profile"}
     }
-    return {"ok": true}
+return {"ok": true}
 }
 if profile == "none" {
     return {"ok": false, "error": "network.egress.enforcement_profile is required for managed egress"}

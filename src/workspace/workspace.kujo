@@ -422,7 +422,7 @@ if process_ok(owner_result) == false {
 return {"ok": true, "preserved": false, "path": path}
 }
 
-export func clean_stale_workspaces() {
+export func clean_stale_workspaces(active_run_ids) {
     root := temp_root()
     if path_is_dir(root) == false {
         return {"ok": true, "removed": [], "skipped": []}
@@ -440,19 +440,21 @@ while i < len(entries) {
         run_value := substring(name, len(run_prefix), len(name))
         if valid_run_id(run_value) == false {
             skipped = push(skipped, path + ": invalid Workcell run ID")
-        } else if file_exists(owner_path)&&path_is_symlink(path) == false&&path_is_dir(path) {
-        owner := read_text(owner_path)
-        expected_owner := "workcell-run-id=" + run_value + "\n"
-        if owner["ok"] == false||owner["text"] != expected_owner {
-            skipped = push(skipped, path + ": ownership marker does not match run ID")
-        } else {
-        result := run_argv(["rm", "-rf", path], 60000)
-        if process_ok(result) {
-            run_argv(["rm", "-f", owner_path], 30000)
-            removed = push(removed, path)
-        } else {
-        skipped = push(skipped, path + ": " + trim(result.stderr))
-    }
+        } else if contains(to_json(active_run_ids), run_value) == 1 {
+        skipped = push(skipped, path + ": active Workcell run is still running")
+    } else if file_exists(owner_path)&&path_is_symlink(path) == false&&path_is_dir(path) {
+    owner := read_text(owner_path)
+    expected_owner := "workcell-run-id=" + run_value + "\n"
+    if owner["ok"] == false||owner["text"] != expected_owner {
+        skipped = push(skipped, path + ": ownership marker does not match run ID")
+    } else {
+    result := run_argv(["rm", "-rf", path], 60000)
+    if process_ok(result) {
+        run_argv(["rm", "-f", owner_path], 30000)
+        removed = push(removed, path)
+    } else {
+    skipped = push(skipped, path + ": " + trim(result.stderr))
+}
 }
 } else if starts_with(name, "kujo-workcell-")&&path_is_dir(path) {
 skipped = push(skipped, path + ": ownership marker missing or path is a symlink")

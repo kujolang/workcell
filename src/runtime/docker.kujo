@@ -366,6 +366,7 @@ ids := lines_of(trim(listed.stdout))
 mut removed := 0
 mut failed := []
 mut preserved_active := []
+mut active_run_ids := []
 mut removed_images := []
 mut preserved_images := []
 mut i := 0
@@ -377,17 +378,20 @@ while i < len(ids) {
     name := id
     if len(columns) > 2 {name = trim(columns[2])}
     if id != "" {
-        if state == ""|| (starts_with(state, "exited") == false&&starts_with(state, "dead") == false) {
+        if state == ""||starts_with(state, "up")||starts_with(state, "restarting")||starts_with(state, "paused") {
             preserved_active = push(preserved_active, name + " (" + state + ")")
-            i = i + 1
-            continue
-        }
-        result := remove_container(id, backend)
-        if result["ok"] {
-            removed = removed + 1
-        } else {
-        failed = push(failed, id + ": " + result["message"])
+            if starts_with(name, "kujo-workcell-") {
+                active_run_ids = push(active_run_ids, substring(name, len("kujo-workcell-"), len(name)))
+            }
+        i = i + 1
+        continue
     }
+result := remove_container(id, backend)
+if result["ok"] {
+    removed = removed + 1
+} else {
+failed = push(failed, id + ": " + result["message"])
+}
 }
 i = i + 1
 }
@@ -415,5 +419,5 @@ networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter
 if networks["ok"] == false {
     failed = push(failed, networks["error"])
 }
-return {"ok": len(failed) == 0, "removed": removed, "preserved_active": preserved_active, "removed_images": removed_images, "preserved_images": preserved_images, "preserved_networks": get_or(networks, "items", []), "failed": failed}
+return {"ok": len(failed) == 0, "removed": removed, "preserved_active": preserved_active, "active_run_ids": active_run_ids, "removed_images": removed_images, "preserved_images": preserved_images, "preserved_networks": get_or(networks, "items", []), "failed": failed}
 }

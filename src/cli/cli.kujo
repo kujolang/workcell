@@ -344,6 +344,7 @@ func run_command(parsed) {
 if has_flag(parsed, "keep-failed") {
     run_flags["keep_failed"] := true
 }
+
 result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
 print_run_result(result, has_flag(parsed, "json"))
 return run_exit_code(result)
@@ -381,7 +382,7 @@ if result["ok"] {return 0}
 return 9
 }
 docker := clean_owned_resources_with_options(prune_images, backend)
-temp := clean_stale_workspaces()
+temp := clean_stale_workspaces(get_or(docker, "active_run_ids", []))
 clean_ok := docker["ok"]&&temp["ok"]
 result := {"ok": clean_ok, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp}
 if has_flag(parsed, "json") {

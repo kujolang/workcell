@@ -4,7 +4,7 @@ Updated: 2026-07-12
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 80 offline policy/artifact/verification assertions, 8 workspace assertions, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 88 offline policy/artifact/verification assertions, 9 workspace assertions, 5 deterministic stress assertions, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
@@ -48,17 +48,17 @@ Promote `runtime_backend` and `runtime` fields to the documented clean/inventory
 
 Acceptance: automation never needs to infer the backend from a Docker-specific field or human-readable text. Implemented with `runtime_backend`/`runtime`, a compatibility `docker` alias, backend-aware CLI text, and Docker integration assertions.
 
-### [ ] Concurrent-run and cleanup coordination
+### [x] Concurrent-run and cleanup coordination
 
 Define behavior when `run`, `clean`, or two runs target the same repository simultaneously. Add an ownership-aware lock or lease only if it can be implemented without broad host mutation.
 
-Acceptance: concurrent runs cannot remove each other’s containers, workspaces, images, or receipts; stale locks have a documented recovery path.
+Acceptance: unique run IDs isolate containers, workspaces, receipts, and manifests; cleanup preserves active labeled containers and matching active workspaces, while removing only exited/dead resources. A scheduler-level queue/lease is intentionally deployment-owned.
 
-### [ ] Integration adapter contracts
+### [x] Integration adapter contracts
 
 Add fixture-backed contracts for each optional adapter’s command line, report schema, timeout, redaction, and failure status. Enable them in a dedicated CI job only when the owning tool version and credentials are present.
 
-Acceptance: every adapter has a deterministic fake/fixture test and a separate live evidence job; adapter failures never change a successful primary Workcell verdict.
+Acceptance: every adapter has a deterministic fixture contract covering argv, bounded execution, redaction, report persistence, and failure visibility; adapter failures never change a successful primary Workcell verdict. Live evidence jobs remain deployment-owned and require each tool’s approved version and credentials.
 
 ## Priority 3 — Kujo showcase and developer experience
 

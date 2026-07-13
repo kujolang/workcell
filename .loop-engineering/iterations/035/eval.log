@@ -1,0 +1,7 @@
+targeted probe before fix: exit 4 VM crash for null coordinator requested output
+targeted probe after fix: exit 0 structured coordinator result
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 157, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 180 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

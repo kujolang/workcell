@@ -315,6 +315,9 @@ expect("host-control environment allow rejected", validate_definition(with_envir
 expect("proxy environment allow rejected", validate_definition(with_environment_allow(definition, "HTTP_PROXY"))["ok"] == false)
 expect("cloud credential environment allow rejected", validate_definition(with_environment_allow(definition, "AWS_SESSION_TOKEN"))["ok"] == false&&validate_definition(with_environment_allow(definition, "GOOGLE_APPLICATION_CREDENTIALS"))["ok"] == false)
 expect("runtime control environment allow rejected", validate_definition(with_environment_allow(definition, "DOCKER_CONTEXT"))["ok"] == false&&validate_definition(with_environment_allow(definition, "CONTAINER_HOST"))["ok"] == false)
+malformed_secrets := default_definition()
+malformed_secrets["secrets"] := null
+expect("null secrets with configured environment is handled without runtime crash", validate_definition(with_environment_set(malformed_secrets, "WORKCELL_MODE", "check"))["ok"] == false)
 env_policy := build_policy(with_environment_set(definition, "WORKCELL_MODE", "check"), "test-env", "/tmp/workcell-test-workspace")
 expect("container environment is explicit", contains(to_string(env_policy["docker_args"]), "WORKCELL_MODE=check") == 1)
 secret_policy := build_policy(with_secret(definition, "WORKCELL_TOKEN"), "test-secret", "/tmp/workcell-test-workspace")
@@ -425,6 +428,9 @@ invalid_context_runtime := invalid_context_definition["runtime"]
 invalid_context_runtime["build_context"] := "."
 invalid_context_definition["runtime"] := invalid_context_runtime
 expect("invalid image source input is handled without runtime crash", ensure_image(invalid_context_definition, null, null, true, false)["ok"] == false)
+invalid_ensure_no_pull := ensure_image(definition, "/tmp", "test-invalid-ensure-options", "false", false)
+invalid_ensure_rebuild := ensure_image(definition, "/tmp", "test-invalid-ensure-options", true, "false")
+expect("invalid image ensure options are rejected without runtime invocation", invalid_ensure_no_pull["ok"] == false&&invalid_ensure_rebuild["ok"] == false&&contains(invalid_ensure_rebuild["error"], "must be boolean") == 1)
 invalid_verification_definition := default_definition()
 invalid_verification_section := invalid_verification_definition["verification"]
 invalid_verification_section["commands"] := [{"name": "check", "command": ["true"]}]

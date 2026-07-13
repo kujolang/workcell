@@ -260,10 +260,13 @@ return {"ok": true}
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
-    definition_check := validate_definition(definition)
-    if definition_check["ok"] == false {
-        return definition_check
+    if type(no_pull) != "bool"||type(rebuild) != "bool" {
+        return {"ok": false, "error": "image ensure no-pull and rebuild options must be boolean"}
     }
+definition_check := validate_definition(definition)
+if definition_check["ok"] == false {
+    return definition_check
+}
 if type(source_root) != "string"||type(run_identifier) != "string"||source_root == ""||run_identifier == "" {
     return {"ok": false, "error": "image source root and run identifier must be non-empty strings"}
 }

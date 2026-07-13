@@ -759,6 +759,15 @@ environment_keys := validate_keys(environment, ["allow", "set"], "environment")
 if environment_keys["ok"] == false {
     return environment_keys
 }
+secret_names := get_or(raw, "secrets", [])
+secret_check := validate_env_names(secret_names, "secrets")
+if secret_check["ok"] == false {
+    return secret_check
+}
+secret_unique := validate_unique_strings(secret_names, "secrets")
+if secret_unique["ok"] == false {
+    return secret_unique
+}
 allow_check := validate_env_names(get_or(environment, "allow", []), "environment.allow")
 if allow_check["ok"] == false {
     return allow_check
@@ -788,8 +797,8 @@ while configured_i < len(configured_names) {
         return configured_check
     }
 mut secret_name_i := 0
-while secret_name_i < len(get_or(raw, "secrets", [])) {
-    if get_or(raw, "secrets", [])[secret_name_i] == configured_name {
+while secret_name_i < len(secret_names) {
+    if secret_names[secret_name_i] == configured_name {
         return {"ok": false, "error": "environment.set cannot override declared secret " + configured_name}
     }
 secret_name_i = secret_name_i + 1
@@ -801,17 +810,9 @@ if type(configured_value) != "string"||contains(configured_value, "\n") == 1||co
 configured_i = configured_i + 1
 }
 
-secret_check := validate_env_names(get_or(raw, "secrets", []), "secrets")
-if secret_check["ok"] == false {
-    return secret_check
-}
-secret_unique := validate_unique_strings(get_or(raw, "secrets", []), "secrets")
-if secret_unique["ok"] == false {
-    return secret_unique
-}
 mut secret_i := 0
-while secret_i < len(get_or(raw, "secrets", [])) {
-    secret_name := raw["secrets"][secret_i]
+while secret_i < len(secret_names) {
+    secret_name := secret_names[secret_i]
     if host_control_env_name(secret_name) {
         return {"ok": false, "error": "secrets cannot expose host-control variable " + secret_name}
     }

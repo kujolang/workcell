@@ -20,6 +20,8 @@ Offline tests (99 assertions plus 11 workspace and 5 stress assertions) reject h
 
 Docker integration now covers timeout termination, Docker exit-125 workload classification, arbitrary output-path rejection, and label-scoped cleanup on the local daemon. The rootless OCI smoke runs the selected backend's doctor preflight; Podman security inspection now requires an enabled seccomp profile and has a fake-CLI regression contract proving disabled seccomp fails closed. The adversarial CLI suite covers privileged/socket/root-mount request rejection before runtime; the suite does not claim to exercise a real privileged container because the policy must reject it first.
 
+The concurrent load contract runs four Workcell executions against one clean source repository and shared output root. It passed on rootful Docker and rootless Docker/Podman in the Colima Linux VM, proving run-ID separation, unchanged source, verified manifests/artifacts, and cleanup of successful run workspaces and containers.
+
 ## Residual risk
 
 Docker daemon and host kernel trust, transformed secret leakage, external cosign key lifecycle/transparency policy, no hardened microVM, and no controlled proxy remain explicit limitations.

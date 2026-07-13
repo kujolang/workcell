@@ -16,6 +16,7 @@ Workcell exposes versioned JSON contracts for definitions, CLI metadata, receipt
 | OCI smoke evidence | `workcell-oci-evidence/v1` | `tests/oci_smoke.sh` stdout | Deployment validation records the selected OCI backend and observed rootless status. |
 | Egress evidence | `workcell-egress-evidence/v1` | `tests/egress_integration.sh` stdout | Deployment validation records an allowed internal destination, a blocked external DNS destination, the selected enforcement profile, and receipt/manifest hashes. |
 | Egress deployment evidence | `workcell-egress-deployment-evidence/v1` | `tests/egress_deployment_contract.sh` stdout | Operator-supplied network validation records allowed/denied destinations, the selected policy, `network_mutation: false`, and receipt/manifest hashes without creating or changing deployment infrastructure. |
+| Load evidence | `workcell-load-evidence/v1` | `tests/load_integration.sh` stdout | Concurrent deployment validation records unique run IDs, unchanged source, verified artifacts/manifests, cleaned workspaces/containers, and elapsed time. |
 | Local release report | `workcell-report/v1` | `tests/release_report.sh` | Suite and deployment-gate status is additive; skipped deployment gates are explicit. |
 
 ## Exit-code stability

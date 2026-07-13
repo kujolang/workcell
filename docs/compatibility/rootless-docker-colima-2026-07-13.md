@@ -16,6 +16,7 @@ Observed on 2026-07-13 using the pinned Kujo runtime revision from `workcell.jso
 | `workcell doctor --backend podman --json` | `ok: true`, `blocked: 0`; Podman seccomp is enabled and AppArmor absence is an explicit warning |
 | `tests/docker_integration.sh podman` | passed; backend-neutral policy, identity, network, provenance, verification, failure, timeout, and cleanup contracts exercised |
 | `tests/egress_integration.sh docker` and `podman` | both passed; allowlisted internal destination reached and external DNS blocked |
+| `tests/load_integration.sh docker` and `podman` | both passed with four concurrent runs; unique run IDs, source immutability, artifact/manifest verification, workspace cleanup, and container cleanup proved |
 | Offline Kujo fixture suite | 4/4 fixtures passed under the interpreter runtime |
 
 Rootless definitions must set `workspace.run_as` to `rootless`. Workcell maps that explicit mode to container `0:0`; the rootless engine maps it to the unprivileged daemon identity, so bind-mounted workspaces remain writable without treating a host UID/GID as portable across user namespaces. Definitions using `host` or a fixed UID/GID fail closed on a rootless engine.

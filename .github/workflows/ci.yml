@@ -41,9 +41,17 @@ jobs:
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/run.sh
 
+      - name: Run Kujo and shell quality gates
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/quality.sh
+
       - name: Run Docker integration suite
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/docker_integration.sh
+
+      - name: Run Docker concurrent load evidence
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/load_integration.sh docker
 
       - name: Run Docker egress enforcement evidence
         shell: bash
@@ -62,6 +70,10 @@ jobs:
       - name: Run Podman integration suite
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/docker_integration.sh podman
+
+      - name: Run Podman concurrent load evidence
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/load_integration.sh podman
 
       - name: Run Podman egress enforcement evidence
         shell: bash

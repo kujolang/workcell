@@ -55,6 +55,10 @@ docker build --tag kujolang/workcell-base:local docker/
 
 For operator-owned egress validation, `tests/egress_deployment_contract.sh` accepts a pre-created custom or default network plus one allowed and one denied URL. It never creates or mutates network infrastructure and emits `workcell-egress-deployment-evidence/v1` with receipt and manifest hashes.
 
+For bounded concurrent-run evidence, `tests/load_integration.sh docker|podman` runs four isolated Workcell runs concurrently and verifies unique receipts, artifacts, manifests, source immutability, and runtime cleanup. It emits `workcell-load-evidence/v1` and accepts `WORKCELL_LOAD_RUNS=2..16`.
+
+`tests/quality.sh` runs the shared Kujo format/lint and shell syntax gates used by the default suite and CI.
+
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
 After a run, inspect the evidence directly:

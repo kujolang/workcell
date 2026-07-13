@@ -15,6 +15,8 @@ check_all() {
   "$KUJO" check "$ROOT/tests/stress_test.kujo"
   "$KUJO" check "$ROOT/tests/podman_security_contract.kujo"
   bash -n "$ROOT/tests/egress_deployment_contract.sh"
+  bash -n "$ROOT/tests/load_integration.sh"
+  bash -n "$ROOT/tests/quality.sh"
 }
 
 if [ "${1:-}" = "--check-only" ]; then
@@ -23,6 +25,7 @@ if [ "${1:-}" = "--check-only" ]; then
 fi
 
 check_all
+KUJO="$KUJO" "$ROOT/tests/quality.sh"
 EMPTY_SECRET="" LONG_SECRET="longsecret" AUDIT_SECRET="artifact-secret" "$KUJO" run "$ROOT/tests/workcell_test.kujo"
 "$KUJO" run "$ROOT/tests/workspace_test.kujo"
 "$KUJO" run "$ROOT/tests/performance_test.kujo"

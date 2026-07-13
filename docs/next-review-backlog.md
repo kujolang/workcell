@@ -36,7 +36,7 @@ Acceptance: a supported deployment test proves allowed and denied destinations, 
 
 Exercise maximum files, bytes, depth, output truncation, artifact trees, concurrent runs, and cancellation under load. Record wall time, peak disk usage, and cleanup latency.
 
-Acceptance: bounded behavior is deterministic, receipts remain valid under truncation/failure, and the performance budget is documented for representative repository sizes. Added deterministic file/byte/depth, output-truncation, and timeout stress contracts; full deployment load testing remains open.
+Acceptance: bounded behavior is deterministic, receipts remain valid under truncation/failure, and the performance budget is documented for representative repository sizes. Added deterministic file/byte/depth, output-truncation, and timeout stress contracts plus `tests/load_integration.sh` for bounded concurrent deployment runs; hosted CI and larger production deployment load evidence remain open.
 
 ## Priority 2 — functionality and interoperability
 

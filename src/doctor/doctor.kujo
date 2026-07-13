@@ -1,6 +1,6 @@
 # Environment diagnostics for Workcell.
 
-from src.runtime.docker import doctor_runtime
+from src.runtime.docker import doctor_runtime, podman_security_status
 from src.util import get_or, parent_of, process_error, process_ok, run_argv, run_id
 from src.workspace.workspace import inspect_repository, temp_root
 
@@ -47,15 +47,20 @@ return {"name": "Optional Kujo tooling", "status": "warning", "message": "option
 
 func runtime_security_check(backend) {
     if backend == "podman" {
-        result := run_argv(["podman", "info", "--format", "{{.Host.Security.Rootless}}"], 10000)
-        if process_ok(result) == false {
-            return {"name": "Podman security", "status": "blocked", "message": trim(process_field(result, "stderr", "")), "remediation": "Expose a reachable rootless Podman engine"}
+        security := podman_security_status()
+        if security["ok"] == false {
+            return {"name": "Podman security", "status": "blocked", "message": security["error"], "remediation": "Expose a reachable Podman engine with its default seccomp profile enabled"}
         }
-    rootless := to_lower(trim(process_field(result, "stdout", "")))
-    if rootless == "true" {
-        return {"name": "Podman security", "status": "passed", "message": "rootless Podman engine detected", "remediation": ""}
+    if security["seccomp"] == false {
+        return {"name": "Podman security", "status": "blocked", "message": "Podman security settings do not show seccomp enabled", "remediation": "Enable Podman's default seccomp profile; do not use an unconfined profile"}
     }
-return {"name": "Podman security", "status": "warning", "message": "Podman engine is not rootless", "remediation": "Use rootless Podman or a stronger VM/microVM boundary for multi-tenant untrusted workloads"}
+if security["rootless"] {
+    if security["apparmor"] {
+        return {"name": "Podman security", "status": "passed", "message": "seccomp, AppArmor, and rootless Podman engine detected", "remediation": ""}
+    }
+return {"name": "Podman security", "status": "warning", "message": "seccomp and rootless Podman engine detected; AppArmor is not enabled", "remediation": "Review host kernel policy; rootless Podman reduces daemon privilege but does not prove AppArmor enforcement"}
+}
+return {"name": "Podman security", "status": "warning", "message": "seccomp enabled but Podman engine is not rootless", "remediation": "Use rootless Podman or a stronger VM/microVM boundary for multi-tenant untrusted workloads"}
 }
 result := run_argv(["docker", "info", "--format", "{{json .SecurityOptions}}"], 10000)
 if process_ok(result) == false {

@@ -36,25 +36,46 @@ func docker_result(argv, timeout_ms) {
     return run_argv(argv, timeout_ms)
 }
 
-func verify_daemon_security(definition) {
+export func podman_security_status() {
+    result := runtime_result("podman", ["info", "--format", "{{json .Host.Security}}"], 10000)
+    if process_ok(result) == false {
+        return {"ok": false, "error": process_error(result, "inspect Podman security settings")}
+    }
+mut security := {}
+try {
+    security = parse_json(trim(result.stdout))
+} except err {
+return {"ok": false, "error": "Podman security settings were not valid JSON: " + to_string(err)}
+}
+return {
+    "ok": true,
+    "rootless": get_or(security, "rootless", false) == true,
+    "seccomp": get_or(security, "seccompEnabled", false) == true,
+    "apparmor": get_or(security, "apparmorEnabled", false) == true,
+    "selinux": get_or(security, "selinuxEnabled", false) == true
+}
+}
+
+export func verify_daemon_security(definition) {
     backend := definition["runtime"]["backend"]
     requested_identity := definition["workspace"]["run_as"]
     if backend == "podman" {
-        rootless_result := runtime_result(backend, ["info", "--format", "{{.Host.Security.Rootless}}"], 10000)
-        if process_ok(rootless_result) == false {
-            return {"ok": false, "error": process_error(rootless_result, "inspect Podman rootless mode")}
+        security := podman_security_status()
+        if security["ok"] == false {return security}
+        if security["seccomp"] == false {
+            return {"ok": false, "error": "Podman engine does not report an enabled seccomp profile"}
         }
-    rootless := to_lower(trim(rootless_result.stdout))
-    if requested_identity == "rootless"&&rootless != "true" {
+    rootless := security["rootless"]
+    if requested_identity == "rootless"&&rootless == false {
         return {"ok": false, "error": "workspace.run_as rootless requires a rootless Podman engine"}
     }
-if requested_identity != "rootless"&&rootless == "true" {
+if requested_identity != "rootless"&&rootless {
     return {"ok": false, "error": "rootless Podman requires workspace.run_as rootless so bind mounts use the daemon user's mapped identity"}
 }
-if definition["trust_profile"] == "native-guarded"&&rootless != "true" {
+if definition["trust_profile"] == "native-guarded"&&rootless == false {
     return {"ok": false, "error": "trust_profile native-guarded requires a rootless Podman engine or a stronger VM/microVM runtime"}
 }
-return {"ok": true, "rootless": rootless == "true"}
+return {"ok": true, "rootless": rootless, "seccomp": security["seccomp"], "apparmor": security["apparmor"]}
 }
 format := "{{json .SecurityOptions}}"
 result := runtime_result(backend, ["info", "--format", format], 10000)

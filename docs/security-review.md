@@ -16,7 +16,7 @@
 - Resource values are bounded (CPU, memory, PIDs, and a 24-hour timeout maximum); duration parsing rejects non-integer amounts.
 - Host-control environment denial covers Docker/Podman selectors, cloud credential selectors, Kubernetes connection variables, Git configuration overrides, and package/CI credential variables.
 - Human-readable and JSON `inspect` failures return non-success exit codes instead of rendering incomplete policy fields; verification-container startup failures attempt labeled stop/remove cleanup before returning.
-- Ownership markers are never followed during direct or stale workspace cleanup; missing runtime containers are treated idempotently, and startup failures retain the documented code-5 result instead of being misreported as internal failures.
+- Ownership markers are never followed during direct or stale workspace cleanup; missing runtime containers are treated idempotently, null output requests fail closed, and startup failures retain the documented code-5 result instead of being misreported as internal failures.
 
 ## Adversarial review
 

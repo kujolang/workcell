@@ -1,65 +1,136 @@
 diff --git a/.loop-engineering/SUMMARY.md b/.loop-engineering/SUMMARY.md
-index 66a132c..933d053 100644
+index 66a132c..cf358dc 100644
 --- a/.loop-engineering/SUMMARY.md
 +++ b/.loop-engineering/SUMMARY.md
 @@ -6,11 +6,11 @@ success
- 
+
  ## Completed
- 
+
 -- configured loop run plus manual verification completed through iteration 059
 +- configured loop run plus manual verification completed through iteration 060
- 
+
  ## Verification
- 
+
 -- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (190), workspace assertions (20), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, receipt mutation/path validation, artifact policy/export and limit input validation, artifact/manifest/runtime API validation without runtime crashes, manifest output-directory validation without runtime crashes, repository/symlink/workspace/doctor API validation without runtime crashes, policy construction/inspection API validation without runtime crashes, coordinator output API validation without runtime crashes, CLI argument API validation without runtime crashes, integration/image-source API validation without runtime crashes, verification execution API validation without runtime crashes, explicit container-runtime backend/resource API validation without implicit Docker selection, malformed change-detail/report input validation without runtime crashes, malformed receipt identity/source/type validation, malformed release-report evidence handling, inspect failure exit-code, global help/version positional, cloud/runtime-control environment denial, verification-start cleanup, and final clean-tree and push verification
-+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (190), workspace assertions (23), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, receipt mutation/path validation, artifact policy/export and limit input validation, artifact/manifest/runtime API validation without runtime crashes, manifest output-directory validation without runtime crashes, repository/symlink/workspace/doctor API validation without runtime crashes, policy construction/inspection API validation without runtime crashes, coordinator output API validation without runtime crashes, CLI argument API validation without runtime crashes, integration/image-source API validation without runtime crashes, verification execution API validation without runtime crashes, explicit container-runtime backend/resource API validation without implicit Docker selection, malformed change-detail/report input validation without runtime crashes, malformed receipt identity/source/type validation, malformed release-report evidence handling, inspect failure exit-code, global help/version positional, cloud/runtime-control environment denial, verification-start cleanup, symlinked ownership-marker rejection, idempotent runtime cleanup, startup-failure exit handling, and final clean-tree and push verification
++- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (190), workspace assertions (23), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, receipt mutation/path validation, artifact policy/export and limit input validation, artifact/manifest/runtime API validation without runtime crashes, manifest output-directory validation without runtime crashes, repository/symlink/workspace/doctor API validation without runtime crashes, policy construction/inspection API validation without runtime crashes, coordinator output API validation without runtime crashes, null output rejection, CLI argument API validation without runtime crashes, integration/image-source API validation without runtime crashes, verification execution API validation without runtime crashes, explicit container-runtime backend/resource API validation without implicit Docker selection, malformed change-detail/report input validation without runtime crashes, malformed receipt identity/source/type validation, malformed release-report evidence handling, inspect failure exit-code, global help/version positional, cloud/runtime-control environment denial, verification-start cleanup, symlinked ownership-marker rejection, idempotent runtime cleanup, startup-failure exit handling, and final clean-tree and push verification
  - blocked: none
  - failed: none after artifact declaration, manifest coverage, verification-name, receipt, cleanup, and runtime-inventory hardening
- 
+
 @@ -22,6 +22,7 @@ success
  - fix: harden artifact and verification contracts
  - fix: restore runtime inventory details
  - fix: harden inspection, verification cleanup, and environment boundaries
 +- fix: harden workspace ownership and startup cleanup contracts
- 
+
  ## Remaining
- 
+
 @@ -42,4 +43,4 @@ success
- 
+
  ## Next Start
- 
+
 -- iteration 060: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls
 +- iteration 061: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls
+diff --git a/.loop-engineering/iterations/060/action.md b/.loop-engineering/iterations/060/action.md
+new file mode 100644
+index 0000000..ef4277e
+--- /dev/null
++++ b/.loop-engineering/iterations/060/action.md
+@@ -0,0 +1,9 @@
++# Iteration 060 action
++
++- Rejected symlinked ownership markers during direct cleanup, stale cleanup, and inventory; preserved the workspace and reported `marker-symlink`.
++- Made missing-container removal idempotent for Docker/Podman error variants.
++- Rejected null output requests instead of silently selecting the default output root.
++- Preserved the `starting` result stage for startup failures when cleanup succeeds, while using `cleanup-failed` when cleanup does not.
++- Added workspace, runtime-removal, and startup-failure fake-runtime contracts and wired them into the default suite.
++- Updated changelog, security review, hardening audit, build/development/tooling/CI evidence, backlog, and loop summary.
++- Offline evidence passed with 190 + 23 + 5 assertions and release total 218; Docker integration, OCI smoke, egress, and concurrent load passed locally.
+diff --git a/.loop-engineering/iterations/060/context.md b/.loop-engineering/iterations/060/context.md
+new file mode 100644
+index 0000000..34cd0f7
+--- /dev/null
++++ b/.loop-engineering/iterations/060/context.md
+@@ -0,0 +1,5 @@
++# Iteration 060 context
++
++Objective: close the next evidence-backed local lifecycle and security gaps after iteration 059.
++
++Review found four concrete defects. Workspace cleanup trusted a symlinked `.owner` marker, including during empty-orphan recovery. Runtime removal treated expected Docker/Podman missing-container responses as cleanup failures. A null output request silently selected the default output root. Container startup failures were returned with result stage `failed`, so the CLI mapped the documented startup code 5 to internal-error code 10. Scope is limited to Workcell source, fake-runtime/workspace regressions, documentation, and release evidence. Hosted CI billing and production rootless/egress/image-governance controls remain external.
+diff --git a/.loop-engineering/iterations/060/eval.log b/.loop-engineering/iterations/060/eval.log
+new file mode 100644
+index 0000000..6125c09
+--- /dev/null
++++ b/.loop-engineering/iterations/060/eval.log
+@@ -0,0 +1,16 @@
++iteration 060 evaluation
++base: 99f529f
++objective: harden workspace ownership and startup cleanup contracts
++
++passed: kujo run tests/workspace_test.kujo (23 passed, 0 failed)
++passed: tests/runtime_cleanup_contract.sh
++passed: tests/startup_failure_contract.sh
++passed: null output request regression in tests/workcell_test.kujo
++passed: tests/run.sh (190 workcell, 23 workspace, 5 stress; all gates passed)
++passed: tests/release_report.sh (218 total, 0 failed)
++passed: tests/quality.sh and git diff --check
++passed: tests/docker_integration.sh
++passed: REQUIRE_BACKEND=true tests/oci_smoke.sh docker
++passed: REQUIRE_BACKEND=true tests/egress_integration.sh docker
++passed: REQUIRE_BACKEND=true tests/load_integration.sh docker
++external: hosted CI billing; production rootless/microVM, host egress/firewall/proxy, image signing/key rotation, and vulnerability governance
+diff --git a/.loop-engineering/iterations/060/verdict.yml b/.loop-engineering/iterations/060/verdict.yml
+new file mode 100644
+index 0000000..8624c45
+--- /dev/null
++++ b/.loop-engineering/iterations/060/verdict.yml
+@@ -0,0 +1,17 @@
++iteration: 060
++objective: harden workspace ownership and startup cleanup contracts
++verdict: success
++progress: 1
++local_gates: passed
++offline_workcell_assertions: 190
++workspace_assertions: 23
++stress_assertions: 5
++release_report_total: 218
++runtime_cleanup_contract: passed
++startup_failure_contract: passed
++docker_integration: passed
++docker_oci_smoke: passed
++docker_egress: passed
++docker_load: passed
++hosted_ci: external_billing_blocker
++external_boundaries: hosted_ci_billing_and_production_controls
 diff --git a/.loop-engineering/ledger.tsv b/.loop-engineering/ledger.tsv
-index 1f64560..0eb1c4f 100644
+index 1f64560..c1bf988 100644
 --- a/.loop-engineering/ledger.tsv
 +++ b/.loop-engineering/ledger.tsv
 @@ -24,3 +24,4 @@ iteration	action	verdict	progress	evidence	justification
  018	artifact-secret-inspection-fail-closed	success	1	iterations/018/eval.log	Declared-secret artifact inspection now fails closed for unreadable/binary files under reject/redact policies; regression, quality, release, Docker integration, egress, and concurrent load gates passed; hosted CI billing and production controls remain external
  019	malformed-definition-and-redaction-errors	success	1	iterations/019/eval.log	Malformed network sections now return structured validation errors instead of resolver crashes, recursive artifact redaction carries safe relative paths, regression and full local Docker gates passed; hosted CI billing and production controls remain external
  020	overflow-safe-timeout-validation	success	1	iterations/020/eval.log	Oversized timeout parsing and millisecond conversion now fail with structured validation errors instead of VM crashes; regression, quality, release, Docker integration, egress, and concurrent load gates passed; hosted CI billing and production controls remain external
-+060	workspace-ownership-and-startup-cleanup	success	1	iterations/060/eval.log	Symlinked ownership markers, missing-container cleanup, and startup failure stage/code contracts hardened; full local, Docker OCI, egress, and concurrent-load gates passed; hosted CI billing and production controls remain external
++060	workspace-ownership-and-startup-cleanup	success	1	iterations/060/eval.log	Symlinked ownership markers, missing-container cleanup, null output validation, and startup failure stage/code contracts hardened; full local, Docker OCI, egress, and concurrent-load gates passed; hosted CI billing and production controls remain external
 diff --git a/CHANGELOG.md b/CHANGELOG.md
-index f27a782..12611d6 100644
+index f27a782..d230d6c 100644
 --- a/CHANGELOG.md
 +++ b/CHANGELOG.md
 @@ -3,7 +3,8 @@
  ## Unreleased
- 
+
  - Hardened CLI inspection failures, global help/version positional validation, verification-container startup cleanup, and host-control environment denial for cloud credentials and runtime selectors.
 -- Added fake-runtime regression contracts for cleanup behavior and refreshed the release evidence to 215 passing assertions.
 +- Added fake-runtime regression contracts for cleanup behavior and refreshed the release evidence to 218 passing assertions.
-+- Hardened workspace ownership markers against symlink spoofing, made missing-container removal idempotent, and restored the stable container-startup exit-code contract with dedicated regressions.
- 
++- Hardened workspace ownership markers against symlink spoofing, made missing-container removal idempotent, rejected null output requests, and restored the stable container-startup exit-code contract with dedicated regressions.
+
  ## 0.1.0
- 
+
 diff --git a/docs/build-report.md b/docs/build-report.md
 index 7df982d..9eb2178 100644
 --- a/docs/build-report.md
 +++ b/docs/build-report.md
 @@ -7,8 +7,8 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
  ## Verification run
- 
+
  - Kujo checker: `KUJO=../kujo/target/release/kujo ./tests/run.sh --check-only` — passed for `main.kujo`, all source modules, and the test module.
 -- Offline tests: `KUJO=../kujo/target/release/kujo ./tests/run.sh` — passed 190 definition/policy/artifact/verification assertions, 20 workspace patch/change-report/cleanup/scan assertions, and 5 deterministic stress assertions, including CLI inspect failure exit handling, global help/version positional rejection, cloud/runtime-control environment denial, and verification-start cleanup in addition to the existing policy, artifact, manifest, runtime, workspace, and redaction contracts.
 -- Structured report: `KUJO=../kujo/target/release/kujo ./tests/release_report.sh` — passed with `workcell-report/v1`, 215 counted assertions, per-suite elapsed time/exit codes, and explicit skipped Docker/Podman/ecosystem deployment gates.
@@ -82,12 +153,12 @@ index 36a8c41..cc3b56a 100644
 --- a/docs/ci-status.md
 +++ b/docs/ci-status.md
 @@ -4,6 +4,6 @@ Updated: 2036-07-13
- 
+
  The repository workflow is configured to run the offline, Docker, rootless-capable Podman, egress, concurrent-load, OCI, and doctor gates on `ubuntu-latest`. The latest observed pushed commit `a624c593d96e8eff9cfd5cbe2f66bdd05994935e` reached GitHub Actions run [29245126661](https://github.com/kujolang/workcell/actions/runs/29245126661), but the `verify` job was not started: GitHub reported that recent account payments failed or the spending limit must be increased.
- 
+
 -This is an external billing/Actions availability failure, not a test or source failure. Until repository billing is restored, hosted matrix evidence is unavailable and Workcell must not claim that hosted CI has passed. Local evidence remains current: 190 Workcell assertions, 20 workspace assertions, 5 stress assertions, 215 release assertions with 0 failures, Docker integration, Docker egress, concurrent Docker load, and Docker OCI smoke all passed.
 +This is an external billing/Actions availability failure, not a test or source failure. Until repository billing is restored, hosted matrix evidence is unavailable and Workcell must not claim that hosted CI has passed. Local evidence remains current: 190 Workcell assertions, 23 workspace assertions, 5 stress assertions, 218 release assertions with 0 failures, Docker integration, Docker egress, concurrent Docker load, and Docker OCI smoke all passed.
- 
+
  Release action: restore GitHub Actions billing eligibility, rerun the workflow on `main`, and retain the run URL and job logs as release evidence. The workflow already contains the required Podman and egress gates; no local code change can satisfy an account-level billing restriction.
 diff --git a/docs/development.md b/docs/development.md
 index 635910c..407094b 100644
@@ -96,14 +167,14 @@ index 635910c..407094b 100644
 @@ -10,7 +10,7 @@ export KUJO=/Users/robertdevore/2036/Kujolang/kujo-repos/kujo/target/release/kuj
  ./tests/run.sh
  ```
- 
+
 -The offline suite checks every `.kujo` file, runs 190 policy/validation/path/redaction/artifact/verification contract assertions, 20 workspace patch/change-report/cleanup/scan assertions, and 5 deterministic stress assertions without Docker, plus the dedicated adversarial suite, a 203-file changed-file performance signal, malformed performance-environment input handling, partial-section and exported API validation without runtime crashes, path-safety, dry-run lifecycle, example-definition, CLI schema/help smoke, schema compatibility, release-report, verification-start cleanup, and version-consistency scripts. Every source and test file also passes `kujo format --check` and every source module passes `kujo lint --json` with zero findings. For the larger local performance signal, run `WORKCELL_PERF_FILES=2030 $KUJO run tests/performance_test.kujo`; Docker/Podman integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
 +The offline suite checks every `.kujo` file, runs 190 policy/validation/path/redaction/artifact/verification contract assertions, 23 workspace patch/change-report/cleanup/scan assertions, and 5 deterministic stress assertions without Docker, plus the dedicated adversarial suite, a 203-file changed-file performance signal, malformed performance-environment input handling, partial-section and exported API validation without runtime crashes, path-safety, dry-run lifecycle, example-definition, CLI schema/help smoke, schema compatibility, release-report, verification-start cleanup, symlinked ownership-marker rejection, idempotent runtime cleanup, startup-failure exit handling, and version-consistency scripts. Every source and test file also passes `kujo format --check` and every source module passes `kujo lint --json` with zero findings. For the larger local performance signal, run `WORKCELL_PERF_FILES=2030 $KUJO run tests/performance_test.kujo`; Docker/Podman integration tests should run in a clean temporary Git repository and are intentionally not part of the default suite when a daemon is unavailable.
- 
+
  `tests/quality.sh` is the shared quality gate for syntax-preserving Kujo formatting, zero source lint findings, shell syntax, and `git diff --check`; `tests/run.sh` and CI both execute it. The CLI smoke suite also verifies global `--help`/`--version`, rejection of extra positionals, and rejection of options that belong to another command.
- 
+
 diff --git a/docs/hardening-audit.md b/docs/hardening-audit.md
-index c020be6..948874f 100644
+index c020be6..7d604ae 100644
 --- a/docs/hardening-audit.md
 +++ b/docs/hardening-audit.md
 @@ -15,7 +15,7 @@ Additional hardening completed in this pass:
@@ -112,66 +183,66 @@ index c020be6..948874f 100644
  - Binary change classification indexes Git's binary paths before updating file metadata, and untracked files use batched MIME probes in bounded chunks rather than one probe per file.
 -- The current 190 policy/artifact/verification, 20 workspace, and 5 stress contracts cover custom network and egress-policy validation, partial defaults, malformed numeric resource and scan sections, exported policy, summary, daemon-security, verification, integration, image-build/ensure, receipt, container-policy, workspace-operation, and utility API rejection of incomplete inputs, artifact export/log, manifest, Docker runtime, repository inspection, symlink scan, workspace creation, doctor, policy construction/inspection, coordinator output, CLI argument, integration/image-source, and verification execution API rejection of incomplete inputs, receipt mutation/path validation, malformed network-type validation, overflow-safe timeout, workspace-identity, and memory validation, empty-secret logs, exact/base64-derived secret redaction, secret-safe receipts/errors, binary change metadata, digest/signature-key validation, namespace policy, null process output, bounded absolute output paths, host UID/GID mapping, rootless workspace identity, workspace scan limits, artifact policies, binary secret inspection fail-closed behavior, verification plans, duplicate verification-name rejection, optional integration evidence/redaction, dry-run integration skips, Podman policy/doctor selection, atomic-write failure checks, runtime-class validation, backend-neutral CLI output, null-safe human failure output, inspect failure exit codes, global help/version positional rejection, cloud/runtime-control environment denial, verification-start cleanup, RunLedger finish-state reporting, versioned manifest verification/tamper/deduplication/complete-coverage checks, active-workspace cleanup protection, empty-orphan recovery, disappearing-workspace handling, schema/help output, release-report, example matrix, API compatibility, and version consistency.
 +- The current 190 policy/artifact/verification, 23 workspace, and 5 stress contracts cover custom network and egress-policy validation, partial defaults, malformed numeric resource and scan sections, exported policy, summary, daemon-security, verification, integration, image-build/ensure, receipt, container-policy, workspace-operation, and utility API rejection of incomplete inputs, artifact export/log, manifest, Docker runtime, repository inspection, symlink scan, workspace creation, doctor, policy construction/inspection, coordinator output, CLI argument, integration/image-source, and verification execution API rejection of incomplete inputs, receipt mutation/path validation, malformed network-type validation, overflow-safe timeout, workspace-identity, and memory validation, empty-secret logs, exact/base64-derived secret redaction, secret-safe receipts/errors, binary change metadata, digest/signature-key validation, namespace policy, null process output, bounded absolute output paths, host UID/GID mapping, rootless workspace identity, workspace scan limits, artifact policies, binary secret inspection fail-closed behavior, verification plans, duplicate verification-name rejection, optional integration evidence/redaction, dry-run integration skips, Podman policy/doctor selection, atomic-write failure checks, runtime-class validation, backend-neutral CLI output, null-safe human failure output, inspect failure exit codes, global help/version positional rejection, cloud/runtime-control environment denial, verification-start cleanup, symlinked ownership-marker rejection, idempotent missing-container cleanup, stable startup-failure exit handling, RunLedger finish-state reporting, versioned manifest verification/tamper/deduplication/complete-coverage checks, active-workspace cleanup protection, empty-orphan recovery, disappearing-workspace handling, schema/help output, release-report, example matrix, API compatibility, and version consistency.
- 
+
  The follow-up hardening pass also added declarative verification containers, bounded artifact export policies, host-mapped workspace ownership, bounded workspace scans, image ID/platform/label provenance, `clean --dry-run` inventory with explicit image retention, a first-class verification example, version-source validation, a compatibility matrix, and a 2,000-file opt-in performance signal.
- 
+
 @@ -31,6 +31,8 @@ The runtime inventory continuation reproduced a Docker CLI contract defect: comb
- 
+
  The next continuation review reproduced two more concrete failure paths. `inspect` assumed policy construction always succeeded, so host UID/GID resolution failures could crash human output or return success in JSON mode; inspection now returns a structured failure and exit code 3, with a fake-`id` CLI regression. Verification startup failures returned without attempting to stop/remove a potentially created labeled container; verification now performs idempotent cleanup attempts and records the cleanup status, with a fake-Podman contract proving `run`, `stop`, and `rm` are all attempted. The same review also found that cloud credential and runtime-selector variables were not in the host-control environment deny list; those names are now rejected with regression coverage.
- 
-+Iteration 060 reproduced three additional lifecycle/security defects. Direct cleanup and empty-orphan recovery trusted a symlinked `.owner` marker, so a target file containing a matching marker could authorize deletion; cleanup now rejects marker symlinks and inventory reports `marker-symlink`. Runtime removal treated Docker/Podman “no such container” responses as failures even though cleanup is idempotent; those responses are now successful and have a fake-runtime contract. Finally, a container startup rejection was recorded with result stage `failed`, causing the CLI to return internal-error code 10 instead of the documented startup code 5; the result now uses the `starting` stage when cleanup succeeds and a dedicated startup-failure contract proves code 5, receipt code 5, and complete cleanup.
+
++Iteration 060 reproduced four additional lifecycle/security defects. Direct cleanup and empty-orphan recovery trusted a symlinked `.owner` marker, so a target file containing a matching marker could authorize deletion; cleanup now rejects marker symlinks and inventory reports `marker-symlink`. Runtime removal treated Docker/Podman “no such container” responses as failures even though cleanup is idempotent; those responses are now successful and have a fake-runtime contract. A null output request was silently converted to the default output root instead of being rejected; coordinator input validation now fails closed. Finally, a container startup rejection was recorded with result stage `failed`, causing the CLI to return internal-error code 10 instead of the documented startup code 5; the result now uses the `starting` stage when cleanup succeeds and a dedicated startup-failure contract proves code 5, receipt code 5, and complete cleanup.
 +
  The manifest/receipt/cleanup continuation reproduced three additional concrete failure paths. Integrity-manifest collection crashed on inaccessible child directories, receipt creation crashed while hashing an unreadable definition file, and stale-workspace cleanup crashed while inspecting an inaccessible orphan. Manifest collection/verification, receipt hashing, and stale-workspace root/orphan listing now fail closed with structured errors and preserve unsafe paths; regressions cover each case.
- 
+
  The load continuation added a bounded deployment matrix for concurrent runs. Four simultaneous Docker and rootless Docker/Podman executions preserved unique run IDs and source immutability, verified manifests/artifacts, and cleaned every successful workspace and container; larger production load profiles remain deployment-owned.
 diff --git a/docs/next-hardening-backlog.md b/docs/next-hardening-backlog.md
 index 1c27e34..3b3b0d3 100644
 --- a/docs/next-hardening-backlog.md
 +++ b/docs/next-hardening-backlog.md
 @@ -6,7 +6,7 @@ This is the next-session work list produced by the codebase review on 2036-07-11
- 
+
  The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. The Kujo process API now provides bounded stream sinks, incremental exact/base64 redaction, and cancellation hooks. Docker and rootless Podman integration have passed against Colima-backed daemons, including verification, streamed log files, cancellation metadata, seccomp preflight, and ownership-scoped cleanup; hosted CI and production-host evidence remain deployment-dependent.
- 
+
 -The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, fail-closed binary artifact secret inspection, malformed network-type fail-closed validation, overflow-safe numeric validation for timeouts, identities, and memory, malformed release-report evidence handling, malformed performance-environment handling, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, artifact/manifest/runtime API validation, repository/symlink/workspace/doctor API validation, policy construction/inspection API validation, coordinator output API validation, CLI argument API validation, integration/image-source API validation, verification execution API validation, receipt mutation/path validation, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, image ownership labels, opt-in ecosystem evidence adapters, an OCI runtime backend contract, truthful dry-run integration skips, atomic-write result checks, runtime-class validation, backend-aware doctor diagnostics, backend-neutral CLI presentation, RunLedger finish-state reporting, changed-file analysis reuse, versioned run manifests with duplicate/omission/coverage rejection, overlapping artifact declaration rejection, unique verification names, offline manifest verification, active-resource cleanup coordination, verification-start cleanup, inspect failure exit-code handling, cloud/runtime-control environment denial, empty-orphan recovery, disappearing-workspace handling, release reporting, example-matrix coverage, versioned API compatibility contracts, a rootless engine-aware workspace identity, and a deployment-owned egress declaration with receipt evidence. The current offline suite is 190 policy assertions plus 20 workspace assertions and 5 stress assertions; Docker integration and ecosystem gates remain required release evidence.
 +The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, fail-closed binary artifact secret inspection, malformed network-type fail-closed validation, overflow-safe numeric validation for timeouts, identities, and memory, malformed release-report evidence handling, malformed performance-environment handling, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, artifact/manifest/runtime API validation, repository/symlink/workspace/doctor API validation, policy construction/inspection API validation, coordinator output API validation, CLI argument API validation, integration/image-source API validation, verification execution API validation, receipt mutation/path validation, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, image ownership labels, opt-in ecosystem evidence adapters, an OCI runtime backend contract, truthful dry-run integration skips, atomic-write result checks, runtime-class validation, backend-aware doctor diagnostics, backend-neutral CLI presentation, RunLedger finish-state reporting, changed-file analysis reuse, versioned run manifests with duplicate/omission/coverage rejection, overlapping artifact declaration rejection, unique verification names, offline manifest verification, active-resource cleanup coordination, verification-start cleanup, inspect failure exit-code handling, cloud/runtime-control environment denial, empty-orphan recovery, disappearing-workspace handling, symlinked ownership-marker rejection, idempotent missing-container cleanup, stable startup-failure exit handling, release reporting, example-matrix coverage, versioned API compatibility contracts, a rootless engine-aware workspace identity, and a deployment-owned egress declaration with receipt evidence. The current offline suite is 190 policy assertions plus 23 workspace assertions and 5 stress assertions; Docker integration and ecosystem gates remain required release evidence.
- 
+
  ## P0 — Kujo toolchain safety
- 
+
 diff --git a/docs/next-review-backlog.md b/docs/next-review-backlog.md
-index 219be6b..259c953 100644
+index 219be6b..5e52a58 100644
 --- a/docs/next-review-backlog.md
 +++ b/docs/next-review-backlog.md
 @@ -4,10 +4,12 @@ Updated: 2036-07-13
- 
+
  ## Review conclusion
- 
+
 -Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 190 offline policy/artifact/verification assertions, 20 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 +Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 190 offline policy/artifact/verification assertions, 23 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
- 
+
  The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
- 
-+Iteration 060 closed three additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
+
++Iteration 060 closed four additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, null output requests silently selected the default output root, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers and null output requests, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
 +
  ## Priority 1 — release and security controls
- 
+
  ### [ ] Rootless deployment evidence
 diff --git a/docs/security-review.md b/docs/security-review.md
-index 2db7450..a5933f3 100644
+index 2db7450..4cc55b4 100644
 --- a/docs/security-review.md
 +++ b/docs/security-review.md
 @@ -16,10 +16,11 @@
  - Resource values are bounded (CPU, memory, PIDs, and a 24-hour timeout maximum); duration parsing rejects non-integer amounts.
  - Host-control environment denial covers Docker/Podman selectors, cloud credential selectors, Kubernetes connection variables, Git configuration overrides, and package/CI credential variables.
  - Human-readable and JSON `inspect` failures return non-success exit codes instead of rendering incomplete policy fields; verification-container startup failures attempt labeled stop/remove cleanup before returning.
-+- Ownership markers are never followed during direct or stale workspace cleanup; missing runtime containers are treated idempotently, and startup failures retain the documented code-5 result instead of being misreported as internal failures.
- 
++- Ownership markers are never followed during direct or stale workspace cleanup; missing runtime containers are treated idempotently, null output requests fail closed, and startup failures retain the documented code-5 result instead of being misreported as internal failures.
+
  ## Adversarial review
- 
+
 -- Offline tests (190 assertions plus 20 workspace and 5 stress assertions) reject host network, parent traversal, absolute artifact paths, unsafe tmpfs targets and mount targets, symlink artifact sources, image shell metacharacters, unknown fields, invalid timeouts including integer overflow, overflowed identities and memory values, partial numeric resource and scan sections without runtime crashes, exported policy, summary, daemon-security, verification, integration, image-build/ensure, receipt, container-policy, workspace-operation, utility, artifact-export/log, manifest, Docker-runtime, repository-inspection, symlink-scan, workspace-creation, doctor, policy-construction/inspection, coordinator-output, CLI-argument, integration/image-source, and verification-execution API calls with incomplete inputs without runtime crashes, receipt mutation/path input failures without crashes, duplicate secret/artifact inputs, overlapping artifact declarations, duplicate verification names, undeclared secret assignments, invalid environment names/values, unbounded resources, bounded artifact policies, invalid verification plans, invalid workspace scan/run-as policies, malformed network section types, privileged argument presence, Docker socket references, host-control/proxy/cloud/runtime-control environment exposure, arbitrary absolute output destinations, digest/signature-key errors, registry allowlist errors, custom-network, managed/unmanaged egress, and security-profile validation errors, namespace regressions, null process output, exact/base64-derived secret leakage regressions, secret literals in receipts/errors/verification plans, spoofed ownership markers, active-workspace cleanup races, empty-orphan recovery, disappearing-workspace handling, optional integration defaults/bounds/redaction, explicit dry-run integration skips, runtime-class injection, backend-neutral CLI output, inspect failure exit codes, global help/version positional rejection, verification-start cleanup, RunLedger finish-state reporting, manifest duplicate/omission/coverage and tamper detection, Podman policy selection, rootless workspace identity, partial-default regressions, and binary artifact secret inspection failures. The dedicated adversarial CLI suite also rejects host-network, sensitive-mount/privileged-field, traversal, image/runtime injection, resource, secret, and build-context attacks, then verifies the restrictive inspect policy and missing-Podman doctor diagnostics. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--init`, private IPC, `--cap-drop ALL`, `no-new-privileges`, host-mapped non-root identity, labels, bounded resources, and only the workspace mount. Fence reports zero boundary violations.
 +- Offline tests (190 assertions plus 23 workspace and 5 stress assertions) reject host network, parent traversal, absolute artifact paths, unsafe tmpfs targets and mount targets, symlink artifact sources, image shell metacharacters, unknown fields, invalid timeouts including integer overflow, overflowed identities and memory values, partial numeric resource and scan sections without runtime crashes, exported policy, summary, daemon-security, verification, integration, image-build/ensure, receipt, container-policy, workspace-operation, utility, artifact-export/log, manifest, Docker-runtime, repository-inspection, symlink-scan, workspace-creation, doctor, policy-construction/inspection, coordinator-output, CLI-argument, integration/image-source, and verification-execution API calls with incomplete inputs without runtime crashes, receipt mutation/path input failures without crashes, duplicate secret/artifact inputs, overlapping artifact declarations, duplicate verification names, undeclared secret assignments, invalid environment names/values, unbounded resources, bounded artifact policies, invalid verification plans, invalid workspace scan/run-as policies, malformed network section types, privileged argument presence, Docker socket references, host-control/proxy/cloud/runtime-control environment exposure, arbitrary absolute output destinations, digest/signature-key errors, registry allowlist errors, custom-network, managed/unmanaged egress, and security-profile validation errors, namespace regressions, null process output, exact/base64-derived secret leakage regressions, secret literals in receipts/errors/verification plans, spoofed and symlinked ownership markers, active-workspace cleanup races, empty-orphan recovery, idempotent missing-container cleanup, stable startup-failure exit handling, disappearing-workspace handling, optional integration defaults/bounds/redaction, explicit dry-run integration skips, runtime-class injection, backend-neutral CLI output, inspect failure exit codes, global help/version positional rejection, verification-start cleanup, RunLedger finish-state reporting, manifest duplicate/omission/coverage and tamper detection, Podman policy selection, rootless workspace identity, partial-default regressions, and binary artifact secret inspection failures. The dedicated adversarial CLI suite also rejects host-network, sensitive-mount/privileged-field, traversal, image/runtime injection, resource, secret, and build-context attacks, then verifies the restrictive inspect policy and missing-Podman doctor diagnostics. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--init`, private IPC, `--cap-drop ALL`, `no-new-privileges`, host-mapped non-root identity, labels, bounded resources, and only the workspace mount. Fence reports zero boundary violations.
- 
+
  Docker integration now covers timeout termination, Docker exit-125 workload classification, arbitrary output-path rejection, and label-scoped cleanup on the local daemon. The rootless OCI smoke runs the selected backend's doctor preflight; Podman security inspection now requires an enabled seccomp profile and has a fake-CLI regression contract proving disabled seccomp fails closed. The adversarial CLI suite covers privileged/socket/root-mount request rejection before runtime; the suite does not claim to exercise a real privileged container because the policy must reject it first.
- 
+
 diff --git a/docs/tooling-report.md b/docs/tooling-report.md
 index 96a1548..3a9c4ad 100644
 --- a/docs/tooling-report.md
@@ -183,13 +254,28 @@ index 96a1548..3a9c4ad 100644
 -- The current offline suite passed 190 definition/policy/artifact/verification assertions, 20 workspace patch/change-report/cleanup/scan assertions, and 5 stress assertions; the adversarial suite, 203-file performance signal, malformed performance-environment input, exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility partial-input checks, utility path/text checks, artifact/manifest/runtime API checks, repository/symlink/workspace/doctor API checks, policy construction/inspection API checks, coordinator output API checks, CLI argument API checks, integration/image-source API checks, verification execution API checks, explicit runtime backend/resource boundary checks, receipt mutation/path checks, example definitions, schema/help, schema compatibility, release-report, CLI smoke, verification-start cleanup, cloud/runtime-control environment denial, and version-consistency fixtures also passed.
 +- The current offline suite passed 190 definition/policy/artifact/verification assertions, 23 workspace patch/change-report/cleanup/scan assertions, and 5 stress assertions; the adversarial suite, 203-file performance signal, malformed performance-environment input, exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility partial-input checks, utility path/text checks, artifact/manifest/runtime API checks, repository/symlink/workspace/doctor API checks, policy construction/inspection API checks, coordinator output API checks, CLI argument API checks, integration/image-source API checks, verification execution API checks, explicit runtime backend/resource boundary checks, receipt mutation/path checks, example definitions, schema/help, schema compatibility, release-report, CLI smoke, verification-start cleanup, symlinked ownership-marker rejection, idempotent runtime cleanup, startup-failure exit handling, cloud/runtime-control environment denial, and version-consistency fixtures also passed.
  - Kujo commits `ff31153` and `7ef6eb8` made formatter output syntax-preserving and reachability analysis token-aware. Every Workcell `.kujo` file passes `kujo format --check`, every source module passes `kujo lint --json` with zero findings, and formatted temporary copies pass `kujo check`; line wrapping remains conservative until an AST-aware pass exists.
- 
+
  ## Integration gaps
 diff --git a/src/execution/coordinator.kujo b/src/execution/coordinator.kujo
-index 484ab06..6f7069b 100644
+index 484ab06..709977b 100644
 --- a/src/execution/coordinator.kujo
 +++ b/src/execution/coordinator.kujo
-@@ -242,10 +242,12 @@ if start_stop["ok"] == false||container_cleanup["ok"] == false {
+@@ -33,9 +33,12 @@ return repo_root + "/" + definition["receipt"]["path"]
+ }
+
+ func output_request_safe(requested) {
+-    if type(requested) != "string"||trim(requested) == "" {
+-        return true
++    if type(requested) == "null" {
++        return false
+     }
++if type(requested) != "string"||trim(requested) == "" {
++    return true
++}
+ parts := split(replace(requested, "\\", "/"), "/")
+ mut i := 0
+ while i < len(parts) {
+@@ -242,10 +245,12 @@ if start_stop["ok"] == false||container_cleanup["ok"] == false {
      cleanup_status = "failed"
  }
  start_status := "failed"
@@ -202,7 +288,7 @@ index 484ab06..6f7069b 100644
      start_exit_code = 9
      start_error = "container startup failed and cleanup was incomplete"
  }
-@@ -260,7 +262,7 @@ if start_manifest["ok"] == false {
+@@ -260,7 +265,7 @@ if start_manifest["ok"] == false {
      write_receipt(receipt, receipt_path)
      return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_manifest["error"], 10, false, false, cleanup_status)
  }
@@ -225,7 +311,7 @@ index 60f088d..9f5f4c2 100644
 +}
  return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
  }
- 
+
 diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
 index 29f43bc..de90791 100644
 --- a/src/workspace/workspace.kujo
@@ -366,7 +452,7 @@ index dcbefa3..4cf6668 100755
 +  bash -n "$ROOT/tests/runtime_cleanup_contract.sh"
 +  bash -n "$ROOT/tests/startup_failure_contract.sh"
  }
- 
+
  if [ "${1:-}" = "--check-only" ]; then
 @@ -42,4 +45,6 @@ KUJO="$KUJO" "$ROOT/tests/schema_contract.sh"
  KUJO="$KUJO" "$ROOT/tests/report_contract.sh"
@@ -471,17 +557,17 @@ index c6b1864..651ebe3 100644
 +++ b/tests/workspace_test.kujo
 @@ -1,7 +1,7 @@
  # Workspace contract test: untracked files must appear in generated patches and reports.
- 
+
  from src.util import ensure_dir, load_json, process_ok, read_text, run_argv, run_id
 -from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report, write_change_report_from_details
 +from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, workspace_inventory, write_change_report, write_change_report_from_details
- 
+
  mut passed := 0
  mut failed := 0
 @@ -76,6 +76,20 @@ stale := clean_stale_workspaces([])
  expect("spoofed workspace marker is not removed", file_exists(spoof)&&contains(to_string(stale["skipped"]), spoof) == 1)
  run_argv(["rm", "-rf", spoof, spoof + ".owner"], 30000)
- 
+
 +symlink_marker_run := run_id()
 +symlink_marker_workspace := temp_root() + "/kujo-workcell-" + symlink_marker_run
 +symlink_marker_target := temp_root() + "/workcell-owner-target-" + symlink_marker_run

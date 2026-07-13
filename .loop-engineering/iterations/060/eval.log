@@ -5,6 +5,7 @@ objective: harden workspace ownership and startup cleanup contracts
 passed: kujo run tests/workspace_test.kujo (23 passed, 0 failed)
 passed: tests/runtime_cleanup_contract.sh
 passed: tests/startup_failure_contract.sh
+passed: null output request regression in tests/workcell_test.kujo
 passed: tests/run.sh (190 workcell, 23 workspace, 5 stress; all gates passed)
 passed: tests/release_report.sh (218 total, 0 failed)
 passed: tests/quality.sh and git diff --check

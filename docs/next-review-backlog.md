@@ -8,7 +8,7 @@ Workcell is a strong, production-oriented local Docker MVP and a credible Kujo s
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
-Iteration 060 closed three additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
+Iteration 060 closed four additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, null output requests silently selected the default output root, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers and null output requests, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
 
 ## Priority 1 — release and security controls
 

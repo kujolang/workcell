@@ -33,9 +33,12 @@ return repo_root + "/" + definition["receipt"]["path"]
 }
 
 func output_request_safe(requested) {
-    if type(requested) != "string"||trim(requested) == "" {
-        return true
+    if type(requested) == "null" {
+        return false
     }
+if type(requested) != "string"||trim(requested) == "" {
+    return true
+}
 parts := split(replace(requested, "\\", "/"), "/")
 mut i := 0
 while i < len(parts) {

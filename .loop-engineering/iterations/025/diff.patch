@@ -1,0 +1,60 @@
+diff --git a/src/domain/definition.kujo b/src/domain/definition.kujo
+index c81141c..45fbb91 100644
+--- a/src/domain/definition.kujo
++++ b/src/domain/definition.kujo
+@@
+-if type(get_or(value, "max_files", 0)) != "int"||value["max_files"] <= 0||value["max_files"] > 1000000 {
++max_files := get_or(value, "max_files", 0)
++if type(max_files) != "int"||max_files <= 0||max_files > 1000000 {
+@@
+-if type(get_or(value, "max_bytes", 0)) != "int"||value["max_bytes"] <= 0||value["max_bytes"] > 10000000000 {
++max_bytes := get_or(value, "max_bytes", 0)
++if type(max_bytes) != "int"||max_bytes <= 0||max_bytes > 10000000000 {
+@@
+-if type(get_or(value, "max_depth", 0)) != "int"||value["max_depth"] <= 0||value["max_depth"] > 256 {
++max_depth := get_or(value, "max_depth", 0)
++if type(max_depth) != "int"||max_depth <= 0||max_depth > 256 {
+@@
+-if type(get_or(resources, "cpus", 0)) != "int"||resources["cpus"] <= 0||resources["cpus"] > 64 {
++cpus := get_or(resources, "cpus", 0)
++if type(cpus) != "int"||cpus <= 0||cpus > 64 {
+@@
+-if type(get_or(resources, "pids", 0)) != "int"||resources["pids"] <= 0||resources["pids"] > 65536 {
++pids := get_or(resources, "pids", 0)
++if type(pids) != "int"||pids <= 0||pids > 65536 {
+@@
+-if type(get_or(resources, "max_output_bytes", 0)) != "int"||resources["max_output_bytes"] <= 0||resources["max_output_bytes"] > 16000000 {
++max_output_bytes := get_or(resources, "max_output_bytes", 0)
++if type(max_output_bytes) != "int"||max_output_bytes <= 0||max_output_bytes > 16000000 {
+@@
+-if type(get_or(artifacts, "max_bytes", 0)) != "int"||artifacts["max_bytes"] < 0||artifacts["max_bytes"] > 1000000000 {
++artifact_max_bytes := get_or(artifacts, "max_bytes", 0)
++if type(artifact_max_bytes) != "int"||artifact_max_bytes < 0||artifact_max_bytes > 1000000000 {
+@@
+-if type(get_or(artifacts, "max_files", 0)) != "int"||artifacts["max_files"] < 0||artifacts["max_files"] > 100000 {
++artifact_max_files := get_or(artifacts, "max_files", 0)
++if type(artifact_max_files) != "int"||artifact_max_files < 0||artifact_max_files > 100000 {
+@@
+-if type(get_or(artifacts, "max_depth", 32)) != "int"||artifacts["max_depth"] <= 0||artifacts["max_depth"] > 128 {
++artifact_max_depth := get_or(artifacts, "max_depth", 32)
++if type(artifact_max_depth) != "int"||artifact_max_depth <= 0||artifact_max_depth > 128 {
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+index 2f86239..0481f60 100644
+--- a/tests/workcell_test.kujo
++++ b/tests/workcell_test.kujo
+@@
++func with_empty_resources(definition) {
++    definition["resources"] := {}
++    return definition
++}
++
++func with_empty_workspace_scan(definition) {
++    workspace := definition["workspace"]
++    workspace["scan"] := {}
++    definition["workspace"] := workspace
++    return definition
++}
+@@
+ expect("workspace scan depth limit is bounded", validate_definition(with_workspace_scan(definition, "max_depth", 257))["ok"] == false)
++expect("partial resource section is rejected without runtime crash", validate_definition(with_empty_resources(definition))["ok"] == false)
++expect("partial workspace scan is rejected without runtime crash", validate_definition(with_empty_workspace_scan(definition))["ok"] == false)

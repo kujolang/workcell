@@ -59,6 +59,8 @@ For bounded concurrent-run evidence, `tests/load_integration.sh docker|podman` r
 
 `tests/quality.sh` runs the shared Kujo format/lint and shell syntax gates used by the default suite and CI.
 
+The launcher supports `workcell --help` and `workcell --version`; command-specific options and unexpected positional arguments are rejected with usage exit code `2`.
+
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
 After a run, inspect the evidence directly:

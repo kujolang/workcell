@@ -12,7 +12,25 @@ trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION"' EXIT
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json"
 test -f "$TMP_DIR/workcell.json"
 "$KUJO" run "$ROOT/main.kujo" -- validate --schema | jq -e '.schema_version == "workcell-definition/v1" and (.fields | has("verification"))' >/dev/null
-"$KUJO" run "$ROOT/main.kujo" -- help --json | jq -e '.schema_version == "workcell-cli/v1" and (.exit_codes["8"] | contains("verification")) and ([.commands[] | select(.name == "verify")] | length) == 1' >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- help --json | jq -e '.schema_version == "workcell-cli/v1" and (.global_options | index("--help") != null) and (.global_options | index("--version") != null) and (.exit_codes["8"] | contains("verification")) and ([.commands[] | select(.name == "verify")] | length) == 1' >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- --help > "$MISSING_OUTPUT/help.txt"
+grep -Fq 'Workcell v' "$MISSING_OUTPUT/help.txt"
+"$KUJO" run "$ROOT/main.kujo" -- --version > "$MISSING_OUTPUT/version.txt"
+grep -Fq 'Workcell ' "$MISSING_OUTPUT/version.txt"
+
+set +e
+EXTRA_POSITIONAL="$($KUJO run "$ROOT/main.kujo" -- validate unexpected 2>&1)"
+EXTRA_POSITIONAL_CODE=$?
+set -e
+test "$EXTRA_POSITIONAL_CODE" -eq 2
+printf '%s' "$EXTRA_POSITIONAL" | grep -Fq 'unexpected positional argument'
+
+set +e
+INVALID_COMMAND_OPTION="$($KUJO run "$ROOT/main.kujo" -- run --backend podman 2>&1)"
+INVALID_COMMAND_OPTION_CODE=$?
+set -e
+test "$INVALID_COMMAND_OPTION_CODE" -eq 2
+printf '%s' "$INVALID_COMMAND_OPTION" | grep -Fq 'not valid for command run'
 
 set +e
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json" >/dev/null

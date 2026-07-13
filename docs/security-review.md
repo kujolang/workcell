@@ -22,6 +22,8 @@ Docker integration now covers timeout termination, Docker exit-125 workload clas
 
 The concurrent load contract runs four Workcell executions against one clean source repository and shared output root. It passed on rootful Docker and rootless Docker/Podman in the Colima Linux VM, proving run-ID separation, unchanged source, verified manifests/artifacts, and cleanup of successful run workspaces and containers.
 
+CLI parsing is fail-closed for command boundaries: global help/version are explicit, unsupported command options and extra positionals return usage code 2, and the machine-readable CLI contract exposes the global options.
+
 ## Residual risk
 
 Docker daemon and host kernel trust, transformed secret leakage, external cosign key lifecycle/transparency policy, no hardened microVM, and no controlled proxy remain explicit limitations.

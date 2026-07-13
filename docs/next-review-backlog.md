@@ -50,7 +50,7 @@ Acceptance: consumers can verify a run directory offline; tampering is detected;
 
 Promote `runtime_backend` and `runtime` fields to the documented clean/inventory contract, while retaining the current `docker` JSON alias through one compatibility period. Add schema/version tests for Docker and Podman outputs.
 
-Acceptance: automation never needs to infer the backend from a Docker-specific field or human-readable text. Implemented with `runtime_backend`/`runtime`, a compatibility `docker` alias, backend-aware CLI text, and Docker integration assertions.
+Acceptance: automation never needs to infer the backend from a Docker-specific field or human-readable text. Implemented with `runtime_backend`/`runtime`, a compatibility `docker` alias, backend-aware CLI text, strict command-option/positional validation, global help/version flags, and Docker integration assertions.
 
 ### [x] Concurrent-run and cleanup coordination
 

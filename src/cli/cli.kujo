@@ -31,7 +31,7 @@ return fallback
 }
 
 func parse_args(tokens) {
-    bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images"]
+    bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
     value_flags := ["file", "repo", "output", "backend", "run"]
     mut positionals := []
     mut flags := {}
@@ -79,10 +79,58 @@ return {"positionals": positionals, "flags": flags}
 }
 
 func command_name(parsed) {
-    if len(parsed["positionals"]) == 0 {
+    if has_flag(parsed, "help") {
         return "help"
     }
+if has_flag(parsed, "version") {
+    return "version"
+}
+if len(parsed["positionals"]) == 0 {
+    return "help"
+}
 return parsed["positionals"][0]
+}
+
+func option_allowed(options, name) {
+    mut i := 0
+    while i < len(options) {
+        if options[i] == name {return true}
+        i = i + 1
+    }
+return false
+}
+
+func options_for(command) {
+    if command == "doctor" {return ["repo", "backend", "json"]}
+    if command == "init" {return ["file", "force"]}
+    if command == "validate" {return ["file", "json", "schema"]}
+    if command == "inspect" {return ["file", "repo", "output", "json"]}
+    if command == "run" {return ["file", "repo", "output", "dry-run", "keep-failed", "no-pull", "rebuild", "json"]}
+    if command == "verify" {return ["run", "json"]}
+    if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
+    if command == "help" {return ["json", "help"]}
+    if command == "version" {return ["version"]}
+    return []
+}
+
+func validate_command_args(parsed, command) {
+    positionals := parsed["positionals"]
+    if command != "help"&&command != "version"&&len(positionals) > 1 {
+        return {"ok": false, "error": "unexpected positional argument for " + command + ": " + to_string(positionals[1])}
+    }
+if command == "help"||command == "version" {
+    return {"ok": true}
+}
+allowed := options_for(command)
+names := keys(parsed["flags"])
+mut i := 0
+while i < len(names) {
+    if option_allowed(allowed, names[i]) == false {
+        return {"ok": false, "error": "option --" + names[i] + " is not valid for command " + command}
+    }
+i = i + 1
+}
+return {"ok": true}
 }
 
 func definition_path(parsed) {
@@ -97,6 +145,7 @@ func help_value() {
     return {
         "schema_version": "workcell-cli/v1",
         "version": VERSION,
+        "global_options": ["--help", "--version"],
         "commands": [
         {"name": "doctor", "options": ["--repo", "--backend", "--json"]},
         {"name": "init", "options": ["--file", "--force"]},
@@ -120,6 +169,8 @@ print_lines([
 "Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
 "",
 "Usage:",
+"  workcell --help",
+"  workcell --version",
 "  workcell doctor [--repo <path>] [--backend docker|podman] [--json]",
 "  workcell init [--file <path>] [--force]",
 "  workcell validate [--file <path>] [--json] [--schema]",
@@ -415,6 +466,11 @@ export func main(argv) {
         return 2
     }
 command := command_name(parsed)
+arguments_check := validate_command_args(parsed, command)
+if arguments_check["ok"] == false {
+    print("error: " + arguments_check["error"])
+    return 2
+}
 if command == "help"||command == "--help"||command == "-h" {
     print_help(has_flag(parsed, "json"))
     return 0

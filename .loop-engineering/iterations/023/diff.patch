@@ -1,0 +1,40 @@
+diff --git a/src/report/report.kujo b/src/report/report.kujo
+index e76c451..pending 100644
+--- a/src/report/report.kujo
++++ b/src/report/report.kujo
+@@
+-func metric(text, label) {
++func metric_result(text, label) {
+@@
+-            return 0
++            return {"ok": false, "value": 0}
+@@
+-        return value
++        return {"ok": true, "value": value}
+@@
+-return 0
++return {"ok": true, "value": 0}
++}
++
++func metric(text, label) {
++    return metric_result(text, label)["value"]
+@@
+-    passed := metric(output, "Passed: ")
+-    failed := metric(output, "Failed: ")
+-    passed_ok := exit_code == 0&&failed == 0
++    passed_result := metric_result(output, "Passed: ")
++    failed_result := metric_result(output, "Failed: ")
++    passed := passed_result["value"]
++    failed := failed_result["value"]
++    passed_ok := exit_code == 0&&failed == 0&&passed_result["ok"]&&failed_result["ok"]
+diff --git a/tests/report_contract.sh b/tests/report_contract.sh
+index f1747ef..pending 100644
+--- a/tests/report_contract.sh
++++ b/tests/report_contract.sh
+@@
+ malformed_report="$($KUJO run "$ROOT/src/report/report.kujo" -- --dir "$TMP_DIR")"
+ printf '%s\n' "$malformed_report" | jq -e '.schema_version == "workcell-report/v1" and .ok == false and .suites[0].passed == 0 and .suites[0].exit_code == 127' >/dev/null
++printf 'Passed: 999999999999999999999\nFailed: 0\n' > "$TMP_DIR/policy-artifact-verification.log"
++printf '0\n' > "$TMP_DIR/policy-artifact-verification.exit"
++malformed_metric_report="$($KUJO run "$ROOT/src/report/report.kujo" -- --dir "$TMP_DIR")"
++printf '%s\n' "$malformed_metric_report" | jq -e '.schema_version == "workcell-report/v1" and .ok == false and .suites[0].passed == 0 and .suites[0].exit_code == 0' >/dev/null

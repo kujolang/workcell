@@ -161,6 +161,18 @@ func with_resource(definition, key, value) {
     return definition
 }
 
+func with_empty_resources(definition) {
+    definition["resources"] := {}
+    return definition
+}
+
+func with_empty_workspace_scan(definition) {
+    workspace := definition["workspace"]
+    workspace["scan"] := {}
+    definition["workspace"] := workspace
+    return definition
+}
+
 func with_environment_set(definition, key, value) {
     environment := definition["environment"]
     configured := environment["set"]
@@ -278,6 +290,8 @@ expect("optional integrations default disabled", validate_definition(definition)
 expect("optional integration command is bounded", validate_definition(with_integration(definition, "changebucket", true, ["true", "extra", "args", "allowed", "still", "bounded", "argv", "entries", "too-many"]))["ok"] == false)
 expect("workspace scan file limit is bounded", validate_definition(with_workspace_scan(definition, "max_files", 0))["ok"] == false)
 expect("workspace scan depth limit is bounded", validate_definition(with_workspace_scan(definition, "max_depth", 257))["ok"] == false)
+expect("partial resource section is rejected without runtime crash", validate_definition(with_empty_resources(definition))["ok"] == false)
+expect("partial workspace scan is rejected without runtime crash", validate_definition(with_empty_workspace_scan(definition))["ok"] == false)
 expect("fixed non-root workspace identity is accepted", validate_definition(with_run_as(definition, "65532:65532"))["ok"])
 expect("rootless workspace identity is accepted", validate_definition(with_run_as(definition, "rootless"))["ok"])
 expect("root workspace identity is rejected", validate_definition(with_run_as(definition, "0:0"))["ok"] == false)

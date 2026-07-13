@@ -612,13 +612,16 @@ keys_check := validate_keys(value, ["max_files", "max_bytes", "max_depth"], "wor
 if keys_check["ok"] == false {
     return keys_check
 }
-if type(get_or(value, "max_files", 0)) != "int"||value["max_files"] <= 0||value["max_files"] > 1000000 {
+max_files := get_or(value, "max_files", 0)
+if type(max_files) != "int"||max_files <= 0||max_files > 1000000 {
     return {"ok": false, "error": "workspace.scan.max_files must be between 1 and 1000000"}
 }
-if type(get_or(value, "max_bytes", 0)) != "int"||value["max_bytes"] <= 0||value["max_bytes"] > 10000000000 {
+max_bytes := get_or(value, "max_bytes", 0)
+if type(max_bytes) != "int"||max_bytes <= 0||max_bytes > 10000000000 {
     return {"ok": false, "error": "workspace.scan.max_bytes must be between 1 and 10000000000"}
 }
-if type(get_or(value, "max_depth", 0)) != "int"||value["max_depth"] <= 0||value["max_depth"] > 256 {
+max_depth := get_or(value, "max_depth", 0)
+if type(max_depth) != "int"||max_depth <= 0||max_depth > 256 {
     return {"ok": false, "error": "workspace.scan.max_depth must be between 1 and 256"}
 }
 return {"ok": true}
@@ -807,14 +810,16 @@ resources_keys := validate_keys(resources, ["cpus", "memory", "pids", "timeout_m
 if resources_keys["ok"] == false {
     return resources_keys
 }
-if type(get_or(resources, "cpus", 0)) != "int"||resources["cpus"] <= 0||resources["cpus"] > 64 {
+cpus := get_or(resources, "cpus", 0)
+if type(cpus) != "int"||cpus <= 0||cpus > 64 {
     return {"ok": false, "error": "resources.cpus must be an integer from 1 through 64"}
 }
 memory := get_or(resources, "memory", "")
 if valid_memory(memory) == false {
     return {"ok": false, "error": "resources.memory must be a bounded Docker value such as 256m or 4g (maximum 64g)"}
 }
-if type(get_or(resources, "pids", 0)) != "int"||resources["pids"] <= 0||resources["pids"] > 65536 {
+pids := get_or(resources, "pids", 0)
+if type(pids) != "int"||pids <= 0||pids > 65536 {
     return {"ok": false, "error": "resources.pids must be an integer from 1 through 65536"}
 }
 timeout_check := parse_timeout(get_or(resources, "timeout_ms", 0))
@@ -824,7 +829,8 @@ if timeout_check["ok"] == false {
 if timeout_check["value"] > 86400000 {
     return {"ok": false, "error": "resources.timeout_ms must not exceed 24 hours"}
 }
-if type(get_or(resources, "max_output_bytes", 0)) != "int"||resources["max_output_bytes"] <= 0||resources["max_output_bytes"] > 16000000 {
+max_output_bytes := get_or(resources, "max_output_bytes", 0)
+if type(max_output_bytes) != "int"||max_output_bytes <= 0||max_output_bytes > 16000000 {
     return {"ok": false, "error": "resources.max_output_bytes must be an integer from 1 through 16000000"}
 }
 
@@ -903,13 +909,16 @@ limits_check := validate_artifact_limits(get_or(artifacts, "limits", {}))
 if limits_check["ok"] == false {
     return limits_check
 }
-if type(get_or(artifacts, "max_bytes", 0)) != "int"||artifacts["max_bytes"] < 0||artifacts["max_bytes"] > 1000000000 {
+artifact_max_bytes := get_or(artifacts, "max_bytes", 0)
+if type(artifact_max_bytes) != "int"||artifact_max_bytes < 0||artifact_max_bytes > 1000000000 {
     return {"ok": false, "error": "artifacts.max_bytes must be 0 or an integer from 1 through 1000000000"}
 }
-if type(get_or(artifacts, "max_files", 0)) != "int"||artifacts["max_files"] < 0||artifacts["max_files"] > 100000 {
+artifact_max_files := get_or(artifacts, "max_files", 0)
+if type(artifact_max_files) != "int"||artifact_max_files < 0||artifact_max_files > 100000 {
     return {"ok": false, "error": "artifacts.max_files must be 0 or an integer from 1 through 100000"}
 }
-if type(get_or(artifacts, "max_depth", 32)) != "int"||artifacts["max_depth"] <= 0||artifacts["max_depth"] > 128 {
+artifact_max_depth := get_or(artifacts, "max_depth", 32)
+if type(artifact_max_depth) != "int"||artifact_max_depth <= 0||artifact_max_depth > 128 {
     return {"ok": false, "error": "artifacts.max_depth must be an integer from 1 through 128"}
 }
 extensions := get_or(artifacts, "allowed_extensions", [])

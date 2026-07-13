@@ -397,6 +397,11 @@ invalid_context_runtime := invalid_context_definition["runtime"]
 invalid_context_runtime["build_context"] := "."
 invalid_context_definition["runtime"] := invalid_context_runtime
 expect("invalid image source input is handled without runtime crash", ensure_image(invalid_context_definition, null, null, true, false)["ok"] == false)
+invalid_verification_definition := default_definition()
+invalid_verification_section := invalid_verification_definition["verification"]
+invalid_verification_section["commands"] := [{"name": "check", "command": ["true"]}]
+invalid_verification_definition["verification"] := invalid_verification_section
+expect("invalid verification execution input is handled without runtime crash", run_verification_checks(invalid_verification_definition, null, null, null, true)["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

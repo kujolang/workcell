@@ -53,6 +53,9 @@ export func run_verification_checks(definition, workspace, run_identifier, secre
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(workspace) != "dict"||type(run_identifier) != "string"||type(secrets) != "array"||type(workload_succeeded) != "bool"||get_or(workspace, "workspace_path", "") == ""||run_identifier == "" {
+    return {"ok": false, "error": "verification workspace, run identifier, secrets, and workload result inputs are invalid"}
+}
 checks := get_or(definition["verification"], "commands", [])
 mut results := []
 if workload_succeeded == false {

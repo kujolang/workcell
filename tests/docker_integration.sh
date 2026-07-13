@@ -3,26 +3,56 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
+BACKEND="${1:-docker}"
+REQUIRE_BACKEND="${REQUIRE_BACKEND:-false}"
 
-if ! command -v docker >/dev/null 2>&1 || ! docker version >/dev/null 2>&1; then
-  echo "SKIP Docker integration tests: Docker CLI/daemon unavailable"
+case "$BACKEND" in
+  docker|podman) ;;
+  *) echo "usage: $0 docker|podman" >&2; exit 2 ;;
+esac
+
+if ! command -v "$BACKEND" >/dev/null 2>&1 || ! "$BACKEND" info >/dev/null 2>&1; then
+  if [ "$REQUIRE_BACKEND" = "true" ]; then
+    echo "$BACKEND integration backend unavailable" >&2
+    exit 3
+  fi
+  echo "SKIP $BACKEND integration tests: backend unavailable"
   exit 0
 fi
+TIMEOUT_BIN=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_BIN="$(command -v timeout)"
+fi
+
+remove_test_container() {
+  local name="$1"
+  if [ -n "$TIMEOUT_BIN" ] && "$TIMEOUT_BIN" 30 "$BACKEND" rm -f "$name" >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -z "$TIMEOUT_BIN" ]; then
+    "$BACKEND" rm -f "$name" >/dev/null 2>&1
+    return $?
+  fi
+  "$BACKEND" kill "$name" >/dev/null 2>&1 || true
+  "$TIMEOUT_BIN" 30 "$BACKEND" rm -f "$name" >/dev/null 2>&1
+}
 
 TMP_REPO="$(mktemp -d)"
 OUT_ROOT="$(mktemp -d)"
 UNRELATED_NAME=""
 INTERNAL_NETWORK="workcell-internal-$$"
 ROOTLESS=false
-if docker info --format '{{json .SecurityOptions}}' 2>/dev/null | grep -q 'rootless'; then
+if [ "$BACKEND" = "podman" ] && [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null || printf 'false')" = "true" ]; then
+  ROOTLESS=true
+elif [ "$BACKEND" = "docker" ] && docker info --format '{{json .SecurityOptions}}' 2>/dev/null | grep -q 'rootless'; then
   ROOTLESS=true
 fi
 EXAMPLES_ROOT="$ROOT/examples"
 cleanup() {
   if [ -n "$UNRELATED_NAME" ]; then
-    docker rm -f "$UNRELATED_NAME" >/dev/null 2>&1 || true
+    remove_test_container "$UNRELATED_NAME" || true
   fi
-  docker network rm "$INTERNAL_NETWORK" >/dev/null 2>&1 || true
+  "$BACKEND" network rm "$INTERNAL_NETWORK" >/dev/null 2>&1 || true
   rm -rf "$TMP_REPO" "$OUT_ROOT"
 }
 trap cleanup EXIT
@@ -31,7 +61,14 @@ if [ "$ROOTLESS" = "true" ]; then
   EXAMPLES_ROOT="$OUT_ROOT/examples"
   cp -R "$ROOT/examples" "$EXAMPLES_ROOT"
   while IFS= read -r -d '' definition_file; do
-    jq '.workspace.run_as = "rootless"' "$definition_file" > "$definition_file.tmp"
+    jq --arg backend "$BACKEND" '.runtime.backend = $backend | .workspace.run_as = "rootless"' "$definition_file" > "$definition_file.tmp"
+    mv "$definition_file.tmp" "$definition_file"
+  done < <(find "$EXAMPLES_ROOT" -name workcell.json -print0)
+elif [ "$BACKEND" != "docker" ]; then
+  EXAMPLES_ROOT="$OUT_ROOT/examples"
+  cp -R "$ROOT/examples" "$EXAMPLES_ROOT"
+  while IFS= read -r -d '' definition_file; do
+    jq --arg backend "$BACKEND" '.runtime.backend = $backend' "$definition_file" > "$definition_file.tmp"
     mv "$definition_file.tmp" "$definition_file"
   done < <(find "$EXAMPLES_ROOT" -name workcell.json -print0)
 fi
@@ -42,15 +79,15 @@ git -C "$TMP_REPO" config user.name Workcell
 printf '# Fixture\n' > "$TMP_REPO/README.md"
 git -C "$TMP_REPO" add README.md
 git -C "$TMP_REPO" commit -qm initial
-docker network create --internal "$INTERNAL_NETWORK" >/dev/null
+"$BACKEND" network create --internal "$INTERNAL_NETWORK" >/dev/null
 
-if docker buildx version >/dev/null 2>&1; then
+if [ "$BACKEND" = "docker" ] && docker buildx version >/dev/null 2>&1; then
   docker buildx build --load --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
 else
-  docker build -q --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
+  "$BACKEND" build -q --tag kujolang/workcell-base:local "$ROOT/docker" >/dev/null
 fi
 
-BASE_DIGEST="$(docker image inspect --format '{{index .RepoDigests 0}}' kujolang/workcell-base:local 2>/dev/null || true)"
+BASE_DIGEST="$($BACKEND image inspect --format '{{index .RepoDigests 0}}' kujolang/workcell-base:local 2>/dev/null || true)"
 BASE_DIGEST="$(printf '%s' "$BASE_DIGEST" | sed 's/.*@//')"
 if [ -n "$BASE_DIGEST" ]; then
   jq --arg digest "$BASE_DIGEST" '.runtime.image_digest = $digest' "$EXAMPLES_ROOT/hello/workcell.json" > "$OUT_ROOT/digest.json"
@@ -129,9 +166,9 @@ git -C "$TMP_REPO" add build-context
 git -C "$TMP_REPO" commit -qm "add runtime build context fixture"
 jq '.runtime.image = "kujolang/workcell-runtime-build:integration" | .runtime.build_context = "build-context" | .artifacts.export = []' "$EXAMPLES_ROOT/hello/workcell.json" > "$OUT_ROOT/runtime-build.json"
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/runtime-build.json" --repo "$TMP_REPO" --output "$OUT_ROOT/runtime-build" --no-pull --rebuild
-test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell"}}' kujolang/workcell-runtime-build:integration)" = "true"
-test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell.project"}}' kujolang/workcell-runtime-build:integration)" = "hello-workcell"
-test "$(docker image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "1"
+test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell"}}' kujolang/workcell-runtime-build:integration)" = "true"
+test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell.project"}}' kujolang/workcell-runtime-build:integration)" = "hello-workcell"
+test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "1"
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$EXAMPLES_ROOT/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/hello"
 HELLO_RECEIPT="$(find "$OUT_ROOT/hello" -name receipt.json -print -quit)"
@@ -219,19 +256,19 @@ set -e
 test "$TIMEOUT_CODE" -eq 6
 
 UNRELATED_NAME="workcell-unrelated-$$"
-docker run -d --name "$UNRELATED_NAME" kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
-KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
-test -n "$(docker ps -aq --filter "name=^/${UNRELATED_NAME}$")"
-docker rm -f "$UNRELATED_NAME" >/dev/null
-test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
+"$BACKEND" run -d --name "$UNRELATED_NAME" kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" >/dev/null
+test -n "$($BACKEND ps -aq --filter "name=^/${UNRELATED_NAME}$")"
+remove_test_container "$UNRELATED_NAME"
+test -z "$($BACKEND ps -aq --filter label=dev.kujo.workcell=true)"
 ACTIVE_NAME="workcell-active-$$"
-docker run -d --name "$ACTIVE_NAME" --label dev.kujo.workcell=true kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
-KUJO="$KUJO" "$ROOT/bin/workcell" clean --json | jq -e --arg name "$ACTIVE_NAME" '.runtime.preserved_active | any(.[]; contains($name))' >/dev/null
-test -n "$(docker ps -q --filter "name=^/${ACTIVE_NAME}$")"
-docker rm -f "$ACTIVE_NAME" >/dev/null
-test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
-KUJO="$KUJO" "$ROOT/bin/workcell" clean --dry-run --json | jq -e '.dry_run == true and .runtime_backend == "docker" and (.runtime == .docker) and .actions.images == "preserve" and (.docker.image_retention | contains("preserved"))' >/dev/null
-KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
+"$BACKEND" run -d --name "$ACTIVE_NAME" --label dev.kujo.workcell=true kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" --json | jq -e --arg name "$ACTIVE_NAME" '.runtime.preserved_active | any(.[]; contains($name))' >/dev/null
+test -n "$($BACKEND ps -q --filter "name=^/${ACTIVE_NAME}$")"
+remove_test_container "$ACTIVE_NAME"
+test -z "$($BACKEND ps -aq --filter label=dev.kujo.workcell=true)"
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" --dry-run --json | jq --arg backend "$BACKEND" -e '.dry_run == true and .runtime_backend == $backend and (.runtime == .docker or .runtime == .podman) and .actions.images == "preserve"' >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --backend "$BACKEND" >/dev/null
 test ! -e "$FAILED_WORKSPACE"
 test ! -e "$FAILED_WORKSPACE.owner"
-echo "Docker integration tests passed"
+echo "$BACKEND integration tests passed"

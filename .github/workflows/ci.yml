@@ -59,6 +59,14 @@ jobs:
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/oci_smoke.sh podman
 
+      - name: Run Podman integration suite
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/docker_integration.sh podman
+
+      - name: Run Podman egress enforcement evidence
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/egress_integration.sh podman
+
       - name: Run Workcell doctor
         shell: bash
         run: KUJO="$KUJO_BIN" ./bin/workcell doctor --json

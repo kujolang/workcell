@@ -4,7 +4,7 @@ Updated: 2036-07-13
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 190 offline policy/artifact/verification assertions, 23 workspace assertions, 7 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 192 offline policy/artifact/verification assertions, 27 workspace assertions, 7 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
@@ -14,7 +14,9 @@ Iteration 061 closed a fifth local cleanup defect: stop cleanup recognized only 
 
 Iteration 062 closed two workspace-scan depth defects: scans reported the configured maximum instead of observed depth, and file entries beyond the maximum could bypass the bound because only queued directories were checked. Scans now track observed depth and fail closed for every child candidate, with stress regressions for both behaviors.
 
-Iteration 063 closed four API-boundary defects: unsupported workspace strategies, invalid cleanup strategies, path-bearing run identifiers, and non-string CLI tokens now fail closed with regression coverage. Full local, Docker OCI, egress, and concurrent-load evidence passed; current totals are 191 Workcell, 27 workspace, and 7 stress assertions.
+Iteration 063 closed four API-boundary defects: unsupported workspace strategies, invalid cleanup strategies, path-bearing run identifiers, and non-string CLI tokens now fail closed with regression coverage. Full local, Docker OCI, egress, and concurrent-load evidence passed.
+
+Iteration 064 closed a fifth API-boundary defect: a value option followed by a non-string CLI token could still crash the Kujo VM during lookahead. Parser validation now rejects both standalone and option-value non-string tokens; current totals are 192 Workcell, 27 workspace, and 7 stress assertions, with 226 release assertions passing.
 
 ## Priority 1 — release and security controls
 

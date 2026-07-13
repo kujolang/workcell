@@ -19,7 +19,9 @@ Additional hardening completed in this pass:
 
 Iteration 062 specifically verified that workspace scans return the depth actually observed and reject file entries beyond `max_depth`, avoiding both misleading telemetry and a file-depth limit bypass.
 
-Iteration 063 added fail-closed API-boundary validation for workspace strategies, cleanup strategies, run identifiers, and non-string CLI tokens. The current totals are 191 Workcell, 27 workspace, and 7 stress assertions.
+Iteration 063 added fail-closed API-boundary validation for workspace strategies, cleanup strategies, run identifiers, and non-string CLI tokens. The current totals at that iteration were 191 Workcell, 27 workspace, and 7 stress assertions.
+
+Iteration 064 closed a related parser lookahead defect: value options now reject non-string following tokens before `starts_with` is called. Current totals are 192 Workcell, 27 workspace, and 7 stress assertions.
 
 The follow-up hardening pass also added declarative verification containers, bounded artifact export policies, host-mapped workspace ownership, bounded workspace scans, image ID/platform/label provenance, `clean --dry-run` inventory with explicit image retention, a first-class verification example, version-source validation, a compatibility matrix, and a 2,000-file opt-in performance signal.
 

@@ -1,0 +1,15 @@
+diff --git a/src/policy/policy.kujo b/src/policy/policy.kujo
+@@
++from src.domain.definition import validate_definition
+@@
++    definition_check := validate_definition(definition)
++    if definition_check["ok"] == false {
++        return definition_check
++    }
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++from src.policy.policy import build_policy, inspect_policy, spawn_options
+@@
++expect("partial policy definition is rejected without runtime crash", partial_policy["ok"] == false)
++expect("partial policy inspection is rejected without runtime crash", partial_inspection["ok"] == false)
++expect("partial spawn options are rejected without runtime crash", partial_spawn["ok"] == false)

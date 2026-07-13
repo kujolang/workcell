@@ -21,6 +21,11 @@ limits := get_or(policy, "limits", {})
 if type(limits) != "dict" {
     return {"ok": false, "error": "artifact policy limits must be a dict"}
 }
+for field in ["max_bytes", "max_files", "max_depth"] {
+    if has_key(policy, field)&&(type(policy[field]) != "int"||policy[field] < 0) {
+        return {"ok": false, "error": "artifact policy limit values must be non-negative integers"}
+    }
+}
 names := keys(limits)
 i = 0
 while i < len(names) {
@@ -38,6 +43,13 @@ i = i + 1
 allowed := get_or(policy, "allowed_extensions", [])
 if type(allowed) != "array" {
     return {"ok": false, "error": "artifact policy allowed extensions must be an array"}
+}
+i = 0
+while i < len(allowed) {
+    if type(allowed[i]) != "string"||allowed[i] == "" {
+        return {"ok": false, "error": "artifact policy allowed extensions must contain non-empty strings"}
+    }
+i = i + 1
 }
 secret_action := get_or(policy, "secret_action", "allow")
 if type(secret_action) != "string"||(secret_action != "allow"&&secret_action != "reject"&&secret_action != "redact") {

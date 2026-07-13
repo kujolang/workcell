@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (97), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, final clean-tree and push verification
+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (101), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, final clean-tree and push verification
 - blocked: none
 - failed: none after the registry validation fix and receipt/cleanup hardening
 
@@ -35,7 +35,8 @@ success
 - podman-live-host: Run the backend integration suite on a supported rootless Podman host.
 - egress-enforcement: Prove deployment-owned allow/deny proxy/firewall behavior on a supported host.
 - image-governance: Supply live signed-image, key-rotation, and vulnerability-scan evidence.
+- hosted-ci-billing: Restore repository account billing/spending-limit eligibility so the required hosted matrix can start.
 
 ## Next Start
 
-- iteration 011: Docker internal-network egress evidence passed with allowed/blocked destination booleans and receipt/manifest hashes; run default-network host enforcement and rootless Linux evidence before closing deployment backlog items
+- iteration 019: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls

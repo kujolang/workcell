@@ -1,0 +1,6 @@
+diff --git a/src/doctor/doctor.kujo b/src/doctor/doctor.kujo
+@@
++doctor now rejects non-Docker/Podman backends before command checks or security probes
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++invalid doctor backend regression added

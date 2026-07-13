@@ -1,0 +1,5 @@
+targeted performance-env probe before fix: exit 4; VM error parsing oversized WORKCELL_PERF_FILES
+targeted performance-env probe after fix: exit 0; bounded changed_files=200 signal
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/run.sh --check-only: passed
+standard-suite malformed performance-env regression: passed

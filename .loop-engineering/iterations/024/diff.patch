@@ -1,0 +1,31 @@
+diff --git a/tests/performance_test.kujo b/tests/performance_test.kujo
+index 62c33e6..317f556 100644
+--- a/tests/performance_test.kujo
++++ b/tests/performance_test.kujo
+@@ -7,10 +7,15 @@ repo := "/tmp/workcell-performance-fixture-" + run_id()
+ mut file_count := 200
+ requested_count := env("WORKCELL_PERF_FILES")
+ if type(requested_count) == "string"&&trim(requested_count) != "" {
+-    parsed_count := parse_int(trim(requested_count))
+-    if parsed_count > 0&&parsed_count <= 10000 {
+-        file_count = parsed_count
+-    }
++    mut parsed_count := 0
++    try {
++        parsed_count = parse_int(trim(requested_count))
++    } except err {
++    parsed_count = 0
++}
++if parsed_count > 0&&parsed_count <= 10000 {
++    file_count = parsed_count
++}
+ }
+diff --git a/tests/run.sh b/tests/run.sh
+index 343c203..fa3efca 100755
+--- a/tests/run.sh
++++ b/tests/run.sh
+@@ -29,6 +29,7 @@ KUJO="$KUJO" "$ROOT/tests/workcell_test.kujo"
+ "$KUJO" run "$ROOT/tests/workspace_test.kujo"
+ "$KUJO" run "$ROOT/tests/performance_test.kujo"
++WORKCELL_PERF_FILES=999999999999999999999 "$KUJO" run "$ROOT/tests/performance_test.kujo" >/dev/null
+ "$KUJO" run "$ROOT/tests/stress_test.kujo"

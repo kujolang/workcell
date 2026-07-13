@@ -1,0 +1,6 @@
+diff --git a/src/cli/cli.kujo b/src/cli/cli.kujo
+@@
++CLI parsing now rejects non-array arguments before token iteration
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++CLI null-argument regression added

@@ -1,0 +1,7 @@
+targeted probe before fix: exit 4 VM crash for null CLI arguments
+targeted probe after fix: exit 0 with structured CLI error and return code 2
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 158, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 181 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

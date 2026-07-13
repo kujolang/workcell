@@ -90,6 +90,9 @@ export func report(repo_path, backend) {
     if type(repo_path) != "string"||type(backend) != "string"||repo_path == ""||backend == "" {
         return {"ok": false, "error": "repository path and runtime backend must be non-empty strings"}
     }
+if backend != "docker"&&backend != "podman" {
+    return {"ok": false, "error": "runtime backend must be docker or podman"}
+}
 mut checks := []
 kujo_program := env("KUJO")
 if type(kujo_program) != "string"||trim(kujo_program) == "" {

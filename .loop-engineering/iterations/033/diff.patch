@@ -1,0 +1,9 @@
+diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
+@@
++repository, symlink-scan, and workspace-creation APIs now reject malformed inputs before Git/filesystem operations
+diff --git a/src/doctor/doctor.kujo b/src/doctor/doctor.kujo
+@@
++doctor report now rejects malformed repository/backend inputs before command checks
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++four workspace and doctor invalid-input regressions added

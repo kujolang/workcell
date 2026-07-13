@@ -19,6 +19,7 @@ docker/kujo/build-local.sh /path/to/kujo-source
 - `timeout/workcell.json`: exceeds a short timeout and exercises termination.
 - `secrets/workcell.json`: passes a declared secret by name and redacts it from exported text.
 - `custom-network/workcell.json`: attaches to a pre-created operator-owned internal network.
+- `egress-policy/workcell.json`: declares a host-enforced deny-by-default egress policy, DNS/proxy ownership, and an enforcement profile; Workcell records the declaration but does not install the firewall or proxy.
 - `provenance/workcell.json`: demonstrates fail-closed digest and registry policy; replace the placeholder digest before a successful run.
 - `signature/workcell.json`: demonstrates fail-closed cosign verification; replace `signature/workcell.pub` with an approved key and sign the selected image.
 - `artifact-policy/workcell.json`: demonstrates declared secret rejection during artifact export.
@@ -30,6 +31,7 @@ The example matrix is intentionally explicit about dependencies:
 | `hello`, `controlled-edit`, `verification`, `failure`, `timeout` | yes | required to run | no | no | no |
 | `secrets`, `artifact-policy` | yes | required; provide the named host secret | compatible backend optional | no | no |
 | `custom-network` | yes | required; pre-create `workcell-internal-demo` | compatible backend optional | no | no |
+| `egress-policy` | yes | required; pre-create the operator-enforced `workcell-egress-demo` network | compatible backend optional | no | host firewall/proxy profile required |
 | `provenance` | yes | required; replace digest | compatible backend optional | no | no |
 | `signature` | yes | required; replace key and sign image | compatible backend optional | required | no |
 | `kujo-project-check` | yes | required | no | no | Kujo source checkout |

@@ -26,6 +26,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Optional seccomp/AppArmor profile names are validated and attached to the container; `unconfined` is rejected.
 - Declarative verification commands run in separate labeled containers with the same environment, identity, mounts, resources, and network policy as the workload; verification output is redacted before it reaches the receipt.
 - Artifact exports can enforce byte/file/depth limits, extension policies, and secret allow/reject/redact behavior before or during export.
+- Network definitions carry an explicit egress declaration. `network.mode: none` is normalized to deny-by-default with blocked DNS and no proxy; default/custom networks may declare a host-managed deny-by-default or operator-managed profile. The declaration is recorded and unmanaged network access emits a receipt warning; Workcell does not install firewalls, control DNS, or force arbitrary child processes to honor a proxy.
 
 ## Secrets
 
@@ -33,7 +34,7 @@ Secrets are named environment variables. Values are read immediately before exec
 
 ## Network and daemon trust
 
-Only `none`, `default`, and explicitly pre-created `custom` networks are supported. Domain allowlists are rejected rather than silently downgraded. Docker itself is a privileged host service; access to its socket would be equivalent to broad host control and is prohibited. Workcell is therefore a bounded Docker workflow, not a perfect security boundary.
+Only `none`, `default`, and explicitly pre-created `custom` networks are supported. Domain allowlists are rejected rather than silently downgraded. Egress policy is a host-enforcement contract, not a Workcell firewall: supported deployment profiles must prove allowed/denied destinations externally. Docker itself is a privileged host service; access to its socket would be equivalent to broad host control and is prohibited. Workcell is therefore a bounded Docker workflow, not a perfect security boundary.
 
 ## Residual risks
 

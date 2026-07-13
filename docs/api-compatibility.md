@@ -8,7 +8,7 @@ Workcell exposes versioned JSON contracts for definitions, CLI metadata, receipt
 | --- | --- | --- | --- |
 | Definition | `workcell-definition/v1` | `validate --schema` | Unknown input fields are rejected; new fields require safe defaults and an additive schema update. |
 | CLI metadata | `workcell-cli/v1` | `help --json` | Commands, options, and exit-code meanings are additive within v1. |
-| Receipt | `workcell-receipt/v1` | `receipt.json` | Existing fields remain stable; new evidence fields are additive. |
+| Receipt | `workcell-receipt/v1` | `receipt.json` | Existing fields remain stable; new evidence fields such as `network_policy` are additive. |
 | Integrity manifest | `workcell-manifest/v1` | `manifest.json` | Relative paths, byte counts, and SHA-256 entries are verified by `workcell verify`. |
 | Runtime inventory | `workcell-runtime-inventory/v1` | `clean --dry-run --json` | Backend-neutral inventory fields are canonical; `docker` remains a compatibility alias. |
 | Cleanup result | `workcell-clean/v1` | `clean --json` | `runtime_backend` and `runtime` are canonical; legacy aliases remain during the v1 compatibility period. |

@@ -12,7 +12,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
   "environment": {"allow": [], "set": {}},
   "secrets": [],
   "resources": {"cpus": 2, "memory": "1g", "pids": 256, "timeout_ms": 300000, "max_output_bytes": 4000000},
-  "network": {"mode": "none"},
+  "network": {"mode": "none", "egress": {"policy": "deny-by-default", "dns": "blocked", "proxy": "none", "enforcement_profile": "none"}},
   "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
   "artifacts": {"export": ["hello.txt"]},
   "verification": {"version": 1, "commands": []},
@@ -37,6 +37,7 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 - `integrations`: optional RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle adapters. Each adapter is disabled by default and accepts a bounded command argv, timeout, and tool-specific mode. Enabled adapters write redacted reports under the run's `integrations/` directory and remain separate from the primary execution/verification result.
 - `network.mode`: `none` (default), explicit `default`, or `custom`; `custom` attaches to a pre-created Docker network named by `network.name`, allowing operators to enforce an internal network or egress proxy boundary outside Workcell.
 - `network.name`: required and Docker-safe when `network.mode` is `custom`; forbidden otherwise.
+- `network.egress`: a deployment-owned declaration recorded in every receipt. `policy` is `deny-by-default`, `operator-managed`, or the compatibility value `unmanaged`; `dns` is `blocked`, `operator-managed`, or `inherited`; `proxy` is `none` or `operator-managed`; and `enforcement_profile` is a bounded operator-supplied identifier. `network.mode: none` requires the deny-by-default/blocked/none combination. Managed egress requires a non-`none` enforcement profile and never causes Workcell to inject proxy variables or install firewall rules.
 - `filesystem.read_only_root`: default `true`; `tmpfs` targets must be `/tmp` or a descendant beneath `/tmp`.
 - `filesystem.seccomp_profile` and `filesystem.apparmor_profile`: optional bounded profile names installed on the Docker host; `unconfined` and unsafe names are rejected. Empty values keep Docker's built-in defaults.
 - `artifacts.export`: relative paths only; traversal, absolute paths, and escapes are rejected.

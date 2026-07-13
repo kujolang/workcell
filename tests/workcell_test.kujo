@@ -373,6 +373,7 @@ expect("invalid JSON path input is handled without runtime crash", load_json(nul
 expect("invalid JSON output path is handled without runtime crash", save_json(null, {}) == false)
 expect("invalid text search input is handled without runtime crash", contains_text(null, "x") == false)
 expect("invalid artifact export input is handled without runtime crash", export_declared(null, null, null)["ok"] == false&&export_declared_with_policy(null, null, null, null)["ok"] == false)
+expect("malformed artifact policy input is handled without runtime crash", export_declared_with_policy("/tmp", "/tmp/workcell-output", {"export": null}, [])["ok"] == false&&export_declared_with_policy("/tmp", "/tmp/workcell-output", {"export": [null]}, [])["ok"] == false)
 expect("invalid execution log input is handled without runtime crash", write_execution_logs(null, null, null, null)["ok"] == false)
 expect("invalid manifest write input is handled without runtime crash", write_manifest(null, null)["ok"] == false)
 expect("invalid manifest verify input is handled without runtime crash", verify_manifest(null)["ok"] == false)

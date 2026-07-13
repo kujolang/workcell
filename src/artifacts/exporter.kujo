@@ -2,6 +2,50 @@
 
 from src.util import ensure_dir, env_secret_values, get_or, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv
 
+func artifact_policy_check(policy) {
+    if type(policy) != "dict" {
+        return {"ok": false, "error": "artifact policy must be a dict"}
+    }
+declared := get_or(policy, "export", [])
+if type(declared) != "array" {
+    return {"ok": false, "error": "artifact policy export must be an array"}
+}
+mut i := 0
+while i < len(declared) {
+    if type(declared[i]) != "string"||declared[i] == "" {
+        return {"ok": false, "error": "artifact policy export entries must be non-empty strings"}
+    }
+i = i + 1
+}
+limits := get_or(policy, "limits", {})
+if type(limits) != "dict" {
+    return {"ok": false, "error": "artifact policy limits must be a dict"}
+}
+names := keys(limits)
+i = 0
+while i < len(names) {
+    limit := limits[names[i]]
+    if type(limit) != "dict" {
+        return {"ok": false, "error": "artifact policy limits entries must be dicts"}
+    }
+for field in ["max_bytes", "max_files", "max_depth"] {
+    if has_key(limit, field)&&(type(limit[field]) != "int"||limit[field] < 0) {
+        return {"ok": false, "error": "artifact policy limit values must be non-negative integers"}
+    }
+}
+i = i + 1
+}
+allowed := get_or(policy, "allowed_extensions", [])
+if type(allowed) != "array" {
+    return {"ok": false, "error": "artifact policy allowed extensions must be an array"}
+}
+secret_action := get_or(policy, "secret_action", "allow")
+if type(secret_action) != "string"||(secret_action != "allow"&&secret_action != "reject"&&secret_action != "redact") {
+    return {"ok": false, "error": "artifact policy secret action is invalid"}
+}
+return {"ok": true}
+}
+
 export func export_declared(workspace_path, output_dir, declared) {
     if type(workspace_path) != "string"||type(output_dir) != "string"||type(declared) != "array" {
         return {"ok": false, "error": "workspace path, output directory, and declared artifacts must have valid types"}
@@ -119,6 +163,8 @@ export func export_declared_with_policy(workspace_path, output_dir, policy, secr
 if type(policy) != "dict"||type(secrets) != "array" {
     return {"ok": false, "error": "artifact policy must be a dict and secrets must be an array"}
 }
+policy_check := artifact_policy_check(policy)
+if policy_check["ok"] == false {return policy_check}
 if path_has_symlink(output_dir) {
     return {"ok": false, "error": "artifact output path contains a symlink: " + output_dir}
 }

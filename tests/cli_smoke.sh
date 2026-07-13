@@ -49,4 +49,10 @@ MISSING_CONTEXT_CODE=$?
 set -e
 test "$MISSING_CONTEXT_CODE" -eq 4
 printf '%s' "$MISSING_CONTEXT_RESULT" | jq -e '.stage == "preparing" and .exit_code == 4 and (.error | contains("build_context does not exist"))' >/dev/null
+set +e
+MISSING_CONTEXT_HUMAN="$($KUJO run "$ROOT/main.kujo" -- run --file "$TMP_DIR/missing-context.json" --repo "$TMP_DIR" --output "$MISSING_OUTPUT/human" 2>&1)"
+MISSING_CONTEXT_HUMAN_CODE=$?
+set -e
+test "$MISSING_CONTEXT_HUMAN_CODE" -eq 4
+printf '%s' "$MISSING_CONTEXT_HUMAN" | grep -Fq 'Patch:         -'
 echo "CLI smoke tests passed"

@@ -7,10 +7,15 @@ repo := "/tmp/workcell-performance-fixture-" + run_id()
 mut file_count := 200
 requested_count := env("WORKCELL_PERF_FILES")
 if type(requested_count) == "string"&&trim(requested_count) != "" {
-    parsed_count := parse_int(trim(requested_count))
-    if parsed_count > 0&&parsed_count <= 10000 {
-        file_count = parsed_count
-    }
+    mut parsed_count := 0
+    try {
+        parsed_count = parse_int(trim(requested_count))
+    } except err {
+    parsed_count = 0
+}
+if parsed_count > 0&&parsed_count <= 10000 {
+    file_count = parsed_count
+}
 }
 ensure_dir(repo)
 run_argv(["git", "-C", repo, "init", "-q"], 30000)

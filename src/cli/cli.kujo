@@ -195,7 +195,7 @@ if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else if loaded["ok"] {
 print("Valid Workcell definition: " + path)
-print("Name: " + loaded["definition"]["name"] + "  Backend: docker  Network: " + loaded["definition"]["network"]["mode"])
+print("Name: " + loaded["definition"]["name"] + "  Backend: " + loaded["definition"]["runtime"]["backend"] + "  Network: " + loaded["definition"]["network"]["mode"])
 } else {
 print("Validation failed: " + loaded["error"])
 }
@@ -244,7 +244,7 @@ print("Command: " + to_string(value["definition"]["command"]))
 print("Network: " + value["network_mode"])
 print("Mount: " + to_string(value["mounts"]))
 print("Secrets: " + to_string(value["secret_names"]))
-print("Docker security arguments: " + to_string(value["docker_security_arguments"]))
+print("Runtime security arguments: " + to_string(value["docker_security_arguments"]))
 print("Receipt destination: " + value["receipt_destination"])
 }
 return 0
@@ -343,13 +343,13 @@ mut inventory_ok := docker["ok"]
 if temp["ok"] == false {
     inventory_ok = false
 }
-result := {"ok": inventory_ok, "dry_run": true, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
+result := {"ok": inventory_ok, "dry_run": true, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else {
 print("Workcell resource inventory (dry run)")
-print("Containers: " + to_string(get_or(docker, "containers", [])))
-print("Images: " + to_string(get_or(docker, "images", [])))
+print("Runtime containers: " + to_string(get_or(docker, "containers", [])))
+print("Runtime images: " + to_string(get_or(docker, "images", [])))
 print("Networks preserved: " + to_string(get_or(docker, "networks", [])))
 print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
 }
@@ -359,13 +359,13 @@ return 9
 docker := clean_owned_resources_with_options(prune_images, backend)
 temp := clean_stale_workspaces()
 clean_ok := docker["ok"]&&temp["ok"]
-result := {"ok": clean_ok, "docker": docker, "temporary_workspaces": temp}
+result := {"ok": clean_ok, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp}
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else {
 print("Cleaned Workcell-owned resources")
-print("Docker containers removed: " + to_string(get_or(docker, "removed", 0)))
-print("Docker images removed: " + to_string(len(get_or(docker, "removed_images", []))))
+print("Runtime containers removed: " + to_string(get_or(docker, "removed", 0)))
+print("Runtime images removed: " + to_string(len(get_or(docker, "removed_images", []))))
 print("Temporary workspaces removed: " + to_string(len(get_or(temp, "removed", []))))
 if result["ok"] == false {
     print("Warnings: some owned resources could not be removed")

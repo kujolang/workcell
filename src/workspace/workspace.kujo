@@ -317,6 +317,13 @@ export func changed_files(workspace) {
     if details["ok"] == false {
         return details
     }
+return changed_files_from_details(details)
+}
+
+export func changed_files_from_details(details) {
+    if details["ok"] == false {
+        return details
+    }
 mut paths := []
 mut i := 0
 while i < len(details["files"]) {
@@ -328,6 +335,10 @@ return {"ok": true, "files": paths}
 
 export func write_change_report(workspace, output_path, patch_bytes) {
     details := change_details(workspace)
+    return write_change_report_from_details(workspace, output_path, patch_bytes, details)
+}
+
+export func write_change_report_from_details(workspace, output_path, patch_bytes, details) {
     if details["ok"] == false {
         return details
     }

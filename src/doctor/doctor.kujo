@@ -2,7 +2,7 @@
 
 from src.runtime.docker import doctor_runtime
 from src.util import get_or, parent_of, process_error, process_ok, run_argv, run_id
-from src.workspace.workspace import inspect_repository
+from src.workspace.workspace import inspect_repository, temp_root
 
 func process_field(result, key, fallback) {
     if type(result) == "dict" {
@@ -97,10 +97,7 @@ checks = push(checks, ecosystem_tools_check(repo["root"]))
 } else {
 checks = push(checks, {"name": "Source repository", "status": "blocked", "message": repo["error"], "remediation": "Run Workcell from a Git repository or pass --repo <path>"})
 }
-tmp := env("TMPDIR")
-if type(tmp) != "string"||trim(tmp) == "" {
-    tmp = "/tmp"
-}
+tmp := temp_root()
 tmp_status := "blocked"
 if path_is_dir(tmp) {
     tmp_status = "passed"
@@ -131,9 +128,11 @@ if platform == "Linux"||platform == "Darwin" {
 checks = push(checks, {"name": "Host platform", "status": "blocked", "message": "unsupported host platform: " + platform, "remediation": "Run Workcell on Linux or macOS with Docker"})
 }
 }
-docker_host := env("DOCKER_HOST")
-if type(docker_host) == "string"&&trim(docker_host) != "" {
-    checks = push(checks, {"name": "Docker host override", "status": "warning", "message": "DOCKER_HOST is set; review daemon trust before running", "remediation": "Use a trusted local Docker daemon"})
+runtime_host_name := "DOCKER_HOST"
+if backend == "podman" {runtime_host_name = "CONTAINER_HOST"}
+runtime_host := env(runtime_host_name)
+if type(runtime_host) == "string"&&trim(runtime_host) != "" {
+    checks = push(checks, {"name": runtime_host_name + " override", "status": "warning", "message": runtime_host_name + " is set; review engine trust before running", "remediation": "Use a trusted local runtime endpoint"})
 }
 unsafe_override := env("WORKCELL_UNSAFE")
 if type(unsafe_override) == "string"&&(to_lower(trim(unsafe_override)) == "1"||to_lower(trim(unsafe_override)) == "true"||to_lower(trim(unsafe_override)) == "yes") {

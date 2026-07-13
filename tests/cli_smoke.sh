@@ -6,7 +6,8 @@ KUJO="${KUJO:-kujo}"
 export KUJO
 TMP_DIR="$(mktemp -d)"
 MISSING_OUTPUT="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT"' EXIT
+PODMAN_DEFINITION="$(mktemp)"
+trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION"' EXIT
 
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json"
 test -f "$TMP_DIR/workcell.json"
@@ -29,6 +30,9 @@ git -C "$TMP_DIR" add workcell.json
 git -C "$TMP_DIR" commit -qm "add workcell definition fixture"
 
 "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --json | jq -e '.network_mode == "none" and (.docker_security_arguments | contains(["--read-only"]))' >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- validate --file "$ROOT/workcell.json" | grep -Fq 'Backend: docker'
+jq '.runtime.backend = "podman"' "$ROOT/workcell.json" > "$PODMAN_DEFINITION"
+"$KUJO" run "$ROOT/main.kujo" -- validate --file "$PODMAN_DEFINITION" | grep -Fq 'Backend: podman'
 set +e
 DOCTOR_RESULT=$("$KUJO" run "$ROOT/main.kujo" -- doctor --repo "$TMP_DIR" --json)
 DOCTOR_CODE=$?

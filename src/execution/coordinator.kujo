@@ -5,7 +5,7 @@ from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
 from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_symlink, path_within, redact_with_env, run_id
-from src.workspace.workspace import changed_files, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
+from src.workspace.workspace import changed_files_from_details, change_details, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report_from_details
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 from src.integrations.integrations import dry_run_integrations, run_integrations
@@ -265,7 +265,8 @@ workspace_safe := workspace_scan["ok"]
 if workspace_safe == false {
     receipt = add_error(receipt, "collecting", workspace_scan["error"])
 }
-files := changed_files(workspace)
+change_details_result := change_details(workspace)
+files := changed_files_from_details(change_details_result)
 changed := []
 if files["ok"] {
     changed = files["files"]
@@ -280,7 +281,7 @@ if patch["ok"] == false {
 }
 receipt["patch_bytes"] := get_or(patch, "bytes", 0)
 change_report_path := output_dir + "/changes.json"
-change_report := write_change_report(workspace, change_report_path, get_or(patch, "bytes", 0))
+change_report := write_change_report_from_details(workspace, change_report_path, get_or(patch, "bytes", 0), change_details_result)
 if change_report["ok"] == false {
     receipt = add_error(receipt, "collecting", change_report["error"])
     change_report_path = null

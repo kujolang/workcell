@@ -301,6 +301,12 @@ runledger_result := run_integrations(runledger_definition, "/tmp", runledger_out
 expect("RunLedger adapter links start and finish evidence", runledger_result["ok"]&&runledger_result["results"][0]["status"] == "imported"&&runledger_result["results"][0]["run_id"] == "fake-run"&&runledger_result["results"][0]["finish"]["exit_code"] == 0)
 run_argv(["rm", "-rf", runledger_output], 30000)
 
+runledger_failure_output := "/tmp/workcell-runledger-failure-" + run_id()
+runledger_failure_definition := with_integration(default_definition(), "runledger", true, ["sh", "-c", "if [ \"$0\" = \"finish\" ]; then exit 9; else printf 'Started run: fake-run\\n'; fi"])
+runledger_failure_result := run_integrations(runledger_failure_definition, "/tmp", runledger_failure_output, runledger_failure_output + "/receipt.json", "completed", true)
+expect("RunLedger finish failure is explicit", runledger_failure_result["ok"] == false&&runledger_failure_result["results"][0]["status"] == "finish-failed"&&runledger_failure_result["results"][0]["finish"]["exit_code"] == 9)
+run_argv(["rm", "-rf", runledger_failure_output], 30000)
+
 failed_integration_output := "/tmp/workcell-integration-failure-" + run_id()
 failed_integration_definition := with_integration(default_definition(), "changebucket", true, ["false"])
 failed_integration_result := run_integrations(failed_integration_definition, "/tmp", failed_integration_output, failed_integration_output + "/receipt.json", "completed", true)

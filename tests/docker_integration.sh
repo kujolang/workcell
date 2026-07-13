@@ -163,7 +163,7 @@ KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
 test -n "$(docker ps -aq --filter "name=^/${UNRELATED_NAME}$")"
 docker rm -f "$UNRELATED_NAME" >/dev/null
 test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
-KUJO="$KUJO" "$ROOT/bin/workcell" clean --dry-run --json | jq -e '.dry_run == true and .actions.images == "preserve" and (.docker.image_retention | contains("preserved"))' >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --dry-run --json | jq -e '.dry_run == true and .runtime_backend == "docker" and (.runtime == .docker) and .actions.images == "preserve" and (.docker.image_retention | contains("preserved"))' >/dev/null
 KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
 test ! -e "$FAILED_WORKSPACE"
 test ! -e "$FAILED_WORKSPACE.owner"

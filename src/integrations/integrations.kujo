@@ -120,7 +120,9 @@ if final_ok {ledger_status = "pass"} else if final_status == "timeout"||final_st
 verdict := "Workcell " + final_status + "; receipt=" + receipt_path
 finish_args := ["finish", run_id_value, "--status", ledger_status, "--verdict", verdict, "--repo", source_root, "--ledger", ledger_path]
 finish := external_report(name + "-finish", config, append_values(command, finish_args), source_root, output_dir, secrets)
-return {"name": name, "enabled": true, "ok": finish["ok"], "status": "imported", "run_id": run_id_value, "start": start, "finish": finish, "report_path": finish["report_path"]}
+finish_status := "imported"
+if finish["ok"] == false {finish_status = "finish-failed"}
+return {"name": name, "enabled": true, "ok": finish["ok"], "status": finish_status, "run_id": run_id_value, "start": start, "finish": finish, "report_path": finish["report_path"]}
 }
 
 func run_standard(name, config, command, args, source_root, output_dir, secrets) {

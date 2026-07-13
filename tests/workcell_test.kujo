@@ -422,6 +422,11 @@ redact_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0,
 redact_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/redact", redact_policy, ["AUDIT_SECRET"])
 redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
 expect("artifact secret redaction hook changes exported content", redact_export["ok"]&&redacted_artifact["text"] == "[REDACTED]\n")
+run_argv(["sh", "-c", "printf 'artifact-secret\\000\\377' > " + policy_fixture + "/workspace/binary.bin"], 30000)
+binary_reject := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/binary-reject", {"export": ["binary.bin"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "reject"}, ["AUDIT_SECRET"])
+expect("binary artifact secret inspection fails closed", binary_reject["ok"] == false&&contains(binary_reject["error"], "could not be inspected") == 1)
+binary_redact := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/binary-redact", {"export": ["binary.bin"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "redact"}, ["AUDIT_SECRET"])
+expect("binary artifact redaction fails closed", binary_redact["ok"] == false&&contains(binary_redact["error"], "could not be inspected") == 1)
 run_argv(["rm", "-rf", policy_fixture], 30000)
 
 manifest_fixture := "/tmp/workcell-manifest-contract-" + run_id()

@@ -61,13 +61,14 @@ if extension_allowed(relative, get_or(policy, "allowed_extensions", [])) == fals
 }
 bytes := file_size(path)
 secret_action := get_or(policy, "secret_action", "allow")
-if secret_action != "allow" {
+if secret_action != "allow"&&len(secrets) > 0 {
     text_result := read_text(path)
-    if text_result["ok"] {
-        redacted := redact(text_result["text"], secrets)
-        if secret_action == "reject"&&redacted != text_result["text"] {
-            return {"ok": false, "error": "artifact contains a declared secret: " + relative}
-        }
+    if text_result["ok"] == false {
+        return {"ok": false, "error": "artifact could not be inspected for declared secrets: " + relative}
+    }
+redacted := redact(text_result["text"], secrets)
+if secret_action == "reject"&&redacted != text_result["text"] {
+    return {"ok": false, "error": "artifact contains a declared secret: " + relative}
 }
 }
 return enforce_artifact_limits(relative, bytes, 1, policy, limit)
@@ -91,19 +92,18 @@ func redact_tree(path, secrets) {
         mut i := 0
         while i < len(entries) {
             result := redact_tree(path + "/" + to_string(entries[i]), secrets)
-            if result["ok"] == false {
-                return result
-            }
-        i = i + 1
-    }
-return {"ok": true}
+            if result["ok"] == false {return result}
+            i = i + 1
+        }
+    return {"ok": true}
 }
 text_result := read_text(path)
-if text_result["ok"] {
-    written := write_file_atomic(path, redact(text_result["text"], secrets), true)
-    if written != true {
-        return {"ok": false, "error": "could not write redacted artifact: " + relative}
-    }
+if text_result["ok"] == false {
+    return {"ok": false, "error": "artifact could not be redacted safely"}
+}
+written := write_file_atomic(path, redact(text_result["text"], secrets), true)
+if written != true {
+    return {"ok": false, "error": "could not write redacted artifact: " + relative}
 }
 return {"ok": true}
 }
@@ -171,7 +171,7 @@ result := run_argv(["cp", "-R", source, destination], 60000)
 if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "export artifact " + relative)}
 }
-if get_or(policy, "secret_action", "allow") == "redact" {
+if get_or(policy, "secret_action", "allow") == "redact"&&len(secret_values) > 0 {
     redaction := redact_tree(destination, secret_values)
     if redaction["ok"] == false {
         return {"ok": false, "error": "could not redact exported artifact: " + relative}

@@ -10,6 +10,8 @@ The next work should preserve the current contract: Docker remains the default, 
 
 Iteration 060 closed four additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, null output requests silently selected the default output root, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers and null output requests, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
 
+Iteration 061 closed a fifth local cleanup defect: stop cleanup recognized only one case-sensitive missing-container phrase, so valid cleanup could fail on Docker/Podman wording variants. Stop and remove now share normalized missing-container matching, and the runtime contract covers `No such container`, `no container with`, and `container not found` responses.
+
 ## Priority 1 — release and security controls
 
 ### [ ] Rootless deployment evidence

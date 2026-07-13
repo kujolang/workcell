@@ -1,0 +1,14 @@
+iteration 061 evaluation
+base: d6a16ff
+objective: normalize runtime stop cleanup errors
+
+reproduced before fix: runtime cleanup contract failed 2 of 6 stop variants for `no container with` and `container not found`
+passed: tests/runtime_cleanup_contract.sh (6 variants, 0 failures)
+passed: tests/run.sh (190 Workcell, 23 workspace, 5 stress; all gates passed)
+passed: tests/release_report.sh (218 total, 0 failed)
+passed: tests/docker_integration.sh
+passed: REQUIRE_BACKEND=true tests/oci_smoke.sh docker
+passed: REQUIRE_BACKEND=true tests/egress_integration.sh docker
+passed: REQUIRE_BACKEND=true tests/load_integration.sh docker
+passed: git diff --check
+external: hosted CI billing; production rootless/microVM, host egress/firewall/proxy, image signing/key rotation, and vulnerability governance

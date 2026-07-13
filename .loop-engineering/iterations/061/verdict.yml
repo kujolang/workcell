@@ -1,0 +1,16 @@
+iteration: 061
+objective: normalize runtime stop cleanup errors
+verdict: success
+progress: 1
+local_gates: passed
+offline_workcell_assertions: 190
+workspace_assertions: 23
+stress_assertions: 5
+release_report_total: 218
+runtime_cleanup_variants: passed
+docker_integration: passed
+docker_oci_smoke: passed
+docker_egress: passed
+docker_load: passed
+hosted_ci: external_billing_blocker
+external_boundaries: hosted_ci_billing_and_production_controls

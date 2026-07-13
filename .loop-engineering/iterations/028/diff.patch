@@ -1,0 +1,9 @@
+diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
+@@
++func workspace_input_check(workspace, require_commit) { ... }
++func change_details_check(details) { ... }
++exported workspace functions now return structured errors before direct map access
++find_symlink_with_limits validates positive scan limits and uses safe locals
+diff --git a/tests/workspace_test.kujo b/tests/workspace_test.kujo
+@@
++seven incomplete workspace/detail/report/patch/cleanup/scan-limit regressions added

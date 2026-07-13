@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (121), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy API validation without runtime crashes, malformed release-report evidence handling, final clean-tree and push verification
+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (121), workspace assertions (18), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace API validation without runtime crashes, malformed release-report evidence handling, final clean-tree and push verification
 - blocked: none
 - failed: none after the registry validation fix and receipt/cleanup hardening
 

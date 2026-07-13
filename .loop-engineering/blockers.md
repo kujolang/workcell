@@ -32,3 +32,4 @@ Resolved evidence:
 - Docker CLI and daemon: `workcell doctor --backend docker --json` reported 9 passed, 0 blocked, 1 warning (non-rootless daemon) on the clean pushed worktree.
 - Podman diagnostics: `workcell doctor --backend podman --json` returned structured blocked CLI/engine/security checks when Podman was absent; no live Podman run was claimed.
 - Docker integration: `KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh` passed, including the verification example and `clean --dry-run` inventory contract.
+- Kujo example image: `./docker/kujo/build-local.sh ../kujo` built successfully from the exact `RUNTIME_VERSION` commit with digest-pinned Rust and Alpine bases.

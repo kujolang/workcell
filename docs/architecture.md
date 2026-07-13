@@ -23,7 +23,7 @@ Workcell supplies a physical boundary and a durable evidence boundary. Kujo trus
 ## Modules
 
 - `src/domain/definition.kujo`: JSON loading, defaults, schema/semantic validation, duration normalization.
-- `src/policy/policy.kujo`: explicit Docker security arguments and runtime environment policy.
+- `src/policy/policy.kujo`: explicit backend-neutral OCI security arguments and runtime environment policy.
 - `src/runtime/docker.kujo`: OCI runtime availability, image build/pull/inspect, run, output collection, and ownership-scoped cleanup for Docker or Podman.
 - `src/integrations/integrations.kujo`: opt-in RunLedger, ChangeBucket, ShipCheck, Fence, PackWrite, and Muzzle evidence adapters with bounded execution and redacted reports.
 - `src/workspace/workspace.kujo`: Git repository inspection, clean-source enforcement, worktree/clone creation, patch and change collection, safe cleanup.

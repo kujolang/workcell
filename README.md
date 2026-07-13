@@ -4,7 +4,9 @@ Workcell is a Kujo-native, local Docker-backed execution sandbox for AI agents a
 
 > The sandbox defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
 
-Workcell complements Kujo trust and policy controls; it does not replace them. The current release is a release-gated local Docker MVP, not a hosted service or a custom container runtime. Enterprise deployments still need an appropriately trusted Docker host, rootless/VM boundary, egress controls, image governance, and retention policy.
+Workcell complements Kujo trust and policy controls; it does not replace them. The current release is a release-gated local Docker MVP, not a universally isolated enterprise sandbox, hosted service, or custom container runtime. It is suitable for production-oriented local and CI workflows when the operator supplies the required host boundary, but enterprise deployments still need an appropriately trusted Docker host, rootless/VM boundary, egress controls, image governance, and retention policy.
+
+Workcell is intentionally honest about that boundary: the repository is production-oriented and heavily tested, but “production ready” does not mean “universally safe on every host.” See [docs/enterprise-deployment.md](docs/enterprise-deployment.md) for the deployment controls that remain outside the Kujo program.
 
 ## Why use Workcell?
 
@@ -18,7 +20,9 @@ Workcell complements Kujo trust and policy controls; it does not replace them. T
 
 - Kujo 1.0 or a compatible current runtime.
 - Git.
+- `jq` for the shell-based contract and integration suites.
 - Docker for `run` and Docker integration tests.
+- Podman is optional and supported through `runtime.backend`; it is not required for the Docker-first path.
 - A clean Git source repository for execution. Workcell rejects dirty sources by default to avoid silently omitting user changes.
 
 Build and run from this checkout:
@@ -26,8 +30,9 @@ Build and run from this checkout:
 ```bash
 export KUJO=/path/to/kujo/target/release/kujo
 $KUJO check main.kujo
+docker build --tag kujolang/workcell-base:local docker/
 ./tests/run.sh
-./bin/workcell doctor
+./bin/workcell doctor --backend docker
 ```
 
 ## Usage
@@ -41,7 +46,7 @@ $KUJO check main.kujo
 ./bin/workcell run --file workcell.json --repo .
 ```
 
-`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` for the Hello, edit, verification, failure, and timeout examples; build `docker/kujo/Dockerfile.local` from a pinned Kujo source checkout for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
+`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` before running the local examples; build `docker/kujo/Dockerfile.local` from a Kujo checkout at the exact commit in `RUNTIME_VERSION` for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
 
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
@@ -58,14 +63,14 @@ cat .workcell/runs/<run-id>/stderr.log
 
 | Command | Purpose |
 | --- | --- |
-| `doctor` | Check Kujo, Git, Docker, repository, temp directory, and dangerous environment signals. |
+| `doctor` | Check Kujo, Git, the selected Docker/Podman CLI and engine, repository, temp directory, and dangerous environment signals. |
 | `init` | Create a starter `workcell.json`; refuses overwrite unless `--force` is supplied. |
 | `validate` | Parse and semantically validate a definition without running Docker; `--schema` emits the versioned contract. |
-| `inspect` | Display resolved config, mounts, resources, secrets by name, and security arguments. |
+| `inspect` | Display resolved config, mounts, resources, secrets by name, runtime backend, and security arguments. |
 | `run` | Execute the complete validate/prepare/launch/collect/verify/export/record/clean lifecycle. |
 | `clean` | Remove only Workcell-owned containers and temporary workspaces; `--dry-run` inventories resources, and `--prune-images` explicitly removes labeled images. |
 
-Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`. Verification commands run in separate labeled containers with the same policy and appear under `receipt.json.verification.checks`.
+Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`. `doctor` and `clean` accept `--backend docker|podman`; Docker remains the default. Verification commands run in separate labeled containers with the same policy and appear under `receipt.json.verification.checks`.
 
 ## Security defaults
 
@@ -90,12 +95,30 @@ Each run produces, when the lifecycle reaches the relevant stage:
 
 The receipt separates execution, verification, artifact export, and cleanup outcomes. It never stores secret values.
 
+## Repository layout
+
+The root files are intentional and are not duplicate application implementations:
+
+| Path | Role |
+| --- | --- |
+| `main.kujo` | Thin Kujo entrypoint; dispatches into `src/`. |
+| `src/` | All Workcell application logic, grouped by domain. |
+| `workcell.json` | Safe starter definition used by `workcell init` and local inspection. |
+| `bin/workcell` | Thin launcher that locates the project and pinned-compatible Kujo runtime. |
+| `docker/` | OCI image definitions and the pinned Kujo example-image builder. |
+| `tests/` | Kujo contracts plus thin shell orchestration for Docker and CLI integration. |
+| `docs/` | Architecture, security, compatibility, operations, and release-readiness records. |
+| `fence.toml`, `kennel.toml`, `kujo.toml` | Repository boundary, package, and Kujo project metadata. |
+
+Moving `main.kujo`, `workcell.json`, or the project metadata into `src/` would break the established Kujo repository and CLI conventions; they remain at the root by design.
+
 ## Development
 
 ```bash
 export KUJO=/path/to/kujo/target/release/kujo
 ./tests/run.sh
 ./tests/run.sh --check-only
+KUJO="$KUJO" ./tests/docker_integration.sh
 git diff --check
 ```
 
@@ -112,6 +135,7 @@ Docker integration tests are opt-in because the local daemon may not be availabl
 - [Development](docs/development.md)
 - [Roadmap](docs/roadmap.md)
 - [Next hardening backlog](docs/next-hardening-backlog.md)
+- [Next review backlog](docs/next-review-backlog.md)
 - [Repository conventions](docs/repository-conventions.md)
 
-The runtime boundary leaves room for Podman, gVisor-compatible Docker runtimes, remote execution, and microVMs later. Only Docker is implemented now.
+The runtime boundary leaves room for gVisor-compatible Docker runtimes, remote execution, and microVMs later. Docker is the default implementation and Podman is available through the explicit OCI backend contract; remote and microVM execution are not implemented.

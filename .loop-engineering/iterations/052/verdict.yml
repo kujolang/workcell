@@ -1,0 +1,13 @@
+iteration: 052
+objective: prevent permission-denied manifest scans from crashing the runtime
+verdict: success
+progress: 1
+local_gates: passed
+manifest_scan_regression: passed
+release_report: passed
+docker_integration: passed
+docker_egress: passed
+docker_load: passed
+oci_smoke: passed
+hosted_ci: external_billing_blocker
+external_boundaries: hosted_ci_billing_and_production_controls

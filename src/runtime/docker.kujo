@@ -123,6 +123,9 @@ repo_result := runtime_result(backend, ["image", "inspect", "--format", "{{index
 platform_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], 15000)
 labels_result := runtime_result(backend, ["image", "inspect", "--format", "{{json .Config.Labels}}", image], 15000)
 image_id := trim(image_id_result.stdout)
+if starts_with(image_id, "sha256:") == false {
+    image_id = "sha256:" + image_id
+}
 repo_digest := ""
 if process_ok(repo_result) {
     repo_digest = trim(repo_result.stdout)
@@ -172,10 +175,13 @@ export func build_image(image, context_path, run_identifier, definition) {
     version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
     backend := definition["runtime"]["backend"]
     mut args := runtime_argv(backend, ["build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
-    buildx := docker_result(["docker", "buildx", "version"], 10000)
-    if backend == "docker"&&process_ok(buildx) {
-        args = runtime_argv(backend, ["buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
+    buildx := {"success": false, "timed_out": false, "stdout": "", "stderr": ""}
+    if backend == "docker" {
+        buildx = docker_result(["docker", "buildx", "version"], 10000)
     }
+if backend == "docker"&&process_ok(buildx) {
+    args = runtime_argv(backend, ["buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
+}
 result := run_argv(args, 900000)
 if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "docker build"), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}

@@ -1,0 +1,7 @@
+targeted receipt probes before fix: exit 4 VM crashes for missing lifecycle/errors/verification and invalid definition path
+targeted receipt probes after fix: exit 0 structured receipt input errors
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 125, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 148 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

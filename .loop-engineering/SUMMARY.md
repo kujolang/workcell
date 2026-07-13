@@ -6,13 +6,13 @@ success
 
 ## Completed
 
-- configured loop run plus manual verification completed through iteration 057
+- configured loop run plus manual verification completed through iteration 058
 
 ## Verification
 
 - passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (188), workspace assertions (20), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, binary artifact secret fail-closed regression, malformed network-type validation, overflow-safe numeric validation, partial-section and exported policy/summary/daemon-security/verification/integration/image-build/ensure/receipt/container-policy/workspace/utility API validation without runtime crashes, utility path/text validation, receipt mutation/path validation, artifact policy/export and limit input validation, artifact/manifest/runtime API validation without runtime crashes, manifest output-directory validation without runtime crashes, repository/symlink/workspace/doctor API validation without runtime crashes, policy construction/inspection API validation without runtime crashes, coordinator output API validation without runtime crashes, CLI argument API validation without runtime crashes, integration/image-source API validation without runtime crashes, verification execution API validation without runtime crashes, explicit container-runtime backend/resource API validation without implicit Docker selection, malformed change-detail/report input validation without runtime crashes, malformed receipt identity/source/type validation, malformed release-report evidence handling, final clean-tree and push verification
 - blocked: none
-- failed: none after artifact declaration, manifest coverage, verification-name, receipt, and cleanup hardening
+- failed: none after artifact declaration, manifest coverage, verification-name, receipt, cleanup, and runtime-inventory hardening
 
 ## Commits
 
@@ -20,6 +20,7 @@ success
 - feat: enforce release image provenance policies
 - feat: harden receipt integrity and cleanup safety
 - fix: harden artifact and verification contracts
+- fix: restore runtime inventory details
 
 ## Remaining
 
@@ -40,4 +41,4 @@ success
 
 ## Next Start
 
-- iteration 058: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls
+- iteration 059: review the next local-fixable correctness or security gap; retain external blockers for hosted CI billing and deployment-owned controls

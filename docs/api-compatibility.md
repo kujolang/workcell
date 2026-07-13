@@ -10,7 +10,7 @@ Workcell exposes versioned JSON contracts for definitions, CLI metadata, receipt
 | CLI metadata | `workcell-cli/v1` | `help --json` | Commands, options, global `--help`/`--version`, and exit-code meanings are additive within v1; unsupported command options and extra positionals fail with usage code 2. |
 | Receipt | `workcell-receipt/v1` | `receipt.json` | Existing fields remain stable; new evidence fields such as `network_policy` are additive. |
 | Integrity manifest | `workcell-manifest/v1` | `manifest.json` | Relative paths, byte counts, and SHA-256 entries are verified by `workcell verify`. |
-| Runtime inventory | `workcell-runtime-inventory/v1` | `clean --dry-run --json` | Backend-neutral inventory fields are canonical; `docker` remains a compatibility alias. |
+| Runtime inventory | `workcell-runtime-inventory/v1` | `clean --dry-run --json` | Backend-neutral inventory fields are canonical; `docker` remains a compatibility alias. `containers` retains the ID list, while additive `container_details[]` provides `{id,name}` records. |
 | Cleanup result | `workcell-clean/v1` | `clean --json` | `runtime_backend` and `runtime` are canonical; legacy aliases remain during the v1 compatibility period. |
 | Integration evidence | `workcell-integration/v1` | `receipt.integrations[]` and `integrations/*.json` | Adapter reports are isolated, bounded, and additive to the primary result. |
 | OCI smoke evidence | `workcell-oci-evidence/v1` | `tests/oci_smoke.sh` stdout | Deployment validation records the selected OCI backend and observed rootless status. |

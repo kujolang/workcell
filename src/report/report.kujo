@@ -16,16 +16,30 @@ func metric(text, label) {
     mut i := 0
     while i < len(lines) {
         line := trim(lines[i])
-        if starts_with(line, label) {return parse_int(trim(substring(line, len(label), len(line))))}
-        i = i + 1
-    }
+        if starts_with(line, label) {
+            mut value := 0
+            try {
+                value = parse_int(trim(substring(line, len(label), len(line))))
+            } except err {
+            return 0
+        }
+    return value
+}
+i = i + 1
+}
 return 0
 }
 
 func number_file(path, fallback) {
     loaded := read_text(path)
     if loaded["ok"] == false {return fallback}
-    return parse_int(trim(loaded["text"]))
+    mut value := 0
+    try {
+        value = parse_int(trim(loaded["text"]))
+    } except err {
+    return fallback
+}
+return value
 }
 
 func suite_result(report_dir, name) {

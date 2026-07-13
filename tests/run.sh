@@ -14,6 +14,7 @@ check_all() {
   "$KUJO" check "$ROOT/tests/performance_test.kujo"
   "$KUJO" check "$ROOT/tests/stress_test.kujo"
   "$KUJO" check "$ROOT/tests/podman_security_contract.kujo"
+  bash -n "$ROOT/tests/egress_deployment_contract.sh"
 }
 
 if [ "${1:-}" = "--check-only" ]; then

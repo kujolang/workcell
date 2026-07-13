@@ -18,6 +18,18 @@ CI reads the pinned Kujo commit from `RUNTIME_VERSION`, checks that the Kujo exa
 
 For a deployment-owned network acceptance signal, run `REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh docker` or `... ./tests/egress_integration.sh podman`. It creates a temporary backend-specific internal network, proves an allowlisted fixture is reachable while external DNS is blocked, verifies the managed egress policy in the receipt, and emits `workcell-egress-evidence/v1`. This does not install or validate a host firewall, transparent proxy, or default-network policy; those remain deployment controls.
 
+For a real deployment network, use `tests/egress_deployment_contract.sh`. It never creates or mutates a network; the operator supplies the backend, network mode, allowed URL, denied URL, and reviewed enforcement profile. Probe URLs must be credential-free `http://` or `https://` destinations. Set `EVIDENCE_FILE` to persist the JSON receipt alongside deployment evidence. For a pre-created custom network:
+
+```bash
+REQUIRE_BACKEND=true \
+NETWORK_NAME=corp-egress-v1 \
+ALLOWED_URL=https://packages.example.invalid/health \
+DENIED_URL=https://example.com \
+KUJO="$KUJO" ./tests/egress_deployment_contract.sh docker
+```
+
+Set `NETWORK_MODE=default` when the host firewall or transparent proxy protects the engine's default network. A passing `workcell-egress-deployment-evidence/v1` result proves the selected network path allowed the supplied destination and blocked the supplied destination; it does not prove that a proxy controls arbitrary child processes beyond the probe.
+
 For supported Linux/CI hosts, `REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/oci_smoke.sh podman` runs the selected backend's doctor preflight, produces a `workcell-oci-evidence/v1` receipt, and records whether the engine reports rootless mode and the required security signals. Run `REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/docker_integration.sh podman` for the full Podman matrix. The local macOS Docker path can run `./tests/oci_smoke.sh docker`; this does not substitute for a rootless Linux receipt.
 
 Build example images when Docker is available:

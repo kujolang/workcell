@@ -14,6 +14,8 @@ grep -Fq 'workcell-runtime-inventory/v1' "$ROOT/src/runtime/docker.kujo"
 grep -Fq 'workcell-clean/v1' "$ROOT/src/cli/cli.kujo"
 grep -Fq 'workcell-oci-evidence/v1' "$ROOT/tests/oci_smoke.sh"
 grep -Fq 'workcell-oci-evidence/v1' "$ROOT/docs/api-compatibility.md"
+grep -Fq 'workcell-egress-deployment-evidence/v1' "$ROOT/tests/egress_deployment_contract.sh"
+grep -Fq 'workcell-egress-deployment-evidence/v1' "$ROOT/docs/api-compatibility.md"
 grep -Fq 'docs/api-compatibility.md' "$ROOT/README.md"
 
 echo "Schema compatibility contract passed"

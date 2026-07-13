@@ -53,6 +53,8 @@ docker build --tag kujolang/workcell-base:local docker/
 
 `tests/release_report.sh` runs the Kujo-native offline suites and emits one `workcell-report/v1` JSON summary with assertion counts, elapsed time, and explicitly skipped deployment gates.
 
+For operator-owned egress validation, `tests/egress_deployment_contract.sh` accepts a pre-created custom or default network plus one allowed and one denied URL. It never creates or mutates network infrastructure and emits `workcell-egress-deployment-evidence/v1` with receipt and manifest hashes.
+
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
 After a run, inspect the evidence directly:

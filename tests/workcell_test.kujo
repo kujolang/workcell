@@ -387,6 +387,7 @@ expect("invalid container stop input is handled without runtime crash", stop_con
 expect("invalid container removal input is handled without runtime crash", remove_container(null, "docker")["ok"] == false)
 expect("invalid resource inventory input is handled without runtime invocation", owned_resource_inventory(null)["ok"] == false)
 expect("invalid resource cleanup input is handled without runtime invocation", clean_owned_resources_with_options(false, null)["ok"] == false)
+expect("invalid image prune input is handled without runtime invocation", clean_owned_resources_with_options("false", null)["ok"] == false)
 expect("invalid repository inspection input is handled without runtime crash", inspect_repository(null)["ok"] == false)
 expect("invalid symlink scan input is handled without runtime crash", find_symlink(null)["ok"] == false)
 expect("invalid workspace creation input is handled without runtime crash", create_workspace(null, null, null)["ok"] == false)

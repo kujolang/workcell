@@ -453,9 +453,12 @@ return {"schema_version": "workcell-runtime-inventory/v1", "ok": true, "containe
 }
 
 export func clean_owned_resources_with_options(prune_images, backend) {
-    if valid_backend(backend) == false {
-        return {"ok": false, "error": "container backend must be docker or podman"}
+    if type(prune_images) != "bool" {
+        return {"ok": false, "error": "prune-images must be a boolean"}
     }
+if valid_backend(backend) == false {
+    return {"ok": false, "error": "container backend must be docker or podman"}
+}
 listed := runtime_result(backend, ["ps", "-a", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Status}}\\t{{.Names}}"], 30000)
 if process_ok(listed) == false {
     return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}

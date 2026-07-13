@@ -17,3 +17,19 @@ docker/kujo/build-local.sh /path/to/kujo-source
 - `verification/workcell.json`: creates an artifact, runs a declared post-run check, and records execution versus verification separately.
 - `failure/workcell.json`: exits non-zero and preserves diagnostic evidence.
 - `timeout/workcell.json`: exceeds a short timeout and exercises termination.
+- `secrets/workcell.json`: passes a declared secret by name and redacts it from exported text.
+- `custom-network/workcell.json`: attaches to a pre-created operator-owned internal network.
+- `provenance/workcell.json`: demonstrates fail-closed digest and registry policy; replace the placeholder digest before a successful run.
+- `signature/workcell.json`: demonstrates fail-closed cosign verification; replace `signature/workcell.pub` with an approved key and sign the selected image.
+- `artifact-policy/workcell.json`: demonstrates declared secret rejection during artifact export.
+
+The example matrix is intentionally explicit about dependencies:
+
+| Example | Offline validation | Docker | Podman | Cosign/key | Sibling tools |
+| --- | --- | --- | --- | --- | --- |
+| `hello`, `controlled-edit`, `verification`, `failure`, `timeout` | yes | required to run | no | no | no |
+| `secrets`, `artifact-policy` | yes | required; provide the named host secret | compatible backend optional | no | no |
+| `custom-network` | yes | required; pre-create `workcell-internal-demo` | compatible backend optional | no | no |
+| `provenance` | yes | required; replace digest | compatible backend optional | no | no |
+| `signature` | yes | required; replace key and sign image | compatible backend optional | required | no |
+| `kujo-project-check` | yes | required | no | no | Kujo source checkout |

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "provenance-policy-workcell",
+  "runtime": {
+    "backend": "docker",
+    "image": "kujolang/workcell-base:local",
+    "build_context": "",
+    "image_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "require_digest": true,
+    "registry_allowlist": ["docker.io"]
+  },
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "printf 'provenance policy\\n' > provenance.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["provenance.txt"]},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

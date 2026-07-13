@@ -289,7 +289,7 @@ expect("policy attaches selected security profiles", contains(to_string(profile_
 podman_policy := build_policy(with_backend(definition, "podman", "crun"), "test-podman", "/tmp/workcell-test-workspace")
 expect("podman policy uses OCI engine and runtime class", podman_policy["runtime_engine"] == "podman"&&contains(to_string(podman_policy["docker_args"]), "podman") == 1&&contains(to_string(podman_policy["docker_args"]), "crun") == 1)
 podman_receipt := new_receipt(with_backend(definition, "podman", ""), "workcell.json", "test-podman-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, podman_policy, "/tmp/workcell-output")
-expect("receipt records selected runtime backend", podman_receipt["runtime_backend"] == "podman")
+expect("receipt records version and selected runtime backend", podman_receipt["schema_version"] == "workcell-receipt/v1"&&podman_receipt["runtime_backend"] == "podman")
 empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)
 expect("empty verification plan succeeds without Docker work", empty_verification["ok"]&&len(empty_verification["checks"]) == 0)
 verification_secret_definition := with_verification(with_secret(definition, "AUDIT_SECRET"), [{"name": "secret-check", "command": ["sh", "-lc", "printf artifact-secret"]}])

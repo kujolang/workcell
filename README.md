@@ -32,6 +32,7 @@ export KUJO=/path/to/kujo/target/release/kujo
 $KUJO check main.kujo
 docker build --tag kujolang/workcell-base:local docker/
 ./tests/run.sh
+./tests/release_report.sh
 ./bin/workcell doctor --backend docker
 ```
 
@@ -49,6 +50,8 @@ docker build --tag kujolang/workcell-base:local docker/
 `workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` before running the local examples; build `docker/kujo/Dockerfile.local` from a Kujo checkout at the exact commit in `RUNTIME_VERSION` for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
 
 `workcell verify --run <run-directory> --json` verifies the run's versioned integrity manifest and detects tampering in immutable evidence files without exposing secret values.
+
+`tests/release_report.sh` runs the Kujo-native offline suites and emits one `workcell-report/v1` JSON summary with assertion counts, elapsed time, and explicitly skipped deployment gates.
 
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
@@ -135,6 +138,7 @@ Docker integration tests are opt-in because the local daemon may not be availabl
 - [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Definition reference](docs/workcell-definition.md)
 - [Platform compatibility](docs/compatibility.md)
+- [API compatibility](docs/api-compatibility.md)
 - [Lifecycle](docs/runtime-lifecycle.md)
 - [Development](docs/development.md)
 - [Roadmap](docs/roadmap.md)

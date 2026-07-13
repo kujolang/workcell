@@ -4,7 +4,7 @@ Updated: 2026-07-12
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 88 offline policy/artifact/verification assertions, 9 workspace assertions, 5 deterministic stress assertions, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 88 offline policy/artifact/verification assertions, 9 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
@@ -62,23 +62,23 @@ Acceptance: every adapter has a deterministic fixture contract covering argv, bo
 
 ## Priority 3 — Kujo showcase and developer experience
 
-### [ ] Kujo-native test and benchmark reporting
+### [x] Kujo-native test and benchmark reporting
 
 Expose a concise machine-readable test/benchmark summary for the Workcell suite, including assertion counts, elapsed time, and skipped deployment gates. Keep the shell scripts as orchestration only.
 
-Acceptance: a new contributor can run one command and obtain a structured local release report without parsing terminal prose.
+Acceptance: a new contributor can run `tests/release_report.sh` and obtain a structured `workcell-report/v1` JSON summary without parsing terminal prose. The Kujo renderer reports suite counts, elapsed time, exit codes, and skipped deployment gates.
 
-### [ ] Example matrix expansion
+### [x] Example matrix expansion
 
 Add examples for secrets, custom networks, Podman, digest verification, signature verification, artifact rejection/redaction, and an intentionally failed verification. Each example must state whether it needs Docker, Podman, cosign, or sibling tools.
 
-Acceptance: every example validates offline; runtime-dependent examples have a smoke command and expected receipt assertions.
+Acceptance: every example validates offline; the matrix now covers secrets, custom networks, digest/signature policy, artifact rejection/redaction, and intentionally failed verification, with explicit Docker/Podman/cosign/sibling-tool dependencies.
 
-### [ ] Documentation and API compatibility policy
+### [x] Documentation and API compatibility policy
 
 Publish the definition, receipt, clean/inventory, and integration schemas as compatibility contracts with additive-change rules, deprecation windows, and exit-code stability guarantees.
 
-Acceptance: README links to the contracts, `help --json` and `validate --schema` agree with the docs, and CI catches stale examples or field names.
+Acceptance: README links to `docs/api-compatibility.md`; `help --json`, `validate --schema`, receipt, manifest, inventory, cleanup, and integration identifiers are documented and tested; example validation and schema contract checks run in the default suite.
 
 ## Explicit non-goals for the next session
 

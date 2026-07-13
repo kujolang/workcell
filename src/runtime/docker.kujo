@@ -354,7 +354,7 @@ export func owned_resource_inventory(backend) {
     if containers["ok"] == false||images["ok"] == false||networks["ok"] == false {
         return {"ok": false, "containers": containers, "images": images, "networks": networks, "error": "could not inventory all Workcell-labeled Docker resources"}
     }
-return {"ok": true, "containers": containers["items"], "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
+return {"schema_version": "workcell-runtime-inventory/v1", "ok": true, "containers": containers["items"], "images": images["items"], "networks": networks["items"], "image_retention": "preserved unless --prune-images is explicit", "network_retention": "preserved; custom networks are operator-owned"}
 }
 
 export func clean_owned_resources_with_options(prune_images, backend) {

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "signature-policy-workcell",
+  "runtime": {
+    "backend": "docker",
+    "image": "kujolang/workcell-base:local",
+    "build_context": "",
+    "signature_key": "workcell.pub",
+    "require_signature": true,
+    "registry_allowlist": ["docker.io"]
+  },
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "printf 'signature policy\\n' > signature.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": [],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["signature.txt"]},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

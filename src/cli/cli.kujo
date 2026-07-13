@@ -309,6 +309,11 @@ if status == "cleanup-failed" {
 return 10
 }
 
+func display_value(value, fallback) {
+    if type(value) == "null"||to_string(value) == "" {return fallback}
+    return to_string(value)
+}
+
 func print_run_result(result, json_mode) {
     if json_mode {
         print(to_json_pretty(result))
@@ -317,16 +322,16 @@ func print_run_result(result, json_mode) {
 if result["ok"] {
     print("Workcell completed")
 } else {
-print("Workcell failed during " + get_or(result, "stage", "internal"))
-print("Cause: " + get_or(result, "error", "see receipt"))
+print("Workcell failed during " + display_value(get_or(result, "stage", "internal"), "internal"))
+print("Cause: " + display_value(get_or(result, "error", "see receipt"), "see receipt"))
 }
 print("")
 print("Run:           " + result["run_id"])
 print("Exit code:     " + to_string(get_or(result, "exit_code", "-")))
-print("Receipt:       " + get_or(result, "receipt_path", "-"))
-print("Patch:         " + get_or(result, "patch_path", "-"))
-print("Output:        " + get_or(result, "output_dir", "-"))
-print("Cleanup:       " + get_or(result, "cleanup_status", "unknown"))
+print("Receipt:       " + display_value(get_or(result, "receipt_path", "-"), "-"))
+print("Patch:         " + display_value(get_or(result, "patch_path", "-"), "-"))
+print("Output:        " + display_value(get_or(result, "output_dir", "-"), "-"))
+print("Cleanup:       " + display_value(get_or(result, "cleanup_status", "unknown"), "unknown"))
 if has_key(result, "receipt") {
     receipt := result["receipt"]
     print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
@@ -368,7 +373,7 @@ mut inventory_ok := docker["ok"]
 if temp["ok"] == false {
     inventory_ok = false
 }
-result := {"ok": inventory_ok, "dry_run": true, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
+result := {"schema_version": "workcell-clean/v1", "ok": inventory_ok, "dry_run": true, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp, "actions": {"containers": "remove-owned", "images": image_action, "networks": "preserve-operator-owned"}}
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else {
@@ -384,7 +389,7 @@ return 9
 docker := clean_owned_resources_with_options(prune_images, backend)
 temp := clean_stale_workspaces(get_or(docker, "active_run_ids", []))
 clean_ok := docker["ok"]&&temp["ok"]
-result := {"ok": clean_ok, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp}
+result := {"schema_version": "workcell-clean/v1", "ok": clean_ok, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp}
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else {

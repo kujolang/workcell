@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "artifact-policy-workcell",
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-base:local", "build_context": ""},
+  "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
+  "command": ["sh", "-lc", "printf '%s\\n' \"$WORKCELL_ARTIFACT_SECRET\" > exported.txt"],
+  "environment": {"allow": [], "set": {}},
+  "secrets": ["WORKCELL_ARTIFACT_SECRET"],
+  "resources": {"cpus": 1, "memory": "256m", "pids": 64, "timeout_ms": 60000},
+  "network": {"mode": "none"},
+  "filesystem": {"read_only_root": true, "tmpfs": ["/tmp"]},
+  "artifacts": {"export": ["exported.txt"], "max_bytes": 4096, "max_files": 1, "max_depth": 2, "allowed_extensions": [".txt"], "secret_action": "reject"},
+  "cleanup": {"keep_failed": false},
+  "trust_profile": "contained-standard",
+  "receipt": {"path": ".workcell/runs"}
+}

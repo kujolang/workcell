@@ -14,6 +14,7 @@ return output
 
 export func new_receipt(definition, definition_path, run_identifier, source, workspace, policy, output_dir) {
     return {
+        "schema_version": "workcell-receipt/v1",
         "run_id": run_identifier,
         "workcell_name": definition["name"],
         "workcell_version": definition["version"],

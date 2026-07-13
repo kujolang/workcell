@@ -11,6 +11,8 @@ printf '%s' "$CLI_SCHEMA" | jq -e '.schema_version == "workcell-cli/v1" and ([.c
 grep -Fq 'workcell-receipt/v1' "$ROOT/src/receipts/receipt.kujo"
 grep -Fq 'workcell-runtime-inventory/v1' "$ROOT/src/runtime/docker.kujo"
 grep -Fq 'workcell-clean/v1' "$ROOT/src/cli/cli.kujo"
+grep -Fq 'workcell-oci-evidence/v1' "$ROOT/tests/oci_smoke.sh"
+grep -Fq 'workcell-oci-evidence/v1' "$ROOT/docs/api-compatibility.md"
 grep -Fq 'docs/api-compatibility.md' "$ROOT/README.md"
 
 echo "Schema compatibility contract passed"

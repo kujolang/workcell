@@ -45,6 +45,16 @@ jobs:
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/docker_integration.sh
 
+      - name: Install Podman for OCI backend evidence
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes podman
+
+      - name: Run rootless-capable Podman OCI smoke
+        shell: bash
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/oci_smoke.sh podman
+
       - name: Run Workcell doctor
         shell: bash
         run: KUJO="$KUJO_BIN" ./bin/workcell doctor --json

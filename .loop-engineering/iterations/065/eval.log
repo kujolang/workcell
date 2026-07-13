@@ -1,0 +1,20 @@
+Iteration 065 verification
+
+Pinned runtime build:
+- `CARGO_PROFILE_RELEASE_LTO=off CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 cargo build --release --locked --manifest-path /tmp/kujo-pinned/Cargo.toml --target-dir /tmp/kujo-pinned/target` — passed.
+
+Static/quality:
+- `env KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/quality.sh` — passed.
+- `git diff --check` — passed.
+
+Offline/release:
+- `env KUJO=/tmp/kujo-pinned/target/release/kujo EMPTY_SECRET='' LONG_SECRET='longsecret' AUDIT_SECRET='artifact-secret' ./tests/run.sh` — passed; Workcell 194, workspace 27, stress 7.
+- `env KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/release_report.sh` — passed; `workcell-report/v1`, total 228, failed 0.
+
+Docker deployment gates:
+- `REQUIRE_BACKEND=true KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/docker_integration.sh docker` — passed.
+- `REQUIRE_BACKEND=true KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/oci_smoke.sh docker` — passed.
+- `REQUIRE_BACKEND=true KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/egress_integration.sh docker` — passed.
+- `REQUIRE_BACKEND=true KUJO=/tmp/kujo-pinned/target/release/kujo ./tests/load_integration.sh docker` — passed; four concurrent runs.
+
+Podman was not installed or reachable on the current host; previously recorded Colima-backed rootless evidence remains deployment evidence rather than a current-host claim.

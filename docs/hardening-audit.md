@@ -1,6 +1,6 @@
 # Workcell hardening audit
 
-Date: 2036-07-11
+Date: 2026-07-11
 
 The audit reproduced four defects before fixes. Each now has a regression test:
 
@@ -22,6 +22,8 @@ Iteration 062 specifically verified that workspace scans return the depth actual
 Iteration 063 added fail-closed API-boundary validation for workspace strategies, cleanup strategies, run identifiers, and non-string CLI tokens. The current totals at that iteration were 191 Workcell, 27 workspace, and 7 stress assertions.
 
 Iteration 064 closed a related parser lookahead defect: value options now reject non-string following tokens before `starts_with` is called. Current totals are 192 Workcell, 27 workspace, and 7 stress assertions.
+
+Iteration 065 closed two local API-boundary defects: null secrets could reach a `len()` call before validation, and non-boolean image ensure flags could reach daemon/image operations. Both now fail closed with regression coverage.
 
 The follow-up hardening pass also added declarative verification containers, bounded artifact export policies, host-mapped workspace ownership, bounded workspace scans, image ID/platform/label provenance, `clean --dry-run` inventory with explicit image retention, a first-class verification example, version-source validation, a compatibility matrix, and a 2,000-file opt-in performance signal.
 

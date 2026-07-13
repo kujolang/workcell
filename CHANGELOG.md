@@ -9,6 +9,7 @@
 - Hardened workspace scan depth accounting: scans now report observed depth and fail closed when file entries exceed the configured depth limit.
 - Hardened workspace and CLI API boundaries: unsupported workspace strategies, malformed run identifiers, and non-string CLI tokens now fail closed with regression coverage; release evidence is now 225 passing assertions.
 - Closed a remaining CLI parser crash when a value option was followed by a non-string token; structured argument validation now covers both standalone and option-value tokens.
+- Hardened definition validation against null secret sections and rejected non-boolean image ensure options before daemon/image operations; current release evidence is 228 passing assertions.
 
 ## 0.1.0
 

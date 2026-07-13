@@ -277,6 +277,14 @@ func change_details_check(details) {
 if type(get_or(details, "files", null)) != "array"||type(get_or(details, "summary", null)) != "dict" {
     return {"ok": false, "error": "change details input is incomplete"}
 }
+mut i := 0
+while i < len(details["files"]) {
+    entry := details["files"][i]
+    if type(entry) != "dict"||type(get_or(entry, "path", "")) != "string"||get_or(entry, "path", "") == "" {
+        return {"ok": false, "error": "change details contains an invalid file entry"}
+    }
+i = i + 1
+}
 return {"ok": true}
 }
 
@@ -389,6 +397,9 @@ export func write_change_report_from_details(workspace, output_path, patch_bytes
     if workspace_check["ok"] == false {
         return workspace_check
     }
+if type(output_path) != "string"||output_path == ""||type(patch_bytes) != "int"||patch_bytes < 0 {
+    return {"ok": false, "error": "change report output path and patch bytes are invalid"}
+}
 details_check := change_details_check(details)
 if details_check["ok"] == false {
     return details_check

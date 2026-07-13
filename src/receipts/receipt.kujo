@@ -18,16 +18,19 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(run_identifier) != "string"||run_identifier == "" {
+    return {"ok": false, "error": "receipt run identifier must be a non-empty string"}
+}
 if type(definition_path) != "string"||definition_path == ""||file_exists(definition_path) == false {
     return {"ok": false, "error": "receipt definition path is missing or does not exist"}
 }
-if type(source) != "dict"||get_or(source, "source_root", "") == ""||get_or(source, "source_commit", "") == "" {
+if type(source) != "dict"||type(get_or(source, "source_root", "")) != "string"||type(get_or(source, "source_commit", "")) != "string"||get_or(source, "source_root", "") == ""||get_or(source, "source_commit", "") == "" {
     return {"ok": false, "error": "receipt source input is incomplete"}
 }
-if type(workspace) != "dict"||get_or(workspace, "strategy", "") == ""||get_or(workspace, "workspace_path", "") == "" {
+if type(workspace) != "dict"||type(get_or(workspace, "strategy", "")) != "string"||type(get_or(workspace, "workspace_path", "")) != "string"||get_or(workspace, "strategy", "") == ""||get_or(workspace, "workspace_path", "") == "" {
     return {"ok": false, "error": "receipt workspace input is incomplete"}
 }
-if type(policy) != "dict"||get_or(policy, "runtime_backend", "") == ""||get_or(policy, "container_name", "") == "" {
+if type(policy) != "dict"||type(get_or(policy, "runtime_backend", "")) != "string"||type(get_or(policy, "container_name", "")) != "string"||get_or(policy, "runtime_backend", "") == ""||get_or(policy, "container_name", "") == "" {
     return {"ok": false, "error": "receipt policy input is incomplete"}
 }
 if type(output_dir) != "string"||output_dir == "" {
@@ -101,7 +104,7 @@ return {
 }
 
 export func add_state(receipt, state) {
-    if type(receipt) != "dict"||type(get_or(receipt, "lifecycle", null)) != "array" {
+    if type(receipt) != "dict"||type(get_or(receipt, "lifecycle", null)) != "array"||type(state) != "string"||state == "" {
         return {"ok": false, "error": "receipt input is missing lifecycle"}
     }
 receipt["lifecycle"] := push(receipt["lifecycle"], state)
@@ -110,7 +113,7 @@ return receipt
 }
 
 export func add_error(receipt, stage, message) {
-    if type(receipt) != "dict"||type(get_or(receipt, "errors", null)) != "array"||type(get_or(receipt, "secret_names", null)) != "array" {
+    if type(receipt) != "dict"||type(get_or(receipt, "errors", null)) != "array"||type(get_or(receipt, "secret_names", null)) != "array"||type(stage) != "string"||stage == "" {
         return {"ok": false, "error": "receipt input is missing errors or secret_names"}
     }
 errors := receipt["errors"]
@@ -121,7 +124,7 @@ return receipt
 }
 
 export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status, elapsed_ms, execution_succeeded, artifacts_succeeded) {
-    if type(receipt) != "dict"||type(get_or(receipt, "verification", null)) != "dict" {
+    if type(receipt) != "dict"||type(get_or(receipt, "verification", null)) != "dict"||type(final_status) != "string"||final_status == ""||type(exit_code) != "int"||type(timed_out) != "bool"||type(image_digest) != "string"||type(changed) != "array"||type(artifacts) != "array"||type(cleanup_status) != "string"||cleanup_status == ""||type(elapsed_ms) != "int"||elapsed_ms < 0||type(execution_succeeded) != "bool"||type(artifacts_succeeded) != "bool"||(type(patch_path) != "null"&&type(patch_path) != "string") {
         return {"ok": false, "error": "receipt input is missing verification"}
     }
 receipt["end_time"] := now_utc()

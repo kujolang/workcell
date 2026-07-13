@@ -994,19 +994,19 @@ value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "
 mut network_had_egress := false
 if type(value["network"]) == "dict" {
     network_had_egress = has_key_safe(value["network"], "egress")
-}
-value = fill_section_defaults(value, defaults, "network", ["mode", "name", "egress"])
-if network_had_egress == false&&value["network"]["mode"] != "none" {
-    network_value := value["network"]
-    network_value["egress"] := {"policy": "unmanaged", "dns": "inherited", "proxy": "none", "enforcement_profile": "none"}
-    value["network"] := network_value
-}
+    value = fill_section_defaults(value, defaults, "network", ["mode", "name", "egress"])
+    if network_had_egress == false&&value["network"]["mode"] != "none" {
+        network_value := value["network"]
+        network_value["egress"] := {"policy": "unmanaged", "dns": "inherited", "proxy": "none", "enforcement_profile": "none"}
+        value["network"] := network_value
+    }
 network_value := value["network"]
 egress_value := network_value["egress"]
 if type(egress_value) == "dict" {
     egress_value = fill_section_defaults({"egress": egress_value}, {"egress": defaults["network"]["egress"]}, "egress", ["policy", "dns", "proxy", "enforcement_profile"])["egress"]
     network_value["egress"] := egress_value
     value["network"] := network_value
+}
 }
 value = fill_section_defaults(value, defaults, "filesystem", ["read_only_root", "tmpfs", "seccomp_profile", "apparmor_profile"])
 value = fill_section_defaults(value, defaults, "artifacts", ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"])

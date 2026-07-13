@@ -18,6 +18,7 @@ git -C "$TMP_REPO" commit -qm initial
 test "$(jq -r '.ok' "$OUT_ROOT/result.json")" = true
 receipt="$(jq -r '.receipt_path' "$OUT_ROOT/result.json")"
 jq -e '.final_status == "dry-run" and .elapsed_ms >= 0 and (.lifecycle | contains(["cleaning", "cleaned"])) and .verification.execution_succeeded == false and .verification.artifacts_exported == false' "$receipt" >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- verify --run "$(dirname "$receipt")" --json | jq -e '.ok == true and .manifest.schema_version == "workcell-manifest/v1"' >/dev/null
 workspace="$(jq -r '.workspace_path' "$receipt")"
 test ! -e "$workspace"
 test ! -e "$workspace.owner"

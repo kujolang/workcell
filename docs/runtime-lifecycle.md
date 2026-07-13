@@ -14,7 +14,7 @@ created → validated → preparing → prepared → starting → running
 4. **Collect**: capture stdout/stderr, exit status, timing, changed files, and a Git patch.
 5. **Verify**: reject post-run workspace symlinks, run the versioned declarative checks in separate labeled containers when the workload succeeds, validate patch/artifact boundaries, and record execution versus verification separately.
 6. **Export**: stream bounded stdout/stderr to redacted run logs while the container runs, then copy declared artifacts only into the run directory and apply the same secret policy to persisted evidence.
-7. **Record**: write the structured receipt, including failure stage and diagnostics.
+7. **Record**: write the structured receipt, including failure stage, diagnostics, and a versioned integrity manifest that can be verified offline with `workcell verify`.
 8. **Clean**: remove the labeled container and ownership-marked temporary worktree. On failure, `--keep-failed` preserves only the explicitly owned temporary workspace.
 
 Timeouts are distinct from ordinary workload failures. The process API returns a timeout result; Workcell retrieves available container logs, attempts `docker stop --time 10`, then escalates to labeled `docker rm -f`. The receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.

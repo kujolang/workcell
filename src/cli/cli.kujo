@@ -5,6 +5,7 @@ from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
 from src.policy.policy import inspect_policy
 from src.runtime.docker import clean_owned_resources_with_options, owned_resource_inventory
+from src.receipts.manifest import verify_manifest
 from src.util import get_or, project_version, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
 
@@ -31,7 +32,7 @@ return fallback
 
 func parse_args(tokens) {
     bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images"]
-    value_flags := ["file", "repo", "output", "backend"]
+    value_flags := ["file", "repo", "output", "backend", "run"]
     mut positionals := []
     mut flags := {}
     mut i := 0
@@ -102,6 +103,7 @@ func help_value() {
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
         {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
+        {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         ],
         "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "Docker or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
@@ -123,6 +125,7 @@ print_lines([
 "  workcell validate [--file <path>] [--json] [--schema]",
 "  workcell inspect [--file <path>] [--repo <path>] [--json]",
 "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
+"  workcell verify --run <dir> [--json]",
 "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
 "",
 "Run options:",
@@ -191,6 +194,7 @@ if loaded["ok"] {
 } else {
 result["error"] := loaded["error"]
 }
+
 if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else if loaded["ok"] {
@@ -203,6 +207,26 @@ if loaded["ok"] {
     return 0
 }
 return 2
+}
+
+func verify_command(parsed) {
+    run_path := flag(parsed, "run", "")
+    if type(run_path) != "string"||trim(run_path) == "" {
+        print("error: verify requires --run <dir>")
+        return 2
+    }
+result := verify_manifest(run_path)
+value := {"ok": result["ok"], "run_dir": run_path, "manifest": result}
+if has_flag(parsed, "json") {
+    print(to_json_pretty(value))
+} else if result["ok"] {
+print("Integrity manifest verified: " + run_path)
+print("Files: " + to_string(result["files"]) + "  Bytes: " + to_string(result["bytes"]))
+} else {
+print("Integrity manifest verification failed: " + result["error"])
+}
+if result["ok"] {return 0}
+return 8
 }
 
 func inspect_command(parsed) {
@@ -416,6 +440,9 @@ if command == "inspect" {
 }
 if command == "run" {
     return run_command(parsed)
+}
+if command == "verify" {
+    return verify_command(parsed)
 }
 if command == "clean" {
     return clean_command(parsed)

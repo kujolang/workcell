@@ -12,6 +12,7 @@ check_all() {
   "$KUJO" check "$ROOT/tests/workcell_test.kujo"
   "$KUJO" check "$ROOT/tests/workspace_test.kujo"
   "$KUJO" check "$ROOT/tests/performance_test.kujo"
+  "$KUJO" check "$ROOT/tests/stress_test.kujo"
 }
 
 if [ "${1:-}" = "--check-only" ]; then
@@ -23,6 +24,7 @@ check_all
 EMPTY_SECRET="" LONG_SECRET="longsecret" AUDIT_SECRET="artifact-secret" "$KUJO" run "$ROOT/tests/workcell_test.kujo"
 "$KUJO" run "$ROOT/tests/workspace_test.kujo"
 "$KUJO" run "$ROOT/tests/performance_test.kujo"
+"$KUJO" run "$ROOT/tests/stress_test.kujo"
 KUJO="$KUJO" "$ROOT/tests/path_safety.sh"
 KUJO="$KUJO" "$ROOT/tests/adversarial.sh"
 KUJO="$KUJO" "$ROOT/tests/dry_run.sh"

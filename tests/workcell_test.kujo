@@ -3,8 +3,9 @@
 from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy
+from src.receipts.manifest import verify_manifest, write_manifest
 from src.receipts.receipt import add_error, new_receipt
-from src.util import ensure_dir, normalized_relative, process_error, read_text, redact, run_argv, run_id
+from src.util import ensure_dir, get_or, load_json, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
 from src.integrations.integrations import dry_run_integrations, run_integrations
 
@@ -353,6 +354,21 @@ redact_export := export_declared_with_policy(policy_fixture + "/workspace", poli
 redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
 expect("artifact secret redaction hook changes exported content", redact_export["ok"]&&redacted_artifact["text"] == "[REDACTED]\n")
 run_argv(["rm", "-rf", policy_fixture], 30000)
+
+manifest_fixture := "/tmp/workcell-manifest-contract-" + run_id()
+ensure_dir(manifest_fixture + "/artifacts")
+write_file_atomic(manifest_fixture + "/stdout.log", "manifested output\n", true)
+write_file_atomic(manifest_fixture + "/artifacts/result.txt", "artifact\n", true)
+write_file_atomic(manifest_fixture + "/receipt.json", "excluded receipt\n", true)
+manifest_result := write_manifest(manifest_fixture, "manifest-run")
+manifest_value := load_json(manifest_fixture + "/manifest.json")
+manifest_verify := verify_manifest(manifest_fixture)
+manifest_files := get_or(manifest_value["value"], "files", [])
+expect("integrity manifest records versioned hashes and excludes receipt", manifest_result["ok"]&&manifest_verify["ok"]&&manifest_value["value"]["schema_version"] == "workcell-manifest/v1"&&len(manifest_files) == 2&&contains(to_json(manifest_files), "receipt.json") == 0)
+write_file_atomic(manifest_fixture + "/stdout.log", "tampered output\n", true)
+tampered_manifest := verify_manifest(manifest_fixture)
+expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "mismatch") == 1)
+run_argv(["rm", "-rf", manifest_fixture], 30000)
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

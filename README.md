@@ -48,6 +48,8 @@ docker build --tag kujolang/workcell-base:local docker/
 
 `workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` before running the local examples; build `docker/kujo/Dockerfile.local` from a Kujo checkout at the exact commit in `RUNTIME_VERSION` for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
 
+`workcell verify --run <run-directory> --json` verifies the run's versioned integrity manifest and detects tampering in immutable evidence files without exposing secret values.
+
 Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
 
 After a run, inspect the evidence directly:
@@ -68,6 +70,7 @@ cat .workcell/runs/<run-id>/stderr.log
 | `validate` | Parse and semantically validate a definition without running Docker; `--schema` emits the versioned contract. |
 | `inspect` | Display resolved config, mounts, resources, secrets by name, runtime backend, and security arguments. |
 | `run` | Execute the complete validate/prepare/launch/collect/verify/export/record/clean lifecycle. |
+| `verify` | Verify a run directory's versioned SHA-256 integrity manifest offline. |
 | `clean` | Remove only Workcell-owned containers and temporary workspaces; `--dry-run` inventories resources, and `--prune-images` explicitly removes labeled images. |
 
 Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`. `doctor` and `clean` accept `--backend docker|podman`; Docker remains the default. Verification commands run in separate labeled containers with the same policy and appear under `receipt.json.verification.checks`.
@@ -90,6 +93,7 @@ Each run produces, when the lifecycle reaches the relevant stage:
 ├── integrations/
 ├── changes.patch
 ├── changes.json
+├── manifest.json
 └── artifacts/
 ```
 

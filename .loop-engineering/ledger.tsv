@@ -7,3 +7,6 @@ iteration	action	verdict	progress	evidence	justification
 005	p2-runtime-and-evidence-hardening	success	1	manual-gates-2026-07-12	P2 adapters, Podman contract, Kujo cwd option, Docker integration, 74+8 Workcell assertions, and zero-warning Fence passed; live Podman remains host-owned
 006	p2-adversarial-and-doctor-audit	success	1	manual-gates-2026-07-12	Atomic-write checks, truthful dry-run integration skips, runtime-class rejection, backend-aware Docker/Podman doctor, adversarial suite, Docker integration, 77+8 assertions, and zero-warning Fence passed; live Podman remains host-owned
 007	enterprise-readiness-review	success	1	manual-gates-2026-07-12	Changed-file analysis reuse, backend-neutral runtime contracts, RunLedger finish-state reporting, safe doctor temp-root handling, exact and digest-pinned Kujo example images, README/root-layout review, 78+8 assertions, Docker integration, and zero-warning Fence passed; deployment-owned boundaries remain explicit
+001	configured-gates	failed	0	iterations/001/eval.log	required gate failed
+002	configured-gates	failed	0	iterations/002/eval.log	required gate failed
+003	configured-gates	failed	0	iterations/003/eval.log	required gate failed

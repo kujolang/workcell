@@ -3,6 +3,7 @@
 from src.artifacts.exporter import export_declared_with_policy, write_execution_logs
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
+from src.receipts.manifest import write_manifest
 from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
 from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_symlink, path_within, redact_with_env, run_id
 from src.workspace.workspace import changed_files_from_details, change_details, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report_from_details
@@ -75,6 +76,17 @@ func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, 
     }
 }
 
+func attach_manifest(receipt, output_dir, run_identifier) {
+    manifest := write_manifest(output_dir, run_identifier)
+    if manifest["ok"] == false {
+        return {"ok": false, "error": manifest["error"]}
+    }
+receipt["manifest_path"] := manifest["relative_path"]
+receipt["manifest_files"] := manifest["files"]
+receipt["manifest_bytes"] := manifest["bytes"]
+return {"ok": true, "receipt": receipt}
+}
+
 export func run_workcell(definition_path, repo_path, requested_output, flags) {
     run_identifier := run_id()
     loaded := load_definition(definition_path)
@@ -144,6 +156,12 @@ if is_true(option(flags, "dry_run", false)) {
         receipt = add_state(receipt, "cleaned")
     }
 receipt = finish_receipt(receipt, "dry-run", 0, false, "", [], null, [], dry_cleanup_status, current_timestamp() - start_clock, false, false)
+dry_manifest := attach_manifest(receipt, output_dir, run_identifier)
+if dry_manifest["ok"] {
+    receipt = dry_manifest["receipt"]
+} else {
+receipt = add_error(receipt, "recording", dry_manifest["error"])
+}
 dry_write := write_receipt(receipt, receipt_path)
 if dry_write["ok"] == false {
     return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", dry_write["error"], 10, false, false, dry_cleanup_status)
@@ -171,6 +189,12 @@ if cleanup["ok"] {
 receipt = add_state(receipt, "cleaned")
 }
 receipt = finish_receipt(receipt, "failed", 4, false, "", [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
+image_manifest := attach_manifest(receipt, output_dir, run_identifier)
+if image_manifest["ok"] {
+    receipt = image_manifest["receipt"]
+} else {
+receipt = add_error(receipt, "recording", image_manifest["error"])
+}
 image_write := write_receipt(receipt, receipt_path)
 if image_write["ok"] == false {
     return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, false, cleanup_status)
@@ -229,6 +253,12 @@ if cleanup_status == "failed" {
     start_error = "container startup failed and cleanup was incomplete"
 }
 receipt = finish_receipt(receipt, start_status, start_exit_code, false, receipt["container_image_digest"], [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
+start_manifest := attach_manifest(receipt, output_dir, run_identifier)
+if start_manifest["ok"] {
+    receipt = start_manifest["receipt"]
+} else {
+receipt = add_error(receipt, "recording", start_manifest["error"])
+}
 start_write := write_receipt(receipt, receipt_path)
 if start_write["ok"] == false {
     return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, false, cleanup_status)
@@ -395,6 +425,16 @@ receipt["integration_status"] := "failed"
 warnings := receipt["warnings"]
 warnings = push(warnings, "one or more opt-in ecosystem integrations failed; see receipt.integrations")
 receipt["warnings"] := warnings
+}
+manifest_result := attach_manifest(receipt, output_dir, run_identifier)
+if manifest_result["ok"] {
+    receipt = manifest_result["receipt"]
+} else {
+receipt = add_error(receipt, "recording", manifest_result["error"])
+final_ok = false
+final_status = "internal"
+exit_code = 10
+final_error = manifest_result["error"]
 }
 final_write := write_receipt(receipt, receipt_path)
 if final_write["ok"] == false {

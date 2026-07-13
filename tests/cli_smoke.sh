@@ -12,7 +12,7 @@ trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION"' EXIT
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json"
 test -f "$TMP_DIR/workcell.json"
 "$KUJO" run "$ROOT/main.kujo" -- validate --schema | jq -e '.schema_version == "workcell-definition/v1" and (.fields | has("verification"))' >/dev/null
-"$KUJO" run "$ROOT/main.kujo" -- help --json | jq -e '.schema_version == "workcell-cli/v1" and (.exit_codes["8"] | contains("verification"))' >/dev/null
+"$KUJO" run "$ROOT/main.kujo" -- help --json | jq -e '.schema_version == "workcell-cli/v1" and (.exit_codes["8"] | contains("verification")) and ([.commands[] | select(.name == "verify")] | length) == 1' >/dev/null
 
 set +e
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json" >/dev/null

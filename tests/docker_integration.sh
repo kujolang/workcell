@@ -92,6 +92,15 @@ test -f "$HELLO_RUN_DIR/stderr.log"
 jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.cancelled == false' "$HELLO_RECEIPT" >/dev/null
+jq -e '.manifest_path == "manifest.json" and .manifest_schema_version == "workcell-manifest/v1" and .manifest_files >= 4' "$HELLO_RECEIPT" >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" verify --run "$HELLO_RUN_DIR" --json | jq -e '.ok == true and .manifest.files >= 4' >/dev/null
+printf 'tampered\n' >> "$HELLO_RUN_DIR/stdout.log"
+set +e
+VERIFY_TAMPERED="$(KUJO="$KUJO" "$ROOT/bin/workcell" verify --run "$HELLO_RUN_DIR" --json 2>/dev/null)"
+VERIFY_TAMPERED_CODE=$?
+set -e
+test "$VERIFY_TAMPERED_CODE" -eq 8
+printf '%s' "$VERIFY_TAMPERED" | jq -e '.ok == false and (.manifest.error | contains("mismatch"))' >/dev/null
 git -C "$TMP_REPO" diff --quiet
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/verification/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/verification"

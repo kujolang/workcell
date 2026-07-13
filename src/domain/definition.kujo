@@ -12,7 +12,10 @@ export func default_definition() {
             "image": "kujolang/workcell-base:local",
             "build_context": "",
             "image_digest": "",
-            "signature_key": ""
+            "signature_key": "",
+            "require_digest": false,
+            "require_signature": false,
+            "registry_allowlist": []
         },
     "workspace": {
         "strategy": "git-worktree",
@@ -176,6 +179,41 @@ while i < len(value) {
         return {"ok": false, "error": label + " must be a sha256 digest"}
     }
 i = i + 1
+}
+
+func valid_registry(value, label) {
+    if type(value) != "string"||trim(value) == ""||len(value) > 255||starts_with(value, "-") {
+        return {"ok": false, "error": label + " must be a bounded registry host name"}
+    }
+mut i := 0
+while i < len(value) {
+    if contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:-", substring(value, i, i + 1)) == 0 {
+        return {"ok": false, "error": label + " contains unsafe characters"}
+    }
+i = i + 1
+}
+return {"ok": true}
+}
+
+func image_registry(image) {
+    parts := split(image, "/")
+    if len(parts) == 1 {return "docker.io"}
+    first := parts[0]
+    if contains(first, ".") == 1||contains(first, ":") == 1||first == "localhost" {
+        return first
+    }
+return "docker.io"
+}
+
+func registry_allowed(image, allowlist) {
+    if len(allowlist) == 0 {return true}
+    registry := image_registry(image)
+    mut i := 0
+    while i < len(allowlist) {
+        if registry == allowlist[i] {return true}
+        i = i + 1
+    }
+return false
 }
 return {"ok": true}
 }
@@ -530,7 +568,7 @@ if name_check["ok"] == false {
 }
 
 runtime := get_or(raw, "runtime", {})
-runtime_keys := validate_keys(runtime, ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"], "runtime")
+runtime_keys := validate_keys(runtime, ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"], "runtime")
 if runtime_keys["ok"] == false {
     return runtime_keys
 }
@@ -551,6 +589,23 @@ image := runtime["image"]
 if starts_with(image, "-")||contains(image, " ") == 1||contains(image, ";") == 1||contains(image, "|") == 1||contains(image, "&") == 1||contains(image, "$") == 1||contains(image, "`") == 1 {
     return {"ok": false, "error": "runtime.image contains unsafe shell characters"}
 }
+require_digest := get_or(runtime, "require_digest", false)
+if type(require_digest) != "bool" {return {"ok": false, "error": "runtime.require_digest must be boolean"}}
+require_signature := get_or(runtime, "require_signature", false)
+if type(require_signature) != "bool" {return {"ok": false, "error": "runtime.require_signature must be boolean"}}
+registry_allowlist := get_or(runtime, "registry_allowlist", [])
+if type(registry_allowlist) != "array"||len(registry_allowlist) > 32 {
+    return {"ok": false, "error": "runtime.registry_allowlist must contain at most 32 registries"}
+}
+mut registry_i := 0
+while registry_i < len(registry_allowlist) {
+    registry_check := valid_registry(registry_allowlist[registry_i], "runtime.registry_allowlist[" + to_string(registry_i) + "]")
+    if registry_check["ok"] == false {return registry_check}
+    registry_i = registry_i + 1
+}
+if registry_allowed(image, registry_allowlist) == false {
+    return {"ok": false, "error": "runtime.image registry is not in runtime.registry_allowlist: " + image_registry(image)}
+}
 image_digest := get_or(runtime, "image_digest", "")
 if image_digest != "" {
     digest_check := valid_image_digest(image_digest, "runtime.image_digest")
@@ -558,12 +613,18 @@ if image_digest != "" {
         return digest_check
     }
 }
+if require_digest&&image_digest == "" {
+    return {"ok": false, "error": "runtime.require_digest requires runtime.image_digest"}
+}
 signature_key := get_or(runtime, "signature_key", "")
 if signature_key != "" {
     signature_check := normalized_relative(signature_key)
     if signature_check["ok"] == false {
         return {"ok": false, "error": "runtime.signature_key: " + signature_check["error"]}
     }
+}
+if require_signature&&signature_key == "" {
+    return {"ok": false, "error": "runtime.require_signature requires runtime.signature_key"}
 }
 build_context := get_or(runtime, "build_context", "")
 if build_context != "" {
@@ -870,7 +931,7 @@ for section in ["runtime", "workspace", "environment", "resources", "network", "
         value[section] := defaults[section]
     }
 }
-value = fill_section_defaults(value, defaults, "runtime", ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"])
+value = fill_section_defaults(value, defaults, "runtime", ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"])
 value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "scan"])
 value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
 value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"])
@@ -922,6 +983,9 @@ export func definition_summary(definition) {
         "image": definition["runtime"]["image"],
         "image_digest": definition["runtime"]["image_digest"],
         "signature_key": definition["runtime"]["signature_key"],
+        "require_digest": definition["runtime"]["require_digest"],
+        "require_signature": definition["runtime"]["require_signature"],
+        "registry_allowlist": definition["runtime"]["registry_allowlist"],
         "command": definition["command"],
         "network_mode": definition["network"]["mode"],
         "timeout_ms": definition["resources"]["timeout_ms"],
@@ -944,7 +1008,7 @@ export func definition_schema() {
         "fields": {
             "version": {"type": "integer", "const": 1},
             "name": {"type": "string", "non_empty": true},
-            "runtime": {"type": "object", "fields": ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key"], "backend_enum": ["docker", "podman"]},
+            "runtime": {"type": "object", "fields": ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"], "backend_enum": ["docker", "podman"], "provenance": "optional digest/signature requirements and registry allowlist"},
             "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
             "command": {"type": "array", "items": "string", "min_items": 1},
             "environment": {"type": "object", "fields": ["allow", "set"]},

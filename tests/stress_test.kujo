@@ -1,0 +1,41 @@
+# Deterministic resource and output-boundary stress contracts.
+
+from src.util import ensure_dir, run_argv, run_argv_options, run_id
+from src.workspace.workspace import find_symlink_with_limits
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+    failed = failed + 1
+    print("FAIL " + label)
+}
+}
+
+fixture := "/tmp/workcell-stress-fixture-" + run_id()
+ensure_dir(fixture + "/nested/deeper")
+write_file_atomic(fixture + "/one.txt", "1234", true)
+write_file_atomic(fixture + "/nested/two.txt", "5678", true)
+write_file_atomic(fixture + "/nested/deeper/three.txt", "90", true)
+
+file_limited := find_symlink_with_limits(fixture, {"max_files": 2, "max_bytes": 100, "max_depth": 128})
+expect("workspace file limit fails closed", file_limited["ok"] == false&&contains(file_limited["error"], "max files") == 1)
+byte_limited := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes": 9, "max_depth": 128})
+expect("workspace byte limit fails closed", byte_limited["ok"] == false&&contains(byte_limited["error"], "max bytes") == 1)
+depth_limited := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes": 100, "max_depth": 1})
+expect("workspace depth limit fails closed", depth_limited["ok"] == false&&contains(depth_limited["error"], "max depth") == 1)
+
+bounded_output := run_argv_options(["sh", "-c", "printf 1234567890"], {"timeout_ms": 30000, "max_output_bytes": 4})
+expect("process output truncation is explicit", bounded_output.stdout_truncated&&len(bounded_output.stdout) <= 4)
+timed := run_argv_options(["sh", "-c", "sleep 1"], {"timeout_ms": 50, "max_output_bytes": 1000})
+expect("process timeout is bounded", timed.timed_out)
+
+run_argv(["rm", "-rf", fixture], 30000)
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}
+exit(0)

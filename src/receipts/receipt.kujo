@@ -30,6 +30,11 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "container_image_digest_source": "",
         "container_image_platform": "",
         "container_image_labels": {},
+        "image_provenance_policy": {
+            "require_digest": definition["runtime"]["require_digest"],
+            "require_signature": definition["runtime"]["require_signature"],
+            "registry_allowlist": definition["runtime"]["registry_allowlist"]
+        },
         "container_name": policy["container_name"],
         "command": redacted_command(definition["command"], definition["secrets"]),
         "start_time": now_utc(),
@@ -53,6 +58,8 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "change_report_path": null,
         "patch_path": null,
         "patch_bytes": 0,
+        "manifest_path": null,
+        "manifest_schema_version": "workcell-manifest/v1",
         "logs_path": output_dir,
         "cleanup_status": "pending",
         "final_status": "created",

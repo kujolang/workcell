@@ -4,7 +4,7 @@ Updated: 2026-07-12
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 78 offline policy/artifact/verification assertions, 8 workspace assertions, adversarial request rejection, Docker integration coverage, structured receipts, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 80 offline policy/artifact/verification assertions, 8 workspace assertions, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
@@ -36,17 +36,17 @@ Acceptance: bounded behavior is deterministic, receipts remain valid under trunc
 
 ## Priority 2 — functionality and interoperability
 
-### [ ] Versioned receipt and artifact manifest
+### [x] Versioned receipt and artifact manifest
 
 Add a versioned manifest containing SHA-256 hashes, byte counts, and relative paths for exported artifacts, patches, logs, and integration reports. Keep secret values and host-sensitive absolute paths out of the manifest.
 
-Acceptance: consumers can verify a run directory offline; tampering is detected; old `receipt.json` consumers remain compatible through an additive schema change.
+Acceptance: consumers can verify a run directory offline; tampering is detected; old `receipt.json` consumers remain compatible through an additive schema change. Implemented through `manifest.json`, `workcell verify`, additive receipt fields, and fixture/Docker tamper tests.
 
-### [ ] Stable backend-neutral result schema
+### [x] Stable backend-neutral result schema
 
 Promote `runtime_backend` and `runtime` fields to the documented clean/inventory contract, while retaining the current `docker` JSON alias through one compatibility period. Add schema/version tests for Docker and Podman outputs.
 
-Acceptance: automation never needs to infer the backend from a Docker-specific field or human-readable text.
+Acceptance: automation never needs to infer the backend from a Docker-specific field or human-readable text. Implemented with `runtime_backend`/`runtime`, a compatibility `docker` alias, backend-aware CLI text, and Docker integration assertions.
 
 ### [ ] Concurrent-run and cleanup coordination
 

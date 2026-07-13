@@ -44,6 +44,6 @@ Workcell definitions are JSON documents with `version: 1`. JSON is declarative, 
 - `verification`: versioned post-run checks. Each command has a stable `name` and argv array, runs in a separate labeled container with the same security policy, and is recorded independently from workload execution. Verification failures return exit code `8`.
 - `cleanup.keep_failed`: default `false`; failed workspace preservation is explicit.
 - `trust_profile`: `contained-standard` (default), `contained-open`, or `native-guarded`; `native-guarded` fails closed unless Docker reports seccomp, AppArmor, and a rootless daemon (or a stronger VM/microVM runtime is used).
-- `receipt.path`: relative project output root, default `.workcell/runs`.
+- `receipt.path`: relative project output root, default `.workcell/runs`. Each completed run also writes `manifest.json` with schema `workcell-manifest/v1`, relative paths, byte counts, and SHA-256 hashes for immutable run evidence. `receipt.json` and `manifest.json` are excluded because the receipt references the manifest; use `workcell verify --run <run-directory>` to validate it offline.
 
 Unknown fields are rejected so misspellings do not silently weaken policy. The CLI's `inspect` command makes defaults and security arguments visible without starting Docker.

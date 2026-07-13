@@ -7,4 +7,4 @@ doctor and clean: passed; no active Workcell containers or temporary workspaces 
 ecosystem gates: passed; Kennel valid; ShipCheck 16/16 with warnings=0; Fence violations=0 and warnings=0
 local Docker host: Colima Docker daemon passed; doctor warns the daemon is not rootless
 Podman rootless smoke: unavailable; Intel macOS/Homebrew Podman formula requires arm64
-GitHub CI run 29222788283: not started; account billing/spending-limit failure reported by GitHub
+GitHub CI run 29223387588: not started; account billing/spending-limit failure reported by GitHub

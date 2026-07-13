@@ -27,8 +27,8 @@ blockers:
     status: host-owned
     next_action: "Run the backend integration suite on a supported rootless Podman host."
   - id: github-actions-billing
-    command: "gh run view 29222788283 --repo kujolang/workcell"
-    evidence: "The latest pushed CI run (29222788283) was not started because the GitHub account has failed recent payments or exceeded its spending limit; prior runs show the same account-level failure."
+    command: "gh run view 29223387588 --repo kujolang/workcell"
+    evidence: "The latest pushed CI run (29223387588) was not started because recent account payments failed or the spending limit needs to be increased; prior runs show the same account-level failure."
     status: external-blocked
     next_action: "Restore GitHub Actions billing/account capacity, then review the required Linux Podman OCI smoke output."
   - id: egress-host-enforcement

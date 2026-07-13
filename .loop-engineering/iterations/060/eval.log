@@ -1,0 +1,15 @@
+iteration 060 evaluation
+base: 99f529f
+objective: harden workspace ownership and startup cleanup contracts
+
+passed: kujo run tests/workspace_test.kujo (23 passed, 0 failed)
+passed: tests/runtime_cleanup_contract.sh
+passed: tests/startup_failure_contract.sh
+passed: tests/run.sh (190 workcell, 23 workspace, 5 stress; all gates passed)
+passed: tests/release_report.sh (218 total, 0 failed)
+passed: tests/quality.sh and git diff --check
+passed: tests/docker_integration.sh
+passed: REQUIRE_BACKEND=true tests/oci_smoke.sh docker
+passed: REQUIRE_BACKEND=true tests/egress_integration.sh docker
+passed: REQUIRE_BACKEND=true tests/load_integration.sh docker
+external: hosted CI billing; production rootless/microVM, host egress/firewall/proxy, image signing/key rotation, and vulnerability governance

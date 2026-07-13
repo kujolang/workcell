@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+marker="${WORKCELL_VERIFICATION_MARKER:?}"
+case "${1:-}" in
+  run)
+    touch "$marker.run"
+    exit 125
+    ;;
+  stop)
+    touch "$marker.stop"
+    exit 0
+    ;;
+  rm)
+    touch "$marker.rm"
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac

@@ -118,9 +118,15 @@ func options_for(command) {
 
 func validate_command_args(parsed, command) {
     positionals := parsed["positionals"]
-    if command != "help"&&command != "version"&&len(positionals) > 1 {
+    if (command == "help"||command == "version")&&has_flag(parsed, command) == false&&len(positionals) > 1 {
         return {"ok": false, "error": "unexpected positional argument for " + command + ": " + to_string(positionals[1])}
     }
+if (command == "help"||command == "version")&&(has_flag(parsed, "help")||has_flag(parsed, "version"))&&len(positionals) > 0 {
+    return {"ok": false, "error": "unexpected positional argument for global " + command + ": " + to_string(positionals[0])}
+}
+if command != "help"&&command != "version"&&len(positionals) > 1 {
+    return {"ok": false, "error": "unexpected positional argument for " + command + ": " + to_string(positionals[1])}
+}
 if command == "help"||command == "version" {
     return {"ok": true}
 }
@@ -310,6 +316,14 @@ while len(preview_root) > 1&&ends_with(preview_root, "/") {
 preview_workspace := preview_root + "/kujo-workcell-inspect"
 output := flag(parsed, "output", repo["root"] + "/.workcell/runs/inspect")
 value := inspect_policy(loaded["definition"], "inspect", preview_workspace, output)
+if get_or(value, "ok", false) == false {
+    if has_flag(parsed, "json") {
+        print(to_json_pretty(value))
+    } else {
+    print("Inspection failed: " + get_or(value, "error", "could not resolve Workcell policy"))
+}
+return 3
+}
 if has_flag(parsed, "json") {
     print(to_json_pretty(value))
 } else {

@@ -7,7 +7,8 @@ export KUJO
 TMP_DIR="$(mktemp -d)"
 MISSING_OUTPUT="$(mktemp -d)"
 PODMAN_DEFINITION="$(mktemp)"
-trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION"' EXIT
+FAKE_BIN="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION" "$FAKE_BIN"' EXIT
 
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json"
 test -f "$TMP_DIR/workcell.json"
@@ -24,6 +25,20 @@ EXTRA_POSITIONAL_CODE=$?
 set -e
 test "$EXTRA_POSITIONAL_CODE" -eq 2
 printf '%s' "$EXTRA_POSITIONAL" | grep -Fq 'unexpected positional argument'
+
+set +e
+HELP_EXTRA_POSITIONAL="$($KUJO run "$ROOT/main.kujo" -- help unexpected 2>&1)"
+HELP_EXTRA_POSITIONAL_CODE=$?
+set -e
+test "$HELP_EXTRA_POSITIONAL_CODE" -eq 2
+printf '%s' "$HELP_EXTRA_POSITIONAL" | grep -Fq 'unexpected positional argument for help'
+
+set +e
+GLOBAL_HELP_EXTRA_POSITIONAL="$($KUJO run "$ROOT/main.kujo" -- --help unexpected 2>&1)"
+GLOBAL_HELP_EXTRA_POSITIONAL_CODE=$?
+set -e
+test "$GLOBAL_HELP_EXTRA_POSITIONAL_CODE" -eq 2
+printf '%s' "$GLOBAL_HELP_EXTRA_POSITIONAL" | grep -Fq 'unexpected positional argument for global help'
 
 set +e
 INVALID_COMMAND_OPTION="$($KUJO run "$ROOT/main.kujo" -- run --backend podman 2>&1)"
@@ -48,6 +63,21 @@ git -C "$TMP_DIR" add workcell.json
 git -C "$TMP_DIR" commit -qm "add workcell definition fixture"
 
 "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --json | jq -e '.network_mode == "none" and (.docker_security_arguments | contains(["--read-only"]))' >/dev/null
+
+ln -s "$(type -P false)" "$FAKE_BIN/id"
+set +e
+INSPECT_FAILURE_HUMAN="$(PATH="$FAKE_BIN:$PATH" "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" 2>&1)"
+INSPECT_FAILURE_HUMAN_CODE=$?
+set -e
+test "$INSPECT_FAILURE_HUMAN_CODE" -eq 3
+printf '%s' "$INSPECT_FAILURE_HUMAN" | grep -Fq 'Inspection failed:'
+set +e
+INSPECT_FAILURE_JSON="$(PATH="$FAKE_BIN:$PATH" "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --json 2>&1)"
+INSPECT_FAILURE_JSON_CODE=$?
+set -e
+test "$INSPECT_FAILURE_JSON_CODE" -eq 3
+printf '%s' "$INSPECT_FAILURE_JSON" | jq -e '.ok == false and (.error | contains("uid/gid"))' >/dev/null
+
 "$KUJO" run "$ROOT/main.kujo" -- validate --file "$ROOT/workcell.json" | grep -Fq 'Backend: docker'
 jq '.runtime.backend = "podman"' "$ROOT/workcell.json" > "$PODMAN_DEFINITION"
 "$KUJO" run "$ROOT/main.kujo" -- validate --file "$PODMAN_DEFINITION" | grep -Fq 'Backend: podman'

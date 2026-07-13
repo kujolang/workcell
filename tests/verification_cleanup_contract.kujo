@@ -1,0 +1,23 @@
+# Verification startup failures must attempt labeled container cleanup.
+
+from src.domain.definition import default_definition
+from src.verification.verification import run_verification_checks
+
+definition := default_definition()
+runtime := definition["runtime"]
+runtime["backend"] := "podman"
+definition["runtime"] := runtime
+workspace := definition["workspace"]
+workspace["run_as"] := "rootless"
+definition["workspace"] := workspace
+environment := definition["environment"]
+environment["allow"] := ["WORKCELL_VERIFICATION_MARKER"]
+definition["environment"] := environment
+verification := definition["verification"]
+verification["commands"] := [{"name": "startup-failure", "command": ["false"]}]
+definition["verification"] := verification
+result := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-verification-cleanup"}, "wc-0123456789abcdef0123456789abcdef", [], true)
+if result["ok"] != false {exit(1)}
+if result["checks"][0]["status"] != "blocked" {exit(2)}
+if result["checks"][0]["cleanup_status"] != "complete" {exit(3)}
+print("verification cleanup contract passed")

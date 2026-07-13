@@ -241,6 +241,7 @@ configured_names := keys(definition["environment"]["set"])
 engine := "docker"
 if definition["runtime"]["backend"] == "podman" {engine = "podman"}
 return {
+    "ok": true,
     "definition": {
         "name": definition["name"],
         "version": definition["version"],

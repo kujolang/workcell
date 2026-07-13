@@ -89,6 +89,9 @@ export func build_policy(definition, run_identifier, host_workspace) {
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(run_identifier) != "string"||type(host_workspace) != "string"||run_identifier == ""||host_workspace == "" {
+    return {"ok": false, "error": "policy run identifier and host workspace must be non-empty strings"}
+}
 identity := resolve_run_as(definition["workspace"]["run_as"])
 if identity["ok"] == false {
     return identity

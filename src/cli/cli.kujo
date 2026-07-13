@@ -41,16 +41,19 @@ mut flags := {}
 mut i := 0
 while i < len(tokens) {
     token := tokens[i]
-    if starts_with(token, "--") {
-        name := substring(token, 2, len(token))
-        known := false
-        mut b := 0
-        while b < len(bool_flags) {
-            if name == bool_flags[b] {
-                known = true
-            }
-        b = b + 1
+    if type(token) != "string" {
+        return {"error": "arguments must contain only strings"}
     }
+if starts_with(token, "--") {
+    name := substring(token, 2, len(token))
+    known := false
+    mut b := 0
+    while b < len(bool_flags) {
+        if name == bool_flags[b] {
+            known = true
+        }
+    b = b + 1
+}
 mut v := 0
 while v < len(value_flags) {
     if name == value_flags[v] {

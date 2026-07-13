@@ -51,6 +51,25 @@ source := inspect_repository(repo)
 expect("fixture repository detected", source["ok"])
 workspace := create_workspace(repo, "git-worktree", run_id())
 expect("disposable worktree created", workspace["ok"])
+invalid_strategy := create_workspace(repo, "unsupported", run_id())
+expect("invalid workspace strategy is rejected", invalid_strategy["ok"] == false)
+if invalid_strategy["ok"] {
+    cleanup_workspace(invalid_strategy, false)
+}
+invalid_run_identifier := create_workspace(repo, "git-worktree", "../invalid-" + run_id())
+expect("workspace run identifier traversal is rejected", invalid_run_identifier["ok"] == false)
+if invalid_run_identifier["ok"] {
+    run_argv(["rm", "-rf", invalid_run_identifier["workspace_path"], invalid_run_identifier["workspace_path"] + ".owner"], 30000)
+}
+cleanup_strategy_workspace := create_workspace(repo, "git-worktree", run_id())
+if cleanup_strategy_workspace["ok"] {
+    invalid_cleanup := cleanup_workspace({"workspace_path": cleanup_strategy_workspace["workspace_path"], "source_root": repo, "strategy": "unsupported"}, false)
+    expect("invalid cleanup strategy is rejected", invalid_cleanup["ok"] == false)
+    valid_cleanup := cleanup_workspace(cleanup_strategy_workspace, false)
+    expect("workspace remains cleanable after invalid cleanup strategy", valid_cleanup["ok"])
+} else {
+expect("workspace for cleanup strategy contract created", false)
+}
 if workspace["ok"] {
     binary_path := workspace["workspace_path"] + "/added.bin"
     run_argv(["dd", "if=/dev/zero", "of=" + binary_path, "bs=1", "count=1"], 30000)

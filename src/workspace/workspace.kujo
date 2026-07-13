@@ -142,6 +142,12 @@ export func create_workspace_for_user(repo_path, strategy, run_identifier, run_a
     if type(repo_path) != "string"||type(strategy) != "string"||type(run_identifier) != "string"||type(run_as) != "string"||repo_path == ""||strategy == ""||run_identifier == ""||run_as == "" {
         return {"ok": false, "stage": "preparing", "error": "repository path, strategy, run identifier, and run-as identity must be non-empty strings"}
     }
+if strategy != "git-worktree"&&strategy != "isolated-clone" {
+    return {"ok": false, "stage": "preparing", "error": "workspace strategy must be git-worktree or isolated-clone"}
+}
+if valid_run_id(run_identifier) == false {
+    return {"ok": false, "stage": "preparing", "error": "workspace run identifier must match the Workcell run ID format"}
+}
 inspected := inspect_repository(repo_path)
 if inspected["ok"] == false {
     return inspected
@@ -483,6 +489,10 @@ export func cleanup_workspace(workspace, preserve) {
     if workspace_check["ok"] == false {
         return workspace_check
     }
+strategy := get_or(workspace, "strategy", "")
+if strategy != "git-worktree"&&strategy != "isolated-clone" {
+    return {"ok": false, "error": "workspace strategy must be git-worktree or isolated-clone"}
+}
 if preserve {
     return {"ok": true, "preserved": true, "path": workspace["workspace_path"], "message": "failed workspace preserved by policy"}
 }

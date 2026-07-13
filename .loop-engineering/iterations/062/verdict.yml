@@ -1,0 +1,15 @@
+iteration: 062
+objective: harden workspace scan depth accounting and bounds
+verdict: success
+progress: 1
+local_gates: passed
+offline_workcell_assertions: 190
+workspace_assertions: 23
+stress_assertions: 7
+release_report_total: 220
+docker_integration: passed
+docker_oci_smoke: passed
+docker_egress: passed
+docker_load: passed
+hosted_ci: external_billing_blocker
+external_boundaries: hosted_ci_billing_and_production_controls

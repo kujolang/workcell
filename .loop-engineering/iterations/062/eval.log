@@ -1,0 +1,16 @@
+Iteration 062 evaluation
+
+Before fix:
+- Temporary depth probe: a depth-three tree with `max_depth: 10` returned `depth: 10` instead of observed depth 3.
+- Temporary depth probe: the same tree with `max_depth: 2` returned `ok: true` for a file at depth 3.
+
+After fix:
+- `env KUJO=../kujo/target/release/kujo ./tests/run.sh`: passed; 190 Workcell, 23 workspace, and 7 stress assertions; all auxiliary contracts passed.
+- `env KUJO=../kujo/target/release/kujo ./tests/release_report.sh`: passed; `workcell-report/v1`, 220 total, 0 failures.
+- `env KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh`: passed.
+- `REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh docker`: passed.
+- `REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/egress_integration.sh docker`: passed; allowed internal destination reached and external DNS blocked.
+- `REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/load_integration.sh docker`: passed; four concurrent runs, unique IDs, unchanged source, verified artifacts/manifests, cleaned workspaces/containers.
+- `git diff --check`: passed.
+
+External boundaries remain: hosted CI billing and production rootless/microVM, host firewall/proxy, and image-signing/vulnerability governance evidence are operator-owned.

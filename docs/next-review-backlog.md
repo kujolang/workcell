@@ -4,13 +4,15 @@ Updated: 2036-07-13
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 190 offline policy/artifact/verification assertions, 23 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 190 offline policy/artifact/verification assertions, 23 workspace assertions, 7 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 
 Iteration 060 closed four additional local lifecycle/security defects: symlinked ownership markers could authorize empty-orphan recovery or be followed during direct cleanup, missing-container removal was not idempotent across Docker/Podman error messages, null output requests silently selected the default output root, and startup failures were returned with a non-contract stage that caused the launcher to emit internal-error code 10 instead of startup code 5. The repository now rejects symlinked markers and null output requests, treats missing resources as already cleaned, and preserves the documented startup-failure exit contract with fake-runtime regressions.
 
 Iteration 061 closed a fifth local cleanup defect: stop cleanup recognized only one case-sensitive missing-container phrase, so valid cleanup could fail on Docker/Podman wording variants. Stop and remove now share normalized missing-container matching, and the runtime contract covers `No such container`, `no container with`, and `container not found` responses.
+
+Iteration 062 closed two workspace-scan depth defects: scans reported the configured maximum instead of observed depth, and file entries beyond the maximum could bypass the bound because only queued directories were checked. Scans now track observed depth and fail closed for every child candidate, with stress regressions for both behaviors.
 
 ## Priority 1 — release and security controls
 

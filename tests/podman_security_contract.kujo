@@ -1,0 +1,18 @@
+# Podman security gate contract test. The shell wrapper supplies a fake Podman CLI.
+
+from src.domain.definition import default_definition
+from src.runtime.docker import verify_daemon_security
+
+definition := default_definition()
+runtime := definition["runtime"]
+runtime["backend"] := "podman"
+definition["runtime"] := runtime
+workspace := definition["workspace"]
+workspace["run_as"] := "rootless"
+definition["workspace"] := workspace
+result := verify_daemon_security(definition)
+print(to_json(result))
+expected_ok := env("EXPECTED_OK") == "true"
+if result["ok"] != expected_ok {exit(1)}
+if expected_ok&&result["rootless"] != true {exit(2)}
+if expected_ok&&result["seccomp"] != true {exit(3)}

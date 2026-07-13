@@ -47,6 +47,9 @@ printf '# OCI fixture\n' > "$TMP_REPO/README.md"
 git -C "$TMP_REPO" add README.md
 git -C "$TMP_REPO" commit -qm initial
 
+KUJO="$KUJO" "$ROOT/bin/workcell" doctor --repo "$TMP_REPO" --backend "$BACKEND" --json > "$OUT_ROOT/doctor.json"
+jq -e '.ok == true and .summary.blocked == 0 and (.checks | any((.name == "Podman security" or .name == "Docker security profiles") and (.status == "passed" or .status == "warning")))' "$OUT_ROOT/doctor.json" >/dev/null
+
 "$BACKEND" build --tag "$IMAGE" "$ROOT/docker" >/dev/null 2>&1
 ROOTLESS="unknown"
 if [ "$BACKEND" = "podman" ]; then

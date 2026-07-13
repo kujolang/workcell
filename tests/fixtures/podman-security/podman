@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+case "$*" in
+  *info*) printf '%s\n' "${PODMAN_SECURITY_JSON:-}" ;;
+  *version*) printf 'podman version 4.9.3\n' ;;
+  *) exit 0 ;;
+esac

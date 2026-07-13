@@ -87,9 +87,12 @@ return out
 }
 
 export func ensure_dir(path) {
-    if path == ""||path == "."||path_is_dir(path) {
-        return true
+    if type(path) != "string" {
+        return false
     }
+if path == ""||path == "."||path_is_dir(path) {
+    return true
+}
 parts := split(replace(path, "\\", "/"), "/")
 mut current := ""
 if starts_with(path, "/") {
@@ -116,9 +119,12 @@ return path_is_dir(path)
 }
 
 export func read_text(path) {
-    if file_exists(path) == false {
-        return {"ok": false, "error": "file not found: " + path}
+    if type(path) != "string" {
+        return {"ok": false, "error": "path must be a string"}
     }
+if file_exists(path) == false {
+    return {"ok": false, "error": "file not found: " + path}
+}
 if path_is_dir(path) {
     return {"ok": false, "error": "path is a directory: " + path}
 }
@@ -143,39 +149,51 @@ return {"ok": false, "error": "invalid JSON in " + path + ": " + to_string(err)}
 }
 
 export func save_json(path, value) {
-    parent := parent_of(path)
-    if parent != "" {ensure_dir(parent)}
-    return write_file_atomic(path, to_json_pretty(value), true)
+    if type(path) != "string"||path == "" {
+        return false
+    }
+parent := parent_of(path)
+if parent != "" {ensure_dir(parent)}
+return write_file_atomic(path, to_json_pretty(value), true)
 }
 
 export func parent_of(path) {
-    normalized := replace(path, "\\", "/")
-    mut i := len(normalized) - 1
-    while i >= 0 {
-        if substring(normalized, i, i + 1) == "/" {
-            return substring(normalized, 0, i)
-        }
-    i = i - 1
+    if type(path) != "string" {
+        return ""
+    }
+normalized := replace(path, "\\", "/")
+mut i := len(normalized) - 1
+while i >= 0 {
+    if substring(normalized, i, i + 1) == "/" {
+        return substring(normalized, 0, i)
+    }
+i = i - 1
 }
 return ""
 }
 
 export func base_of(path) {
-    normalized := replace(path, "\\", "/")
-    mut i := len(normalized) - 1
-    while i >= 0 {
-        if substring(normalized, i, i + 1) == "/" {
-            return substring(normalized, i + 1, len(normalized))
-        }
-    i = i - 1
+    if type(path) != "string" {
+        return ""
+    }
+normalized := replace(path, "\\", "/")
+mut i := len(normalized) - 1
+while i >= 0 {
+    if substring(normalized, i, i + 1) == "/" {
+        return substring(normalized, i + 1, len(normalized))
+    }
+i = i - 1
 }
 return normalized
 }
 
 export func join_path_safe(left, right) {
-    if left == "" {
-        return right
+    if type(left) != "string"||type(right) != "string" {
+        return ""
     }
+if left == "" {
+    return right
+}
 if right == "" {
     return left
 }
@@ -186,10 +204,13 @@ return left + "/" + right
 }
 
 export func normalized_relative(path) {
-    value := replace(trim(path), "\\", "/")
-    if value == ""||starts_with(value, "/")||contains(value, ":") == 1 {
-        return {"ok": false, "error": "path must be a non-empty relative path: " + path}
+    if type(path) != "string" {
+        return {"ok": false, "error": "path must be a non-empty relative path"}
     }
+value := replace(trim(path), "\\", "/")
+if value == ""||starts_with(value, "/")||contains(value, ":") == 1 {
+    return {"ok": false, "error": "path must be a non-empty relative path: " + path}
+}
 parts := split(value, "/")
 mut clean := []
 mut i := 0
@@ -254,19 +275,25 @@ return output
 }
 
 export func path_within(root, candidate) {
-    root_abs := lexical_absolute(root)
-    candidate_abs := lexical_absolute(candidate)
-    if candidate_abs == root_abs {
-        return true
+    if type(root) != "string"||type(candidate) != "string" {
+        return false
     }
+root_abs := lexical_absolute(root)
+candidate_abs := lexical_absolute(candidate)
+if candidate_abs == root_abs {
+    return true
+}
 return starts_with(candidate_abs, root_abs + "/")
 }
 
 export func path_has_symlink(path) {
-    mut absolute := replace(path, "\\", "/")
-    if starts_with(absolute, "/") == false {
-        absolute = os_getcwd() + "/" + absolute
+    if type(path) != "string" {
+        return false
     }
+mut absolute := replace(path, "\\", "/")
+if starts_with(absolute, "/") == false {
+    absolute = os_getcwd() + "/" + absolute
+}
 parts := split(absolute, "/")
 mut current := ""
 if starts_with(absolute, "/") {
@@ -299,16 +326,22 @@ return false
 }
 
 export func safe_mount_path(path) {
-    value := replace(trim(path), "\\", "/")
-    lower := to_lower(value)
-    if value == "/"||starts_with(value, "~/")||contains(lower, "/.ssh") == 1||contains(lower, "/.aws") == 1||contains(lower, "/.config/gcloud") == 1||contains(lower, "docker.sock") == 1 {
+    if type(path) != "string" {
         return false
     }
+value := replace(trim(path), "\\", "/")
+lower := to_lower(value)
+if value == "/"||starts_with(value, "~/")||contains(lower, "/.ssh") == 1||contains(lower, "/.aws") == 1||contains(lower, "/.config/gcloud") == 1||contains(lower, "docker.sock") == 1 {
+    return false
+}
 return true
 }
 
 export func contains_text(text, needle) {
-    return contains(text, needle) == 1
+    if type(text) != "string"||type(needle) != "string" {
+        return false
+    }
+return contains(text, needle) == 1
 }
 
 export func runtime_env_deny_names() {

@@ -420,6 +420,9 @@ export func make_patch(workspace, patch_path) {
     if workspace_check["ok"] == false {
         return workspace_check
     }
+if type(patch_path) != "string"||patch_path == "" {
+    return {"ok": false, "error": "patch output path must be a non-empty string"}
+}
 result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
 if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "generate Git patch")}

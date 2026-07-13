@@ -1,6 +1,7 @@
 # Convert a validated definition into an explicit Docker security policy.
 
 from src.util import get_or, join_path_safe, resolve_run_as, runtime_env_deny_names
+from src.domain.definition import validate_definition
 
 func add_flag(args, flag) {
     return push(args, flag)
@@ -80,10 +81,14 @@ export func labels_for(definition, run_identifier) {
 }
 
 export func build_policy(definition, run_identifier, host_workspace) {
-    identity := resolve_run_as(definition["workspace"]["run_as"])
-    if identity["ok"] == false {
-        return identity
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+identity := resolve_run_as(definition["workspace"]["run_as"])
+if identity["ok"] == false {
+    return identity
+}
 mount_path := definition["workspace"]["mount_path"]
 labels := labels_for(definition, run_identifier)
 backend := definition["runtime"]["backend"]
@@ -175,20 +180,24 @@ return {
 }
 
 export func spawn_options(definition) {
-    path_value := env("PATH")
-    mut environment := {"PATH": path_value}
-    allow := definition["environment"]["allow"]
-    mut allow_keys := ["PATH"]
-    mut i := 0
-    while i < len(allow) {
-        name := allow[i]
-        value := env(name)
-        if type(value) == "null" {
-            return {"ok": false, "error": "allowed environment variable is not set: " + name}
-        }
-    environment[name] := value
-    allow_keys = push(allow_keys, name)
-    i = i + 1
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
+    }
+path_value := env("PATH")
+mut environment := {"PATH": path_value}
+allow := definition["environment"]["allow"]
+mut allow_keys := ["PATH"]
+mut i := 0
+while i < len(allow) {
+    name := allow[i]
+    value := env(name)
+    if type(value) == "null" {
+        return {"ok": false, "error": "allowed environment variable is not set: " + name}
+    }
+environment[name] := value
+allow_keys = push(allow_keys, name)
+i = i + 1
 }
 secrets := definition["secrets"]
 mut secret_i := 0
@@ -218,42 +227,45 @@ return {
 
 export func inspect_policy(definition, run_identifier, host_workspace, output_root) {
     policy := build_policy(definition, run_identifier, host_workspace)
-    configured_names := keys(definition["environment"]["set"])
-    engine := "docker"
-    if definition["runtime"]["backend"] == "podman" {engine = "podman"}
-    return {
-        "definition": {
-            "name": definition["name"],
-            "version": definition["version"],
-            "runtime": definition["runtime"],
-            "workspace": definition["workspace"],
-            "command": definition["command"],
-            "environment_allow": definition["environment"]["allow"],
-            "environment_set_names": configured_names,
-            "secret_names": definition["secrets"],
-            "resources": definition["resources"],
-            "network": definition["network"],
-            "filesystem": definition["filesystem"],
-            "artifacts": definition["artifacts"],
-            "cleanup": definition["cleanup"],
-            "trust_profile": definition["trust_profile"],
-            "receipt": definition["receipt"],
-            "integrations": definition["integrations"]
-        },
-    "run_id": run_identifier,
-    "runtime_backend": definition["runtime"]["backend"],
-    "runtime_engine": engine,
-    "source_workspace": host_workspace,
-    "output_root": output_root,
-    "container_name": policy["container_name"],
-    "mounts": policy["mounts"],
-    "network_mode": policy["network_mode"],
-    "network_policy": policy["network_policy"],
-    "resource_limits": policy["resource_limits"],
-    "secret_names": policy["secret_names"],
-    "docker_security_arguments": policy["docker_args"],
-    "effective_security_policy": policy["effective_security_policy"],
-    "cleanup": definition["cleanup"],
-    "receipt_destination": join_path_safe(output_root, "receipt.json")
+    if policy["ok"] == false {
+        return policy
+    }
+configured_names := keys(definition["environment"]["set"])
+engine := "docker"
+if definition["runtime"]["backend"] == "podman" {engine = "podman"}
+return {
+    "definition": {
+        "name": definition["name"],
+        "version": definition["version"],
+        "runtime": definition["runtime"],
+        "workspace": definition["workspace"],
+        "command": definition["command"],
+        "environment_allow": definition["environment"]["allow"],
+        "environment_set_names": configured_names,
+        "secret_names": definition["secrets"],
+        "resources": definition["resources"],
+        "network": definition["network"],
+        "filesystem": definition["filesystem"],
+        "artifacts": definition["artifacts"],
+        "cleanup": definition["cleanup"],
+        "trust_profile": definition["trust_profile"],
+        "receipt": definition["receipt"],
+        "integrations": definition["integrations"]
+    },
+"run_id": run_identifier,
+"runtime_backend": definition["runtime"]["backend"],
+"runtime_engine": engine,
+"source_workspace": host_workspace,
+"output_root": output_root,
+"container_name": policy["container_name"],
+"mounts": policy["mounts"],
+"network_mode": policy["network_mode"],
+"network_policy": policy["network_policy"],
+"resource_limits": policy["resource_limits"],
+"secret_names": policy["secret_names"],
+"docker_security_arguments": policy["docker_args"],
+"effective_security_policy": policy["effective_security_policy"],
+"cleanup": definition["cleanup"],
+"receipt_destination": join_path_safe(output_root, "receipt.json")
 }
 }

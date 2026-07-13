@@ -2,7 +2,7 @@
 
 from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
-from src.policy.policy import build_policy
+from src.policy.policy import build_policy, inspect_policy, spawn_options
 from src.receipts.manifest import verify_manifest, write_manifest
 from src.receipts.receipt import add_error, new_receipt
 from src.util import ensure_dir, get_or, load_json, normalized_relative, process_error, read_text, redact, run_argv, run_id
@@ -314,6 +314,12 @@ expect("rootless workspace identity maps to container root", rootless_policy["ok
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]
+partial_policy := build_policy({}, "test-partial-policy", "/tmp/workcell-test-workspace")
+expect("partial policy definition is rejected without runtime crash", partial_policy["ok"] == false)
+partial_inspection := inspect_policy({}, "test-partial-inspection", "/tmp/workcell-test-workspace", "/tmp/workcell-output")
+expect("partial policy inspection is rejected without runtime crash", partial_inspection["ok"] == false)
+partial_spawn := spawn_options({})
+expect("partial spawn options are rejected without runtime crash", partial_spawn["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

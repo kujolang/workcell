@@ -7,8 +7,8 @@ The initial Workcell MVP is implemented substantively in Kujo with a thin launch
 ## Verification run
 
 - Kujo checker: `KUJO=../kujo/target/release/kujo ./tests/run.sh --check-only` — passed for `main.kujo`, all source modules, and the test module.
-- Offline tests: `KUJO=../kujo/target/release/kujo ./tests/run.sh` — passed 190 definition/policy/artifact/verification assertions, 23 workspace patch/change-report/cleanup/scan assertions, and 7 deterministic stress assertions, including observed-depth reporting and fail-closed file-depth enforcement in addition to the existing policy, artifact, manifest, runtime, workspace, and redaction contracts.
-- Structured report: `KUJO=../kujo/target/release/kujo ./tests/release_report.sh` — passed with `workcell-report/v1`, 220 counted assertions, per-suite elapsed time/exit codes, and explicit skipped Docker/Podman/ecosystem deployment gates.
+- Offline tests: `KUJO=../kujo/target/release/kujo ./tests/run.sh` — passed 191 definition/policy/artifact/verification assertions, 27 workspace patch/change-report/cleanup/scan assertions, and 7 deterministic stress assertions, including fail-closed workspace strategy/run-ID and CLI token validation.
+- Structured report: `KUJO=../kujo/target/release/kujo ./tests/release_report.sh` — passed with `workcell-report/v1`, 225 counted assertions, per-suite elapsed time/exit codes, and explicit skipped Docker/Podman/ecosystem deployment gates.
 - Report resilience: `KUJO=../kujo/target/release/kujo ./tests/report_contract.sh` — passed valid report rendering and malformed numeric metric/exit evidence handling without a VM crash.
 - Performance harness resilience: the default suite also runs `WORKCELL_PERF_FILES=999999999999999999999` and confirms the bounded 203-file signal completes without a VM crash.
 - CLI smoke: `./bin/workcell help`, `init`, `validate`, and `inspect --json` — passed.

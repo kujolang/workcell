@@ -19,6 +19,8 @@ Additional hardening completed in this pass:
 
 Iteration 062 specifically verified that workspace scans return the depth actually observed and reject file entries beyond `max_depth`, avoiding both misleading telemetry and a file-depth limit bypass.
 
+Iteration 063 added fail-closed API-boundary validation for workspace strategies, cleanup strategies, run identifiers, and non-string CLI tokens. The current totals are 191 Workcell, 27 workspace, and 7 stress assertions.
+
 The follow-up hardening pass also added declarative verification containers, bounded artifact export policies, host-mapped workspace ownership, bounded workspace scans, image ID/platform/label provenance, `clean --dry-run` inventory with explicit image retention, a first-class verification example, version-source validation, a compatibility matrix, and a 2,000-file opt-in performance signal.
 
 The continuation review caught and fixed two additional concrete failure paths: human-readable failure output attempted to concatenate a null patch path after early failures, and a workspace scan could race with disappearance between directory discovery and listing. Both now fail with stable fallbacks and regression coverage; empty orphan Workcell directories are safely recoverable while non-empty unowned paths remain preserved.

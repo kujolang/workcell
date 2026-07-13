@@ -1,0 +1,19 @@
+# Iteration 063 evaluation
+
+## Reproduction before fix
+
+- Unsupported create strategy: regression failed because the unsupported value selected clone behavior.
+- Unsupported cleanup strategy: regression failed, and the workspace was not safely cleanable through the valid strategy.
+- Traversal-bearing run identifier: regression failed because a `kujo-workcell-..` path could be created.
+- Non-string CLI token: the VM raised `starts_with() requires string and prefix string arguments` and exited 4.
+
+## Verification after fix
+
+- `KUJO=../kujo/target/release/kujo ./tests/quality.sh`: passed.
+- `env KUJO=../kujo/target/release/kujo EMPTY_SECRET='' LONG_SECRET='longsecret' AUDIT_SECRET='artifact-secret' ./tests/run.sh`: passed; Workcell 191, workspace 27, stress 7, failures 0.
+- `env KUJO=../kujo/target/release/kujo ./tests/release_report.sh`: passed; `workcell-report/v1`, 225 total, failures 0.
+- `env KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh`: passed against Docker through Colima.
+- `env REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh docker`: passed.
+- `env REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/egress_integration.sh docker`: passed.
+- `env REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/load_integration.sh docker`: passed; four concurrent runs, unique IDs, verified artifacts/manifests, and cleanup.
+- `git diff --check`: passed.

@@ -14,6 +14,8 @@ Iteration 061 closed a fifth local cleanup defect: stop cleanup recognized only 
 
 Iteration 062 closed two workspace-scan depth defects: scans reported the configured maximum instead of observed depth, and file entries beyond the maximum could bypass the bound because only queued directories were checked. Scans now track observed depth and fail closed for every child candidate, with stress regressions for both behaviors.
 
+Iteration 063 closed four API-boundary defects: unsupported workspace strategies, invalid cleanup strategies, path-bearing run identifiers, and non-string CLI tokens now fail closed with regression coverage. Full local, Docker OCI, egress, and concurrent-load evidence passed; current totals are 191 Workcell, 27 workspace, and 7 stress assertions.
+
 ## Priority 1 — release and security controls
 
 ### [ ] Rootless deployment evidence

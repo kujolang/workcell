@@ -28,6 +28,10 @@ byte_limited := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes"
 expect("workspace byte limit fails closed", byte_limited["ok"] == false&&contains(byte_limited["error"], "max bytes") == 1)
 depth_limited := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes": 100, "max_depth": 1})
 expect("workspace depth limit fails closed", depth_limited["ok"] == false&&contains(depth_limited["error"], "max depth") == 1)
+observed_depth := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes": 100, "max_depth": 128})
+expect("workspace scan reports observed depth", observed_depth["ok"]&&observed_depth["depth"] == 3)
+file_depth_limited := find_symlink_with_limits(fixture, {"max_files": 100, "max_bytes": 100, "max_depth": 2})
+expect("workspace file depth limit fails closed", file_depth_limited["ok"] == false&&contains(file_depth_limited["error"], "max depth") == 1)
 
 bounded_output := run_argv_options(["sh", "-c", "printf 1234567890"], {"timeout_ms": 30000, "max_output_bytes": 4})
 expect("process output truncation is explicit", bounded_output.stdout_truncated&&len(bounded_output.stdout) <= 4)

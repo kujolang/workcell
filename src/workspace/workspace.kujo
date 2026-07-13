@@ -69,12 +69,16 @@ mut depths := [0]
 mut queue_i := 0
 mut scanned_files := 0
 mut scanned_bytes := 0
+mut observed_depth := 0
 while queue_i < len(queue) {
     current := queue[queue_i]
     depth := depths[queue_i]
     if depth > max_depth {
         return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(max_depth) + ": " + current}
     }
+if depth > observed_depth {
+    observed_depth = depth
+}
 if path_is_dir(current) == false {
     return {"ok": false, "error": "workspace disappeared during scan: " + current}
 }
@@ -88,18 +92,25 @@ mut entry_i := 0
 while entry_i < len(entries) {
     name := to_string(entries[entry_i])
     candidate := current + "/" + name
-    mut is_link := false
-    try {
-        is_link = path_is_symlink(candidate)
-    } except err {
-    is_link = false
+    candidate_depth := depth + 1
+    if candidate_depth > max_depth {
+        return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(max_depth) + ": " + candidate}
+    }
+if candidate_depth > observed_depth {
+    observed_depth = candidate_depth
+}
+mut is_link := false
+try {
+    is_link = path_is_symlink(candidate)
+} except err {
+is_link = false
 }
 if is_link {
     return {"ok": false, "path": candidate, "error": "symlink is not allowed in a Workcell workspace: " + candidate}
 }
 if path_is_dir(candidate) {
     queue = push(queue, candidate)
-    depths = push(depths, depth + 1)
+    depths = push(depths, candidate_depth)
 } else {
 scanned_files = scanned_files + 1
 mut candidate_bytes := 0
@@ -120,7 +131,7 @@ entry_i = entry_i + 1
 }
 queue_i = queue_i + 1
 }
-return {"ok": true, "files": scanned_files, "bytes": scanned_bytes, "depth": max_depth}
+return {"ok": true, "files": scanned_files, "bytes": scanned_bytes, "depth": observed_depth}
 }
 
 export func create_workspace(repo_path, strategy, run_identifier) {

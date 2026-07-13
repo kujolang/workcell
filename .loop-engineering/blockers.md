@@ -27,15 +27,15 @@ blockers:
     status: host-owned
     next_action: "Run the backend integration suite on a supported rootless Podman host."
   - id: github-actions-billing
-    command: "gh run view 29222770198 --repo kujolang/workcell"
-    evidence: "The pushed CI run was not started because the GitHub account has failed recent payments or exceeded its spending limit."
+    command: "gh run view 29222788283 --repo kujolang/workcell"
+    evidence: "The latest pushed CI run (29222788283) was not started because the GitHub account has failed recent payments or exceeded its spending limit; prior runs show the same account-level failure."
     status: external-blocked
     next_action: "Restore GitHub Actions billing/account capacity, then review the required Linux Podman OCI smoke output."
   - id: egress-host-enforcement
     command: "tests/oci_smoke.sh podman"
-    evidence: "Repository-side network.egress validation, receipt recording, unmanaged warnings, and managed example coverage pass. No host firewall/proxy deployment has yet proved allowed and denied destinations."
+    evidence: "Repository-side network.egress validation, receipt recording, unmanaged warnings, and managed example coverage pass. tests/egress_integration.sh now proves an allowed internal destination and blocked external DNS on a Docker internal network, but no default-network, host firewall, or transparent-proxy deployment has been evidenced."
     status: deployment-owned
-    next_action: "Run a supported network deployment test with explicit allowed and denied destinations and attach the host enforcement profile evidence."
+    next_action: "Run a supported default-network test with an explicit host firewall or transparent proxy and attach the host enforcement profile evidence."
 
 Resolved evidence:
 

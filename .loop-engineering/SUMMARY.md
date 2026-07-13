@@ -38,4 +38,4 @@ success
 
 ## Next Start
 
-- iteration 010: egress policy/DNS/proxy/profile contracts and receipt evidence passed; run the required CI Podman job and supported host egress test before closing deployment backlog items
+- iteration 011: Docker internal-network egress evidence passed with allowed/blocked destination booleans and receipt/manifest hashes; run default-network host enforcement and rootless Linux evidence before closing deployment backlog items

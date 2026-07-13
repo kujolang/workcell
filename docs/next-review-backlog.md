@@ -1,6 +1,6 @@
 # Workcell next review backlog
 
-Updated: 2026-07-12
+Updated: 2026-07-13
 
 ## Review conclusion
 
@@ -28,7 +28,7 @@ Acceptance: CI demonstrates a pinned, signed image path and a deliberate, tested
 
 Add a deployment-owned egress contract for `network.mode: default` and custom networks, including DNS, proxy, and deny-by-default firewall behavior. Do not claim that setting a proxy variable controls arbitrary child processes.
 
-The repository-side contract is now implemented: `network.egress` validates policy/DNS/proxy ownership, records `network_policy` in receipts and inspection output, warns on compatibility-mode unmanaged access, and includes the `egress-policy` example. Deployment acceptance remains open until a supported host proves allowed and denied destinations.
+The repository-side contract is now implemented: `network.egress` validates policy/DNS/proxy ownership, records `network_policy` in receipts and inspection output, warns on compatibility-mode unmanaged access, and includes the `egress-policy` example. `tests/egress_integration.sh` now proves an allowed internal destination and blocked external DNS on a Docker internal network, emitting `workcell-egress-evidence/v1`; default-network, host-firewall, and transparent-proxy acceptance remains open.
 
 Acceptance: a supported deployment test proves allowed and denied destinations, and the receipt records the selected network policy and host enforcement profile.
 

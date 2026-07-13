@@ -4,7 +4,7 @@ This is the next-session work list produced by the codebase review on 2026-07-11
 
 ## Review result
 
-The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. The Kujo process API now provides bounded stream sinks, incremental exact/base64 redaction, and cancellation hooks. Docker integration has passed against both rootful and rootless Colima-backed daemons, including verification, streamed log files, cancellation metadata, and ownership-scoped cleanup; Podman and production-host evidence remain deployment-dependent.
+The repository is now a substantially hardened, schema-described, tested Kujo-native Docker MVP. It is not a universally isolated enterprise sandbox: it trusts the Docker daemon and host kernel, and relies on operators for rootless/VM boundaries, egress enforcement, and image-signing governance. The Kujo process API now provides bounded stream sinks, incremental exact/base64 redaction, and cancellation hooks. Docker and rootless Podman integration have passed against Colima-backed daemons, including verification, streamed log files, cancellation metadata, seccomp preflight, and ownership-scoped cleanup; hosted CI and production-host evidence remain deployment-dependent.
 
 The review added duplicate-input validation, faster changed-path indexing, strict owner markers, host UID/GID workspace mapping, bounded workspace scans, artifact limits/policies, declarative verification, image provenance fallbacks, resource inventory, machine-readable contracts, compatibility docs, image ownership labels, opt-in ecosystem evidence adapters, an OCI runtime backend contract, truthful dry-run integration skips, atomic-write result checks, runtime-class validation, backend-aware doctor diagnostics, backend-neutral CLI presentation, RunLedger finish-state reporting, changed-file analysis reuse, versioned run manifests, offline manifest verification, active-resource cleanup coordination, empty-orphan recovery, disappearing-workspace handling, release reporting, example-matrix coverage, versioned API compatibility contracts, a rootless engine-aware workspace identity, and a deployment-owned egress declaration with receipt evidence. The current offline suite is 99 policy assertions plus 11 workspace assertions and 5 stress assertions; Docker integration and ecosystem gates remain required release evidence.
 
@@ -30,7 +30,7 @@ The review added duplicate-input validation, faster changed-path indexing, stric
 
 - Owner: Workcell plus Kujo/Docker host design.
 - Implemented: default `workspace.run_as: host` resolves the invoking non-root UID/GID, uses owner-only write permissions, and supports explicit fixed non-root UID/GID values with fail-closed host `chown`.
-- Acceptance status: offline coverage and compatibility documentation pass; rootless Docker evidence is recorded for a Colima Linux VM; Podman/rootless Linux and production-host evidence remain deployment-dependent.
+- Acceptance status: offline coverage and compatibility documentation pass; rootless Docker and rootless Podman evidence are recorded for a Colima Linux VM; hosted CI and production-host evidence remain deployment-dependent.
 
 ### [x] Add bounded streaming output and streaming redaction
 

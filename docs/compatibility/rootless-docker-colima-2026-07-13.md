@@ -13,6 +13,7 @@ Observed on 2026-07-13 using the pinned Kujo runtime revision from `workcell.jso
 | `tests/docker_integration.sh` | passed; success, digest/signature failures, custom/internal networks, secrets, artifacts, verification, cleanup, symlink rejection, failure, timeout, and inventory contracts exercised |
 | Podman | 4.9.3, rootless user-mode engine in the same Linux VM |
 | `tests/oci_smoke.sh podman` | passed with `rootless: true` and `workspace_run_as: rootless` |
+| `workcell doctor --backend podman --json` | `ok: true`, `blocked: 0`; Podman seccomp is enabled and AppArmor absence is an explicit warning |
 | `tests/docker_integration.sh podman` | passed; backend-neutral policy, identity, network, provenance, verification, failure, timeout, and cleanup contracts exercised |
 | `tests/egress_integration.sh docker` and `podman` | both passed; allowlisted internal destination reached and external DNS blocked |
 | Offline Kujo fixture suite | 4/4 fixtures passed under the interpreter runtime |

@@ -58,7 +58,7 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
         "change_report_path": null,
         "patch_path": null,
         "patch_bytes": 0,
-        "manifest_path": null,
+        "manifest_path": "manifest.json",
         "manifest_schema_version": "workcell-manifest/v1",
         "logs_path": output_dir,
         "cleanup_status": "pending",

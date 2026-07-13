@@ -92,7 +92,7 @@ test -f "$HELLO_RUN_DIR/stderr.log"
 jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.cancelled == false' "$HELLO_RECEIPT" >/dev/null
-jq -e '.manifest_path == "manifest.json" and .manifest_schema_version == "workcell-manifest/v1" and .manifest_files >= 4' "$HELLO_RECEIPT" >/dev/null
+jq -e '.manifest_path == "manifest.json" and .manifest_schema_version == "workcell-manifest/v1"' "$HELLO_RECEIPT" >/dev/null
 KUJO="$KUJO" "$ROOT/bin/workcell" verify --run "$HELLO_RUN_DIR" --json | jq -e '.ok == true and .manifest.files >= 4' >/dev/null
 printf 'tampered\n' >> "$HELLO_RUN_DIR/stdout.log"
 set +e
@@ -171,6 +171,12 @@ docker run -d --name "$UNRELATED_NAME" kujolang/workcell-base:local sh -c "sleep
 KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null
 test -n "$(docker ps -aq --filter "name=^/${UNRELATED_NAME}$")"
 docker rm -f "$UNRELATED_NAME" >/dev/null
+test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
+ACTIVE_NAME="workcell-active-$$"
+docker run -d --name "$ACTIVE_NAME" --label dev.kujo.workcell=true kujolang/workcell-base:local sh -c "sleep 30" >/dev/null
+KUJO="$KUJO" "$ROOT/bin/workcell" clean --json | jq -e --arg name "$ACTIVE_NAME" '.runtime.preserved_active | any(.[]; contains($name))' >/dev/null
+test -n "$(docker ps -q --filter "name=^/${ACTIVE_NAME}$")"
+docker rm -f "$ACTIVE_NAME" >/dev/null
 test -z "$(docker ps -aq --filter label=dev.kujo.workcell=true)"
 KUJO="$KUJO" "$ROOT/bin/workcell" clean --dry-run --json | jq -e '.dry_run == true and .runtime_backend == "docker" and (.runtime == .docker) and .actions.images == "preserve" and (.docker.image_retention | contains("preserved"))' >/dev/null
 KUJO="$KUJO" "$ROOT/bin/workcell" clean >/dev/null

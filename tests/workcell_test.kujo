@@ -186,6 +186,15 @@ func with_integration(definition, name, enabled, command) {
     return definition
 }
 
+func with_integration_timeout(definition, name, timeout) {
+    integrations := definition["integrations"]
+    config := integrations[name]
+    config["timeout_ms"] := timeout
+    integrations[name] := config
+    definition["integrations"] := integrations
+    return definition
+}
+
 func with_tmpfs(definition, path) {
     filesystem := definition["filesystem"]
     filesystem["tmpfs"] := [path]
@@ -328,6 +337,21 @@ runledger_failure_result := run_integrations(runledger_failure_definition, "/tmp
 expect("RunLedger finish failure is explicit", runledger_failure_result["ok"] == false&&runledger_failure_result["results"][0]["status"] == "finish-failed"&&runledger_failure_result["results"][0]["finish"]["exit_code"] == 9)
 run_argv(["rm", "-rf", runledger_failure_output], 30000)
 
+fixture_integrations_output := "/tmp/workcell-integration-fixtures-" + run_id()
+fixture_integrations_definition := default_definition()
+for adapter in ["shipcheck", "fence", "packwrite", "muzzle"] {
+    fixture_integrations_definition = with_integration(fixture_integrations_definition, adapter, true, ["sh", "-c", "printf fixture-success"])
+}
+fixture_integrations_result := run_integrations(fixture_integrations_definition, "/tmp", fixture_integrations_output, fixture_integrations_output + "/receipt.json", "completed", true)
+expect("all standard adapters have fixture contracts", fixture_integrations_result["ok"]&&fixture_integrations_result["results"][2]["ok"]&&fixture_integrations_result["results"][3]["ok"]&&fixture_integrations_result["results"][4]["ok"]&&fixture_integrations_result["results"][5]["ok"]&&file_exists(fixture_integrations_output + "/integrations/shipcheck.json")&&file_exists(fixture_integrations_output + "/integrations/fence.json")&&file_exists(fixture_integrations_output + "/integrations/packwrite.json")&&file_exists(fixture_integrations_output + "/integrations/muzzle.json"))
+run_argv(["rm", "-rf", fixture_integrations_output], 30000)
+
+integration_timeout_output := "/tmp/workcell-integration-timeout-" + run_id()
+integration_timeout_definition := with_integration_timeout(with_integration(default_definition(), "changebucket", true, ["sh", "-c", "sleep 1"]), "changebucket", 50)
+integration_timeout_result := run_integrations(integration_timeout_definition, "/tmp", integration_timeout_output, integration_timeout_output + "/receipt.json", "completed", true)
+expect("integration timeout is explicit and bounded", integration_timeout_result["ok"] == false&&integration_timeout_result["results"][1]["timed_out"] == true&&integration_timeout_result["results"][1]["ok"] == false)
+run_argv(["rm", "-rf", integration_timeout_output], 30000)
+
 failed_integration_output := "/tmp/workcell-integration-failure-" + run_id()
 failed_integration_definition := with_integration(default_definition(), "changebucket", true, ["false"])
 failed_integration_result := run_integrations(failed_integration_definition, "/tmp", failed_integration_output, failed_integration_output + "/receipt.json", "completed", true)
@@ -384,7 +408,7 @@ manifest_result := write_manifest(manifest_fixture, "manifest-run")
 manifest_value := load_json(manifest_fixture + "/manifest.json")
 manifest_verify := verify_manifest(manifest_fixture)
 manifest_files := get_or(manifest_value["value"], "files", [])
-expect("integrity manifest records versioned hashes and excludes receipt", manifest_result["ok"]&&manifest_verify["ok"]&&manifest_value["value"]["schema_version"] == "workcell-manifest/v1"&&len(manifest_files) == 2&&contains(to_json(manifest_files), "receipt.json") == 0)
+expect("integrity manifest records versioned hashes and includes receipt", manifest_result["ok"]&&manifest_verify["ok"]&&manifest_value["value"]["schema_version"] == "workcell-manifest/v1"&&len(manifest_files) == 3&&contains(to_json(manifest_files), "receipt.json") == 1)
 write_file_atomic(manifest_fixture + "/stdout.log", "tampered output\n", true)
 tampered_manifest := verify_manifest(manifest_fixture)
 expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "mismatch") == 1)

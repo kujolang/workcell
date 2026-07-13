@@ -358,19 +358,30 @@ return {"ok": true, "containers": containers["items"], "images": images["items"]
 }
 
 export func clean_owned_resources_with_options(prune_images, backend) {
-    listed := runtime_result(backend, ["ps", "-aq", "--filter", "label=dev.kujo.workcell=true"], 30000)
+    listed := runtime_result(backend, ["ps", "-a", "--filter", "label=dev.kujo.workcell=true", "--format", "{{.ID}}\\t{{.Status}}\\t{{.Names}}"], 30000)
     if process_ok(listed) == false {
         return {"ok": false, "error": process_error(listed, "docker list Workcell resources")}
     }
 ids := lines_of(trim(listed.stdout))
 mut removed := 0
 mut failed := []
+mut preserved_active := []
 mut removed_images := []
 mut preserved_images := []
 mut i := 0
 while i < len(ids) {
-    id := trim(ids[i])
+    columns := split(trim(ids[i]), "\t")
+    id := trim(columns[0])
+    state := ""
+    if len(columns) > 1 {state = to_lower(trim(columns[1]))}
+    name := id
+    if len(columns) > 2 {name = trim(columns[2])}
     if id != "" {
+        if state == ""|| (starts_with(state, "exited") == false&&starts_with(state, "dead") == false) {
+            preserved_active = push(preserved_active, name + " (" + state + ")")
+            i = i + 1
+            continue
+        }
         result := remove_container(id, backend)
         if result["ok"] {
             removed = removed + 1
@@ -404,5 +415,5 @@ networks := resource_ids(runtime_argv(backend, ["network", "ls", "-q", "--filter
 if networks["ok"] == false {
     failed = push(failed, networks["error"])
 }
-return {"ok": len(failed) == 0, "removed": removed, "removed_images": removed_images, "preserved_images": preserved_images, "preserved_networks": get_or(networks, "items", []), "failed": failed}
+return {"ok": len(failed) == 0, "removed": removed, "preserved_active": preserved_active, "removed_images": removed_images, "preserved_images": preserved_images, "preserved_networks": get_or(networks, "items", []), "failed": failed}
 }

@@ -389,6 +389,7 @@ if has_flag(parsed, "json") {
 } else {
 print("Cleaned Workcell-owned resources")
 print("Runtime containers removed: " + to_string(get_or(docker, "removed", 0)))
+print("Active runtime containers preserved: " + to_string(get_or(docker, "preserved_active", [])))
 print("Runtime images removed: " + to_string(len(get_or(docker, "removed_images", []))))
 print("Temporary workspaces removed: " + to_string(len(get_or(temp, "removed", []))))
 if result["ok"] == false {

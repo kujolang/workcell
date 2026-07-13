@@ -26,7 +26,7 @@ func collect_files(root, relative, depth) {
         name := to_string(entries[entry_i])
         child_relative := name
         if current_relative != "" {child_relative = current_relative + "/" + name}
-        if child_relative != "manifest.json"&&child_relative != "receipt.json" {
+        if child_relative != "manifest.json" {
             child_path := path + "/" + name
             if path_has_symlink(child_path) {
                 return {"ok": false, "error": "manifest source contains a symlink: " + child_relative}
@@ -65,12 +65,12 @@ export func write_manifest(output_dir, run_identifier) {
     value := {
         "schema_version": "workcell-manifest/v1",
         "run_id": run_identifier,
-        "scope": "immutable run evidence; receipt.json and manifest.json are excluded because the receipt references this manifest",
+        "scope": "immutable run evidence; manifest.json is excluded because it contains this manifest",
         "files": manifest["files"],
         "total_files": len(manifest["files"]),
         "total_bytes": manifest["bytes"],
         "manifest_path": "manifest.json",
-        "excluded_paths": ["receipt.json", "manifest.json"]
+        "excluded_paths": ["manifest.json"]
     }
     path := output_dir + "/manifest.json"
     try {
@@ -107,7 +107,7 @@ while i < len(files) {
         return {"ok": false, "error": "integrity manifest contains an invalid file entry"}
     }
 relative_check := normalized_relative(get_or(entry, "path", ""))
-if relative_check["ok"] == false||relative_check["path"] == "manifest.json"||relative_check["path"] == "receipt.json" {
+if relative_check["ok"] == false||relative_check["path"] == "manifest.json" {
     return {"ok": false, "error": "integrity manifest contains an invalid excluded or relative path"}
 }
 relative := relative_check["path"]

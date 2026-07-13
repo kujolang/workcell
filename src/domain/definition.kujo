@@ -320,25 +320,25 @@ return {"ok": true}
 
 func valid_run_as(value) {
     if type(value) != "string"||trim(value) == "" {
-        return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+        return {"ok": false, "error": "workspace.run_as must be host, rootless, or a non-root uid:gid pair"}
     }
-if value == "host" {
+if value == "host"||value == "rootless" {
     return {"ok": true}
 }
 parts := split(value, ":")
 if len(parts) != 2 {
-    return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+    return {"ok": false, "error": "workspace.run_as must be host, rootless, or a non-root uid:gid pair"}
 }
 mut i := 0
 while i < len(parts) {
     part := parts[i]
     if part == "" {
-        return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+        return {"ok": false, "error": "workspace.run_as must be host, rootless, or a non-root uid:gid pair"}
     }
 mut digit_i := 0
 while digit_i < len(part) {
     if contains("0123456789", substring(part, digit_i, digit_i + 1)) == 0 {
-        return {"ok": false, "error": "workspace.run_as must be host or a non-root uid:gid pair"}
+        return {"ok": false, "error": "workspace.run_as must be host, rootless, or a non-root uid:gid pair"}
     }
 digit_i = digit_i + 1
 }
@@ -1082,7 +1082,7 @@ export func definition_schema() {
             "version": {"type": "integer", "const": 1},
             "name": {"type": "string", "non_empty": true},
             "runtime": {"type": "object", "fields": ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"], "backend_enum": ["docker", "podman"], "provenance": "optional digest/signature requirements and registry allowlist"},
-            "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
+            "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host, rootless, or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
             "command": {"type": "array", "items": "string", "min_items": 1},
             "environment": {"type": "object", "fields": ["allow", "set"]},
             "secrets": {"type": "array", "items": "environment variable name"},

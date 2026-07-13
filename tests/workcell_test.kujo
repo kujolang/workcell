@@ -275,6 +275,7 @@ expect("optional integration command is bounded", validate_definition(with_integ
 expect("workspace scan file limit is bounded", validate_definition(with_workspace_scan(definition, "max_files", 0))["ok"] == false)
 expect("workspace scan depth limit is bounded", validate_definition(with_workspace_scan(definition, "max_depth", 257))["ok"] == false)
 expect("fixed non-root workspace identity is accepted", validate_definition(with_run_as(definition, "65532:65532"))["ok"])
+expect("rootless workspace identity is accepted", validate_definition(with_run_as(definition, "rootless"))["ok"])
 expect("root workspace identity is rejected", validate_definition(with_run_as(definition, "0:0"))["ok"] == false)
 expect("CPU limit is bounded", validate_definition(with_resource(definition, "cpus", 65))["ok"] == false)
 expect("memory limit is bounded", validate_definition(with_resource(definition, "memory", "128g"))["ok"] == false)
@@ -287,6 +288,9 @@ env_policy := build_policy(with_environment_set(definition, "WORKCELL_MODE", "ch
 expect("container environment is explicit", contains(to_string(env_policy["docker_args"]), "WORKCELL_MODE=check") == 1)
 secret_policy := build_policy(with_secret(definition, "WORKCELL_TOKEN"), "test-secret", "/tmp/workcell-test-workspace")
 expect("secret is passed by name only", contains(to_string(secret_policy["docker_args"]), "WORKCELL_TOKEN") == 1&&contains(to_string(secret_policy["docker_args"]), "secret-value") == 0)
+
+rootless_policy := build_policy(with_run_as(definition, "rootless"), "test-rootless", "/tmp/workcell-test-workspace")
+expect("rootless workspace identity maps to container root", rootless_policy["ok"]&&contains(to_string(rootless_policy["docker_args"]), "0:0") == 1&&rootless_policy["effective_security_policy"]["workspace_identity"] == "rootless")
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]

@@ -386,17 +386,20 @@ return number > 0&&number <= 65534
 }
 
 export func resolve_run_as(run_as) {
-    if run_as == "host" {
-        uid_result := run_argv(["id", "-u"], 10000)
-        gid_result := run_argv(["id", "-g"], 10000)
-        if process_ok(uid_result) == false||process_ok(gid_result) == false {
-            return {"ok": false, "error": "could not resolve the host uid/gid for workspace ownership"}
-        }
-    uid := trim(uid_result.stdout)
-    gid := trim(gid_result.stdout)
-    if valid_identity_number(uid) == false||valid_identity_number(gid) == false {
-        return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
+    if run_as == "rootless" {
+        return {"ok": true, "value": "0:0", "source": "rootless", "uid": 0, "gid": 0}
     }
+if run_as == "host" {
+    uid_result := run_argv(["id", "-u"], 10000)
+    gid_result := run_argv(["id", "-g"], 10000)
+    if process_ok(uid_result) == false||process_ok(gid_result) == false {
+        return {"ok": false, "error": "could not resolve the host uid/gid for workspace ownership"}
+    }
+uid := trim(uid_result.stdout)
+gid := trim(gid_result.stdout)
+if valid_identity_number(uid) == false||valid_identity_number(gid) == false {
+    return {"ok": false, "error": "host workspace ownership requires a non-root uid/gid"}
+}
 return {"ok": true, "value": uid + ":" + gid, "source": "host", "uid": parse_int(uid), "gid": parse_int(gid)}
 }
 parts := split(to_string(run_as), ":")

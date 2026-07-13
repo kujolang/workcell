@@ -160,6 +160,7 @@ return {
         "host_user_namespace": false,
         "devices": false,
         "non_root_user": identity["value"],
+        "workspace_identity": identity["source"],
         "read_only_root": definition["filesystem"]["read_only_root"],
         "no_new_privileges": true,
         "capabilities_dropped": "ALL",

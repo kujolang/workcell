@@ -38,15 +38,22 @@ func docker_result(argv, timeout_ms) {
 
 func verify_daemon_security(definition) {
     backend := definition["runtime"]["backend"]
+    requested_identity := definition["workspace"]["run_as"]
     if backend == "podman" {
         rootless_result := runtime_result(backend, ["info", "--format", "{{.Host.Security.Rootless}}"], 10000)
         if process_ok(rootless_result) == false {
             return {"ok": false, "error": process_error(rootless_result, "inspect Podman rootless mode")}
         }
     rootless := to_lower(trim(rootless_result.stdout))
-    if definition["trust_profile"] == "native-guarded"&&rootless != "true" {
-        return {"ok": false, "error": "trust_profile native-guarded requires a rootless Podman engine or a stronger VM/microVM runtime"}
+    if requested_identity == "rootless"&&rootless != "true" {
+        return {"ok": false, "error": "workspace.run_as rootless requires a rootless Podman engine"}
     }
+if requested_identity != "rootless"&&rootless == "true" {
+    return {"ok": false, "error": "rootless Podman requires workspace.run_as rootless so bind mounts use the daemon user's mapped identity"}
+}
+if definition["trust_profile"] == "native-guarded"&&rootless != "true" {
+    return {"ok": false, "error": "trust_profile native-guarded requires a rootless Podman engine or a stronger VM/microVM runtime"}
+}
 return {"ok": true, "rootless": rootless == "true"}
 }
 format := "{{json .SecurityOptions}}"
@@ -55,13 +62,26 @@ if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "inspect Docker security profiles")}
 }
 options := trim(result.stdout)
-if backend == "docker"&&(contains(options, "seccomp") == 0||contains(options, "apparmor") == 0) {
-    return {"ok": false, "error": "Docker daemon does not report both seccomp and AppArmor profiles"}
+options_lower := to_lower(options)
+has_seccomp := contains(options_lower, "seccomp") == 1
+has_apparmor := contains(options_lower, "apparmor") == 1
+is_rootless := contains(options_lower, "rootless") == 1
+if requested_identity == "rootless"&&is_rootless == false {
+    return {"ok": false, "error": "workspace.run_as rootless requires a rootless Docker daemon"}
 }
-if definition["trust_profile"] == "native-guarded"&&contains(to_lower(options), "rootless") == 0 {
+if requested_identity != "rootless"&&is_rootless {
+    return {"ok": false, "error": "rootless Docker requires workspace.run_as rootless so bind mounts use the daemon user's mapped identity"}
+}
+if backend == "docker"&&has_seccomp == false {
+    return {"ok": false, "error": "Docker daemon does not report a seccomp profile"}
+}
+if backend == "docker"&&has_apparmor == false&&is_rootless == false {
+    return {"ok": false, "error": "Docker daemon does not report AppArmor; rootful Docker requires both seccomp and AppArmor profiles"}
+}
+if definition["trust_profile"] == "native-guarded"&&is_rootless == false {
     return {"ok": false, "error": "trust_profile native-guarded requires a rootless Docker daemon or a stronger VM/microVM runtime"}
 }
-return {"ok": true}
+return {"ok": true, "rootless": is_rootless, "seccomp": has_seccomp, "apparmor": has_apparmor}
 }
 
 export func doctor_docker() {

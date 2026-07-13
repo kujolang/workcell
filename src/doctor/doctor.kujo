@@ -62,11 +62,21 @@ if process_ok(result) == false {
     return {"name": "Docker security profiles", "status": "blocked", "message": trim(process_field(result, "stderr", "")), "remediation": "Expose a reachable Docker daemon with its default security profiles enabled"}
 }
 options := trim(process_field(result, "stdout", ""))
-if contains(options, "seccomp") == 0||contains(options, "apparmor") == 0 {
-    return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show both seccomp and AppArmor: " + options, "remediation": "Enable Docker's default seccomp and AppArmor profiles; do not use unconfined mode"}
+options_lower := to_lower(options)
+has_seccomp := contains(options_lower, "seccomp") == 1
+has_apparmor := contains(options_lower, "apparmor") == 1
+is_rootless := contains(options_lower, "rootless") == 1
+if has_seccomp == false {
+    return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show seccomp: " + options, "remediation": "Enable Docker's default seccomp profile; do not use unconfined mode"}
 }
-if contains(options, "rootless") == 1 {
-    return {"name": "Docker security profiles", "status": "passed", "message": "seccomp, AppArmor, and rootless daemon detected", "remediation": ""}
+if has_apparmor == false&&is_rootless == false {
+    return {"name": "Docker security profiles", "status": "blocked", "message": "Docker security options do not show AppArmor for a rootful daemon: " + options, "remediation": "Enable Docker's default AppArmor profile or use a rootless daemon"}
+}
+if is_rootless {
+    if has_apparmor {
+        return {"name": "Docker security profiles", "status": "passed", "message": "seccomp, AppArmor, and rootless daemon detected", "remediation": ""}
+    }
+return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and rootless daemon detected; rootless Docker does not advertise AppArmor", "remediation": "Review host kernel AppArmor policy; rootless Docker reduces daemon privilege but does not prove AppArmor enforcement"}
 }
 return {"name": "Docker security profiles", "status": "warning", "message": "seccomp and AppArmor detected; daemon is not rootless", "remediation": "Use a rootless daemon or stronger VM/microVM boundary for multi-tenant untrusted workloads"}
 }

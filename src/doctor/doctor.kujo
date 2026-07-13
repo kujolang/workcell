@@ -87,11 +87,14 @@ return {"name": "Docker security profiles", "status": "warning", "message": "sec
 }
 
 export func report(repo_path, backend) {
-    mut checks := []
-    kujo_program := env("KUJO")
-    if type(kujo_program) != "string"||trim(kujo_program) == "" {
-        kujo_program = "kujo"
+    if type(repo_path) != "string"||type(backend) != "string"||repo_path == ""||backend == "" {
+        return {"ok": false, "error": "repository path and runtime backend must be non-empty strings"}
     }
+mut checks := []
+kujo_program := env("KUJO")
+if type(kujo_program) != "string"||trim(kujo_program) == "" {
+    kujo_program = "kujo"
+}
 checks = push(checks, command_check(kujo_program, ["--version"], "Kujo runtime"))
 checks = push(checks, command_check("git", ["--version"], "Git CLI"))
 runtime_label := "Docker"

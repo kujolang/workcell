@@ -5,6 +5,8 @@ from src.domain.definition import default_definition, definition_summary, resolv
 from src.policy.policy import build_policy, inspect_policy, labels_for, spawn_options
 from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.receipts.manifest import verify_manifest, write_manifest
+from src.workspace.workspace import create_workspace, find_symlink, inspect_repository
+from src.doctor.doctor import report
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
 from src.runtime.docker import image_metadata, pull_image, remove_container, stop_container
@@ -377,6 +379,10 @@ expect("invalid image metadata input is handled without runtime crash", image_me
 expect("invalid image pull input is handled without runtime crash", pull_image(null, "docker")["ok"] == false)
 expect("invalid container stop input is handled without runtime crash", stop_container(null, "docker")["ok"] == false)
 expect("invalid container removal input is handled without runtime crash", remove_container(null, "docker")["ok"] == false)
+expect("invalid repository inspection input is handled without runtime crash", inspect_repository(null)["ok"] == false)
+expect("invalid symlink scan input is handled without runtime crash", find_symlink(null)["ok"] == false)
+expect("invalid workspace creation input is handled without runtime crash", create_workspace(null, null, null)["ok"] == false)
+expect("invalid doctor input is handled without runtime crash", report(null, null)["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

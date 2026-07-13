@@ -22,10 +22,13 @@ func git_result(args, timeout_ms) {
 }
 
 export func inspect_repository(repo_path) {
-    root_result := git_result(["git", "-C", repo_path, "rev-parse", "--show-toplevel"], 10000)
-    if process_ok(root_result) == false {
-        return {"ok": false, "error": "not a Git repository: " + repo_path}
+    if type(repo_path) != "string"||repo_path == "" {
+        return {"ok": false, "error": "repository path must be a non-empty string"}
     }
+root_result := git_result(["git", "-C", repo_path, "rev-parse", "--show-toplevel"], 10000)
+if process_ok(root_result) == false {
+    return {"ok": false, "error": "not a Git repository: " + repo_path}
+}
 root := trim(root_result.stdout)
 commit_result := git_result(["git", "-C", root, "rev-parse", "HEAD"], 10000)
 if process_ok(commit_result) == false {
@@ -49,9 +52,12 @@ export func find_symlink(root) {
 }
 
 export func find_symlink_with_limits(root, limits) {
-    if type(limits) != "dict" {
-        return {"ok": false, "error": "workspace scan limits must be an object"}
+    if type(root) != "string"||root == "" {
+        return {"ok": false, "error": "workspace root must be a non-empty string"}
     }
+if type(limits) != "dict" {
+    return {"ok": false, "error": "workspace scan limits must be an object"}
+}
 max_files := get_or(limits, "max_files", 0)
 max_bytes := get_or(limits, "max_bytes", 0)
 max_depth := get_or(limits, "max_depth", 0)
@@ -111,10 +117,13 @@ export func create_workspace(repo_path, strategy, run_identifier) {
 }
 
 export func create_workspace_for_user(repo_path, strategy, run_identifier, run_as) {
-    inspected := inspect_repository(repo_path)
-    if inspected["ok"] == false {
-        return inspected
+    if type(repo_path) != "string"||type(strategy) != "string"||type(run_identifier) != "string"||type(run_as) != "string"||repo_path == ""||strategy == ""||run_identifier == ""||run_as == "" {
+        return {"ok": false, "stage": "preparing", "error": "repository path, strategy, run identifier, and run-as identity must be non-empty strings"}
     }
+inspected := inspect_repository(repo_path)
+if inspected["ok"] == false {
+    return inspected
+}
 if inspected["clean"] == false {
     return {"ok": false, "stage": "preparing", "error": "source repository is dirty; Workcell rejects dirty repositories by default to avoid omitting user changes", "status": inspected["status"]}
 }

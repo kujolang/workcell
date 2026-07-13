@@ -400,6 +400,10 @@ save_json(occupied_output, {"occupied": true})
 expect("occupied directory creation input is handled without runtime crash", ensure_dir(occupied_output) == false)
 expect("occupied coordinator output input is handled without runtime crash", run_workcell("examples/hello/workcell.json", ".", occupied_output, {"dry_run": true})["ok"] == false)
 run_argv(["rm", "-f", occupied_output], 10000)
+occupied_save_parent := env("TMPDIR") + "/workcell-save-file"
+save_json(occupied_save_parent, {"occupied": true})
+expect("occupied JSON parent input is handled without runtime crash", save_json(occupied_save_parent + "/child.json", {"value": true}) == false)
+run_argv(["rm", "-f", occupied_save_parent], 10000)
 expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
 invalid_integration_definition := default_definition()
 invalid_integration_config := invalid_integration_definition["integrations"]

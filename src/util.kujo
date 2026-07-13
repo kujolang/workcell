@@ -157,8 +157,12 @@ export func save_json(path, value) {
         return false
     }
 parent := parent_of(path)
-if parent != "" {ensure_dir(parent)}
-return write_file_atomic(path, to_json_pretty(value), true)
+if parent != ""&&ensure_dir(parent) == false {return false}
+try {
+    return write_file_atomic(path, to_json_pretty(value), true)
+} except err {
+return false
+}
 }
 
 export func parent_of(path) {

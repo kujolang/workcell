@@ -1,0 +1,7 @@
+targeted probes before fix: exit 4 VM crashes for enabled integrations with invalid paths and image assurance with an invalid source root/run ID
+targeted probes after fix: exit 0 stable structured failures
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 160, workspace 18, stress 5
+KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 183 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

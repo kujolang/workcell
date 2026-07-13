@@ -525,6 +525,7 @@ commands := get_or(value, "commands", [])
 if type(commands) != "array"||len(commands) > 32 {
     return {"ok": false, "error": "verification.commands must be an array with at most 32 checks"}
 }
+mut verification_name_list := []
 mut i := 0
 while i < len(commands) {
     check := commands[i]
@@ -536,6 +537,7 @@ name_check := valid_token(get_or(check, "name", ""), "verification.commands[" + 
 if name_check["ok"] == false {
     return name_check
 }
+verification_name_list = push(verification_name_list, get_or(check, "name", ""))
 command_check := validate_string_array(get_or(check, "command", []), "verification.commands[" + to_string(i) + "].command")
 if command_check["ok"] == false||len(get_or(check, "command", [])) == 0 {
     if command_check["ok"] == false {
@@ -544,6 +546,17 @@ if command_check["ok"] == false||len(get_or(check, "command", [])) == 0 {
 return {"ok": false, "error": "verification command must not be empty"}
 }
 i = i + 1
+}
+mut name_i := 0
+while name_i < len(verification_name_list) {
+    mut compare_i := name_i + 1
+    while compare_i < len(verification_name_list) {
+        if verification_name_list[name_i] == verification_name_list[compare_i] {
+            return {"ok": false, "error": "verification command names contain duplicate entry: " + verification_name_list[name_i]}
+        }
+    compare_i = compare_i + 1
+}
+name_i = name_i + 1
 }
 return {"ok": true}
 }

@@ -1,6 +1,6 @@
 # Copy only declared workspace outputs into a run-owned host directory.
 
-from src.util import ensure_dir, env_secret_values, get_or, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv
+from src.util import ensure_dir, env_secret_values, get_or, has_key_safe, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv
 
 func artifact_policy_check(policy) {
     if type(policy) != "dict" {
@@ -208,6 +208,7 @@ mut total_bytes := 0
 mut total_files := 0
 secret_values := env_secret_values(secrets)
 declared := get_or(policy, "export", [])
+mut seen_declarations := {}
 mut i := 0
 while i < len(declared) {
     checked := normalized_relative(declared[i])
@@ -215,6 +216,19 @@ while i < len(declared) {
         return {"ok": false, "error": checked["error"]}
     }
 relative := checked["path"]
+if has_key_safe(seen_declarations, relative) {
+    return {"ok": false, "error": "artifact export contains duplicate declaration: " + relative}
+}
+previous_declarations := keys(seen_declarations)
+mut previous_i := 0
+while previous_i < len(previous_declarations) {
+    previous := previous_declarations[previous_i]
+    if starts_with(relative, previous + "/")||starts_with(previous, relative + "/") {
+        return {"ok": false, "error": "artifact export contains overlapping declarations: " + previous + " and " + relative}
+    }
+previous_i = previous_i + 1
+}
+seen_declarations[relative] := true
 source := workspace_path + "/" + relative
 destination := output_dir + "/" + relative
 if file_exists(source) == false&&path_is_dir(source) == false {

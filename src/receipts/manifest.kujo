@@ -1,6 +1,6 @@
 # Versioned integrity manifest for immutable run evidence.
 
-from src.util import get_or, load_json, normalized_relative, path_has_symlink, path_within, save_json
+from src.util import get_or, has_key_safe, load_json, normalized_relative, path_has_symlink, path_within, save_json
 
 func collect_files(root, relative, depth) {
     mut queue_paths := [root]
@@ -122,6 +122,7 @@ if type(files) != "array"||len(files) > 100000 {
     return {"ok": false, "error": "integrity manifest file list is invalid or exceeds 100000 entries"}
 }
 mut total_bytes := 0
+mut seen_paths := {}
 mut i := 0
 while i < len(files) {
     entry := files[i]
@@ -133,6 +134,10 @@ if relative_check["ok"] == false||relative_check["path"] == "manifest.json" {
     return {"ok": false, "error": "integrity manifest contains an invalid excluded or relative path"}
 }
 relative := relative_check["path"]
+if has_key_safe(seen_paths, relative) {
+    return {"ok": false, "error": "integrity manifest contains duplicate file entry: " + relative}
+}
+seen_paths[relative] := true
 path := output_dir + "/" + relative
 if path_within(output_dir, path) == false||path_has_symlink(path)||file_exists(path) == false {
     return {"ok": false, "error": "integrity manifest file is missing or unsafe: " + relative}
@@ -162,6 +167,21 @@ i = i + 1
 }
 if get_or(value, "total_files", - 1) != len(files)||get_or(value, "total_bytes", - 1) != total_bytes {
     return {"ok": false, "error": "integrity manifest totals do not match its file entries"}
+}
+actual := collect_files(output_dir, "", 0)
+if actual["ok"] == false {
+    return {"ok": false, "error": "could not enumerate files for integrity manifest coverage: " + actual["error"]}
+}
+if len(actual["files"]) != len(files)||actual["bytes"] != total_bytes {
+    return {"ok": false, "error": "integrity manifest does not cover the complete run directory"}
+}
+mut actual_i := 0
+while actual_i < len(actual["files"]) {
+    actual_path := actual["files"][actual_i]["path"]
+    if has_key_safe(seen_paths, actual_path) == false {
+        return {"ok": false, "error": "integrity manifest does not cover file: " + actual_path}
+    }
+actual_i = actual_i + 1
 }
 return {"ok": true, "schema_version": value["schema_version"], "files": len(files), "bytes": total_bytes}
 }

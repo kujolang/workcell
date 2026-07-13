@@ -292,6 +292,9 @@ expect("artifact extension policy is validated", validate_definition(with_artifa
 expect("artifact secret action is validated", validate_definition(with_artifact_policy(definition, "secret_action", "leak"))["ok"] == false)
 expect("verification command is accepted", validate_definition(with_verification(definition, [{"name": "smoke", "command": ["sh", "-lc", "true"]}]))["ok"])
 expect("verification command must be non-empty", validate_definition(with_verification(definition, [{"name": "empty", "command": []}]))["ok"] == false)
+duplicate_verification_definition := with_verification(default_definition(), [{"name": "smoke", "command": ["true"]}, {"name": "smoke", "command": ["false"]}])
+duplicate_verification := validate_definition(duplicate_verification_definition)
+expect("verification command names must be unique", duplicate_verification["ok"] == false)
 expect("optional integrations default disabled", validate_definition(definition)["ok"]&&definition["integrations"]["changebucket"]["enabled"] == false)
 expect("optional integration command is bounded", validate_definition(with_integration(definition, "changebucket", true, ["true", "extra", "args", "allowed", "still", "bounded", "argv", "entries", "too-many"]))["ok"] == false)
 expect("workspace scan file limit is bounded", validate_definition(with_workspace_scan(definition, "max_files", 0))["ok"] == false)
@@ -552,6 +555,8 @@ write_file_atomic(policy_fixture + "/workspace/nested/result.txt", "artifact-sec
 limited_policy := {"export": ["nested"], "limits": {}, "max_bytes": 4, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}
 limited_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/limited", limited_policy, [])
 expect("artifact byte limit rejects oversized export", limited_export["ok"] == false&&contains(limited_export["error"], "max bytes") == 1)
+duplicate_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/duplicate", {"export": ["nested/result.txt", "nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
+expect("artifact exporter rejects duplicate declarations", duplicate_export["ok"] == false&&contains(duplicate_export["error"], "duplicate") == 1)
 extension_policy := {"export": ["nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [".md"], "secret_action": "allow"}
 extension_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/extension", extension_policy, [])
 expect("artifact extension policy rejects wrong content type", extension_export["ok"] == false&&contains(extension_export["error"], "content type") == 1)
@@ -562,6 +567,8 @@ redact_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0,
 redact_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/redact", redact_policy, ["AUDIT_SECRET"])
 redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
 expect("artifact secret redaction hook changes exported content", redact_export["ok"]&&redacted_artifact["text"] == "[REDACTED]\n")
+overlap_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/overlap", {"export": ["nested/result.txt", "nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "redact"}, ["AUDIT_SECRET"])
+expect("artifact exporter rejects overlapping declarations", overlap_export["ok"] == false&&contains(overlap_export["error"], "overlap") == 1)
 run_argv(["sh", "-c", "printf 'artifact-secret\\000\\377' > " + policy_fixture + "/workspace/binary.bin"], 30000)
 binary_reject := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/binary-reject", {"export": ["binary.bin"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "reject"}, ["AUDIT_SECRET"])
 expect("binary artifact secret inspection fails closed", binary_reject["ok"] == false&&contains(binary_reject["error"], "could not be inspected") == 1)
@@ -588,6 +595,25 @@ expect("integrity manifest records versioned hashes and includes receipt", manif
 write_file_atomic(manifest_fixture + "/stdout.log", "tampered output\n", true)
 tampered_manifest := verify_manifest(manifest_fixture)
 expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "mismatch") == 1)
+write_file_atomic(manifest_fixture + "/stdout.log", "manifested output\n", true)
+duplicate_manifest_value := manifest_value["value"]
+duplicate_manifest_files := duplicate_manifest_value["files"]
+duplicate_manifest_files = push(duplicate_manifest_files, duplicate_manifest_files[0])
+duplicate_manifest_value["files"] := duplicate_manifest_files
+duplicate_manifest_value["total_files"] := len(duplicate_manifest_files)
+duplicate_manifest_value["total_bytes"] := duplicate_manifest_value["total_bytes"] + duplicate_manifest_files[0]["bytes"]
+save_json(manifest_fixture + "/manifest.json", duplicate_manifest_value)
+duplicate_manifest := verify_manifest(manifest_fixture)
+expect("integrity manifest rejects duplicate file entries", duplicate_manifest["ok"] == false&&contains(duplicate_manifest["error"], "duplicate") == 1)
+write_manifest(manifest_fixture, "manifest-run")
+omitted_manifest_value := load_json(manifest_fixture + "/manifest.json")["value"]
+omitted_manifest_files := omitted_manifest_value["files"]
+omitted_manifest_value["files"] := slice(omitted_manifest_files, 1, len(omitted_manifest_files))
+omitted_manifest_value["total_files"] := len(omitted_manifest_value["files"])
+omitted_manifest_value["total_bytes"] := omitted_manifest_value["total_bytes"] - omitted_manifest_files[0]["bytes"]
+save_json(manifest_fixture + "/manifest.json", omitted_manifest_value)
+omitted_manifest := verify_manifest(manifest_fixture)
+expect("integrity manifest rejects omitted file entries", omitted_manifest["ok"] == false&&contains(omitted_manifest["error"], "cover") == 1)
 run_argv(["rm", "-rf", manifest_fixture], 30000)
 
 manifest_denied_fixture := "/tmp/workcell-manifest-denied-" + run_id()

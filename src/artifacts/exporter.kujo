@@ -3,7 +3,10 @@
 from src.util import ensure_dir, env_secret_values, get_or, normalized_relative, path_has_symlink, path_within, process_error, process_ok, redact, read_text, run_argv
 
 export func export_declared(workspace_path, output_dir, declared) {
-    return export_declared_with_policy(workspace_path, output_dir, {"export": declared, "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
+    if type(workspace_path) != "string"||type(output_dir) != "string"||type(declared) != "array" {
+        return {"ok": false, "error": "workspace path, output directory, and declared artifacts must have valid types"}
+    }
+return export_declared_with_policy(workspace_path, output_dir, {"export": declared, "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
 }
 
 func extension_allowed(path, allowed) {
@@ -110,9 +113,15 @@ return {"ok": true}
 }
 
 export func export_declared_with_policy(workspace_path, output_dir, policy, secrets) {
-    if path_has_symlink(output_dir) {
-        return {"ok": false, "error": "artifact output path contains a symlink: " + output_dir}
+    if type(workspace_path) != "string"||type(output_dir) != "string"||workspace_path == ""||output_dir == "" {
+        return {"ok": false, "error": "workspace path and output directory must be non-empty strings"}
     }
+if type(policy) != "dict"||type(secrets) != "array" {
+    return {"ok": false, "error": "artifact policy must be a dict and secrets must be an array"}
+}
+if path_has_symlink(output_dir) {
+    return {"ok": false, "error": "artifact output path contains a symlink: " + output_dir}
+}
 ensure_dir(output_dir)
 mut exported := []
 mut total_bytes := 0
@@ -185,16 +194,19 @@ return {"ok": true, "artifacts": exported, "output_dir": output_dir, "bytes": to
 }
 
 export func write_execution_logs(output_dir, stdout_text, stderr_text, secrets) {
-    secret_values := env_secret_values(secrets)
-    redacted_stdout := redact(stdout_text, secret_values)
-    redacted_stderr := redact(stderr_text, secret_values)
-    try {
-        stdout_written := write_file_atomic(output_dir + "/stdout.log", redacted_stdout, true)
-        stderr_written := write_file_atomic(output_dir + "/stderr.log", redacted_stderr, true)
-        if stdout_written != true||stderr_written != true {
-            return {"ok": false, "error": "could not write execution logs: atomic write returned false"}
-        }
-    return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
+    if type(output_dir) != "string"||output_dir == ""||type(stdout_text) != "string"||type(stderr_text) != "string"||type(secrets) != "array" {
+        return {"ok": false, "error": "log output path, streams, and secrets must have valid types"}
+    }
+secret_values := env_secret_values(secrets)
+redacted_stdout := redact(stdout_text, secret_values)
+redacted_stderr := redact(stderr_text, secret_values)
+try {
+    stdout_written := write_file_atomic(output_dir + "/stdout.log", redacted_stdout, true)
+    stderr_written := write_file_atomic(output_dir + "/stderr.log", redacted_stderr, true)
+    if stdout_written != true||stderr_written != true {
+        return {"ok": false, "error": "could not write execution logs: atomic write returned false"}
+    }
+return {"ok": true, "stdout_path": output_dir + "/stdout.log", "stderr_path": output_dir + "/stderr.log"}
 } except err {
 return {"ok": false, "error": "could not write execution logs: " + to_string(err)}
 }

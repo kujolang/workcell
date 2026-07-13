@@ -141,10 +141,13 @@ export func image_exists(image, backend) {
 }
 
 export func image_metadata(image, backend) {
-    image_id_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Id}}", image], 15000)
-    if process_ok(image_id_result) == false {
-        return {"ok": false, "error": process_error(image_id_result, "inspect Docker image " + image)}
+    if type(image) != "string"||type(backend) != "string"||image == ""||backend == "" {
+        return {"ok": false, "error": "image and backend must be non-empty strings"}
     }
+image_id_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Id}}", image], 15000)
+if process_ok(image_id_result) == false {
+    return {"ok": false, "error": process_error(image_id_result, "inspect Docker image " + image)}
+}
 repo_result := runtime_result(backend, ["image", "inspect", "--format", "{{index .RepoDigests 0}}", image], 15000)
 platform_result := runtime_result(backend, ["image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], 15000)
 labels_result := runtime_result(backend, ["image", "inspect", "--format", "{{json .Config.Labels}}", image], 15000)
@@ -189,10 +192,13 @@ return metadata["digest"]
 }
 
 export func pull_image(image, backend) {
-    result := runtime_result(backend, ["pull", image], 600000)
-    if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
+    if type(image) != "string"||type(backend) != "string"||image == ""||backend == "" {
+        return {"ok": false, "error": "image and backend must be non-empty strings"}
     }
+result := runtime_result(backend, ["pull", image], 600000)
+if process_ok(result) == false {
+    return {"ok": false, "error": process_error(result, "docker pull " + image), "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
+}
 return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(result, "stderr", "")}
 }
 
@@ -359,10 +365,13 @@ return {
 }
 
 export func stop_container(container_name, backend) {
-    result := runtime_result(backend, ["stop", "--time", "10", container_name], 30000)
-    if process_ok(result) {
-        return {"ok": true, "message": "container stopped gracefully"}
+    if type(container_name) != "string"||type(backend) != "string"||container_name == ""||backend == "" {
+        return {"ok": false, "message": "container name and backend must be non-empty strings"}
     }
+result := runtime_result(backend, ["stop", "--time", "10", container_name], 30000)
+if process_ok(result) {
+    return {"ok": true, "message": "container stopped gracefully"}
+}
 message := trim(result.stderr)
 if contains(message, "No such container") == 1||contains(message, "is not running") == 1 {
     return {"ok": true, "message": message}
@@ -379,10 +388,13 @@ return {"ok": true, "stdout": result.stdout, "stderr": result.stderr}
 }
 
 export func remove_container(container_name, backend) {
-    result := runtime_result(backend, ["rm", "-f", container_name], 30000)
-    if process_ok(result) {
-        return {"ok": true, "message": "container removed"}
+    if type(container_name) != "string"||type(backend) != "string"||container_name == ""||backend == "" {
+        return {"ok": false, "message": "container name and backend must be non-empty strings"}
     }
+result := runtime_result(backend, ["rm", "-f", container_name], 30000)
+if process_ok(result) {
+    return {"ok": true, "message": "container removed"}
+}
 return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
 }
 

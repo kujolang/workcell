@@ -3,9 +3,11 @@
 from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy, inspect_policy, labels_for, spawn_options
+from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.receipts.manifest import verify_manifest, write_manifest
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
+from src.runtime.docker import image_metadata, pull_image, remove_container, stop_container
 from src.util import base_of, contains_text, ensure_dir, env_secret_stream_values, env_secret_values, first_line, get_or, join_path_safe, lines_of, load_json, normalized_relative, parent_of, path_has_symlink, path_within, process_error, process_ok, read_text, redact, run_argv, run_id, safe_mount_path, save_json
 from src.verification.verification import run_verification_checks
 from src.integrations.integrations import dry_run_integrations, run_integrations
@@ -367,6 +369,14 @@ expect("invalid text path input is handled without runtime crash", read_text(nul
 expect("invalid JSON path input is handled without runtime crash", load_json(null)["ok"] == false)
 expect("invalid JSON output path is handled without runtime crash", save_json(null, {}) == false)
 expect("invalid text search input is handled without runtime crash", contains_text(null, "x") == false)
+expect("invalid artifact export input is handled without runtime crash", export_declared(null, null, null)["ok"] == false&&export_declared_with_policy(null, null, null, null)["ok"] == false)
+expect("invalid execution log input is handled without runtime crash", write_execution_logs(null, null, null, null)["ok"] == false)
+expect("invalid manifest write input is handled without runtime crash", write_manifest(null, null)["ok"] == false)
+expect("invalid manifest verify input is handled without runtime crash", verify_manifest(null)["ok"] == false)
+expect("invalid image metadata input is handled without runtime crash", image_metadata(null, "docker")["ok"] == false)
+expect("invalid image pull input is handled without runtime crash", pull_image(null, "docker")["ok"] == false)
+expect("invalid container stop input is handled without runtime crash", stop_container(null, "docker")["ok"] == false)
+expect("invalid container removal input is handled without runtime crash", remove_container(null, "docker")["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

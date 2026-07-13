@@ -60,18 +60,21 @@ return {"ok": true, "files": files, "bytes": total_bytes}
 }
 
 export func write_manifest(output_dir, run_identifier) {
-    manifest := collect_files(output_dir, "", 0)
-    if manifest["ok"] == false {return manifest}
-    value := {
-        "schema_version": "workcell-manifest/v1",
-        "run_id": run_identifier,
-        "scope": "immutable run evidence; manifest.json is excluded because it contains this manifest",
-        "files": manifest["files"],
-        "total_files": len(manifest["files"]),
-        "total_bytes": manifest["bytes"],
-        "manifest_path": "manifest.json",
-        "excluded_paths": ["manifest.json"]
+    if type(output_dir) != "string"||output_dir == ""||type(run_identifier) != "string"||run_identifier == "" {
+        return {"ok": false, "error": "manifest output directory and run identifier must be non-empty strings"}
     }
+manifest := collect_files(output_dir, "", 0)
+if manifest["ok"] == false {return manifest}
+value := {
+    "schema_version": "workcell-manifest/v1",
+    "run_id": run_identifier,
+    "scope": "immutable run evidence; manifest.json is excluded because it contains this manifest",
+    "files": manifest["files"],
+    "total_files": len(manifest["files"]),
+    "total_bytes": manifest["bytes"],
+    "manifest_path": "manifest.json",
+    "excluded_paths": ["manifest.json"]
+}
 path := output_dir + "/manifest.json"
 try {
     persisted := save_json(path, value)
@@ -85,10 +88,13 @@ return {"ok": true, "path": path, "relative_path": "manifest.json", "files": len
 }
 
 export func verify_manifest(output_dir) {
-    manifest_path := output_dir + "/manifest.json"
-    if path_has_symlink(manifest_path) {
-        return {"ok": false, "error": "integrity manifest path contains a symlink"}
+    if type(output_dir) != "string"||output_dir == "" {
+        return {"ok": false, "error": "manifest output directory must be a non-empty string"}
     }
+manifest_path := output_dir + "/manifest.json"
+if path_has_symlink(manifest_path) {
+    return {"ok": false, "error": "integrity manifest path contains a symlink"}
+}
 loaded := load_json(manifest_path)
 if loaded["ok"] == false {return loaded}
 value := loaded["value"]

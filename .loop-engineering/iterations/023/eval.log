@@ -1,4 +1,5 @@
 malformed metric-only probe before fix: report could remain successful with a zero exit code
 malformed metric-only probe after fix: structured workcell-report/v1 output with ok=false
+negative metric probe after fix: structured workcell-report/v1 output with ok=false
 KUJO=../kujo/target/release/kujo ./tests/report_contract.sh: passed metric and exit regressions
 KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed

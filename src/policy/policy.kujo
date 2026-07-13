@@ -72,12 +72,16 @@ return {
 }
 
 export func labels_for(definition, run_identifier) {
-    return {
-        "dev.kujo.workcell": "true",
-        "dev.kujo.workcell.run_id": run_identifier,
-        "dev.kujo.workcell.project": definition["name"],
-        "dev.kujo.workcell.version": to_string(definition["version"])
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+return {
+    "dev.kujo.workcell": "true",
+    "dev.kujo.workcell.run_id": run_identifier,
+    "dev.kujo.workcell.project": definition["name"],
+    "dev.kujo.workcell.version": to_string(definition["version"])
+}
 }
 
 export func build_policy(definition, run_identifier, host_workspace) {

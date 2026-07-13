@@ -2,6 +2,7 @@
 
 from src.runtime.docker import container_logs, remove_container, run_container, stop_container
 from src.policy.policy import build_policy
+from src.domain.definition import validate_definition
 from src.util import get_or, redact_with_env
 
 func verification_definition(definition, command) {
@@ -48,15 +49,19 @@ return {
 }
 
 export func run_verification_checks(definition, workspace, run_identifier, secrets, workload_succeeded) {
-    checks := get_or(definition["verification"], "commands", [])
-    mut results := []
-    if workload_succeeded == false {
-        mut skipped_i := 0
-        while skipped_i < len(checks) {
-            results = push(results, {"name": checks[skipped_i]["name"], "command": safe_command(checks[skipped_i]["command"], secrets), "status": "skipped", "exit_code": null, "stdout": "", "stderr": "workload did not succeed", "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": "not-run"})
-            skipped_i = skipped_i + 1
-        }
-    return {"ok": false, "checks": results, "error": "verification checks skipped because the workload failed"}
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
+    }
+checks := get_or(definition["verification"], "commands", [])
+mut results := []
+if workload_succeeded == false {
+    mut skipped_i := 0
+    while skipped_i < len(checks) {
+        results = push(results, {"name": checks[skipped_i]["name"], "command": safe_command(checks[skipped_i]["command"], secrets), "status": "skipped", "exit_code": null, "stdout": "", "stderr": "workload did not succeed", "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": "not-run"})
+        skipped_i = skipped_i + 1
+    }
+return {"ok": false, "checks": results, "error": "verification checks skipped because the workload failed"}
 }
 mut i := 0
 while i < len(checks) {

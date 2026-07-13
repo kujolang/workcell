@@ -2,6 +2,7 @@
 
 from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, run_argv, run_argv_options
 from src.policy.policy import spawn_options
+from src.domain.definition import validate_definition
 
 func process_field(result, key, fallback) {
     if type(result) == "dict" {
@@ -57,18 +58,22 @@ return {
 }
 
 export func verify_daemon_security(definition) {
-    backend := definition["runtime"]["backend"]
-    requested_identity := definition["workspace"]["run_as"]
-    if backend == "podman" {
-        security := podman_security_status()
-        if security["ok"] == false {return security}
-        if security["seccomp"] == false {
-            return {"ok": false, "error": "Podman engine does not report an enabled seccomp profile"}
-        }
-    rootless := security["rootless"]
-    if requested_identity == "rootless"&&rootless == false {
-        return {"ok": false, "error": "workspace.run_as rootless requires a rootless Podman engine"}
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+backend := definition["runtime"]["backend"]
+requested_identity := definition["workspace"]["run_as"]
+if backend == "podman" {
+    security := podman_security_status()
+    if security["ok"] == false {return security}
+    if security["seccomp"] == false {
+        return {"ok": false, "error": "Podman engine does not report an enabled seccomp profile"}
+    }
+rootless := security["rootless"]
+if requested_identity == "rootless"&&rootless == false {
+    return {"ok": false, "error": "workspace.run_as rootless requires a rootless Podman engine"}
+}
 if requested_identity != "rootless"&&rootless {
     return {"ok": false, "error": "rootless Podman requires workspace.run_as rootless so bind mounts use the daemon user's mapped identity"}
 }
@@ -192,14 +197,18 @@ return {"ok": true, "stdout": get_or(result, "stdout", ""), "stderr": get_or(res
 }
 
 export func build_image(image, context_path, run_identifier, definition) {
-    project_label := "dev.kujo.workcell.project=" + definition["name"]
-    version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
-    backend := definition["runtime"]["backend"]
-    mut args := runtime_argv(backend, ["build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
-    buildx := {"success": false, "timed_out": false, "stdout": "", "stderr": ""}
-    if backend == "docker" {
-        buildx = docker_result(["docker", "buildx", "version"], 10000)
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+project_label := "dev.kujo.workcell.project=" + definition["name"]
+version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
+backend := definition["runtime"]["backend"]
+mut args := runtime_argv(backend, ["build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
+buildx := {"success": false, "timed_out": false, "stdout": "", "stderr": ""}
+if backend == "docker" {
+    buildx = docker_result(["docker", "buildx", "version"], 10000)
+}
 if backend == "docker"&&process_ok(buildx) {
     args = runtime_argv(backend, ["buildx", "build", "--load", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
 }
@@ -234,17 +243,21 @@ return {"ok": true}
 }
 
 export func ensure_image(definition, source_root, run_identifier, no_pull, rebuild) {
-    backend := definition["runtime"]["backend"]
-    image := definition["runtime"]["image"]
-    context := definition["runtime"]["build_context"]
-    if context != "" {
-        context_path := source_root + "/" + context
-        if path_is_dir(context_path) == false {
-            return {"ok": false, "error": "runtime.build_context does not exist: " + context_path}
-        }
-    if path_has_symlink(context_path) {
-        return {"ok": false, "error": "runtime.build_context contains a symlink and is not safe: " + context_path}
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+backend := definition["runtime"]["backend"]
+image := definition["runtime"]["image"]
+context := definition["runtime"]["build_context"]
+if context != "" {
+    context_path := source_root + "/" + context
+    if path_is_dir(context_path) == false {
+        return {"ok": false, "error": "runtime.build_context does not exist: " + context_path}
+    }
+if path_has_symlink(context_path) {
+    return {"ok": false, "error": "runtime.build_context contains a symlink and is not safe: " + context_path}
+}
 }
 daemon_security := verify_daemon_security(definition)
 if daemon_security["ok"] == false {
@@ -291,10 +304,13 @@ return {"ok": true, "action": "pulled", "digest": digest, "image_id": metadata["
 }
 
 export func run_container(definition, policy, stream_options) {
-    options := spawn_options(definition)
-    if options["ok"] == false {
-        return {"ok": false, "stage": "starting", "error": options["error"]}
+    if type(policy) != "dict"||type(get_or(policy, "docker_args", null)) != "array"||get_or(policy, "runtime_backend", "") == ""||get_or(policy, "container_name", "") == "" {
+        return {"ok": false, "stage": "starting", "error": "container policy is incomplete"}
     }
+options := spawn_options(definition)
+if options["ok"] == false {
+    return {"ok": false, "stage": "starting", "error": options["error"]}
+}
 if type(stream_options) == "dict" {
     mut process_options := options["options"]
     for key in ["stream_channel", "stream_stdout_path", "stream_stderr_path", "redact_values", "cancel_file"] {

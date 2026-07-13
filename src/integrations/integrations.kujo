@@ -1,6 +1,7 @@
 # Explicit opt-in adapters for the local Kujo ecosystem.
 
 from src.util import ensure_dir, get_or, process_ok, redact_with_env, run_argv_options, save_json
+from src.domain.definition import validate_definition
 
 func enabled(config) {
     return type(config) == "dict"&&get_or(config, "enabled", false) == true
@@ -131,52 +132,60 @@ func run_standard(name, config, command, args, source_root, output_dir, secrets)
 }
 
 export func run_integrations(definition, source_root, output_dir, receipt_path, final_status, final_ok) {
-    integrations := get_or(definition, "integrations", {})
-    secrets := definition["secrets"]
-    mut results := []
-    runledger := run_runledger(get_or(integrations, "runledger", {}), definition, source_root, output_dir, receipt_path, final_status, final_ok, secrets)
-    results = push(results, runledger)
-    changebucket := run_standard("changebucket", get_or(integrations, "changebucket", {}), ["changebucket"], ["--repo", source_root, "--json"], source_root, output_dir, secrets)
-    results = push(results, changebucket)
-    shipcheck_config := get_or(integrations, "shipcheck", {})
-    shipcheck_mode := get_or(shipcheck_config, "mode", "scan")
-    shipcheck := run_standard("shipcheck", shipcheck_config, ["shipcheck"], [shipcheck_mode, "--dir", source_root, "--format", "json"], source_root, output_dir, secrets)
-    results = push(results, shipcheck)
-    fence_config := get_or(integrations, "fence", {})
-    fence := run_standard("fence", fence_config, [], ["check", "--format", "json"], source_root, output_dir, secrets)
-    results = push(results, fence)
-    packwrite_config := get_or(integrations, "packwrite", {})
-    packwrite_mode := get_or(packwrite_config, "mode", "validate")
-    packwrite := run_standard("packwrite", packwrite_config, ["packwrite"], [packwrite_mode], source_root, output_dir, secrets)
-    results = push(results, packwrite)
-    muzzle_config := get_or(integrations, "muzzle", {})
-    muzzle_mode := get_or(muzzle_config, "mode", "list")
-    muzzle := run_standard("muzzle", muzzle_config, ["muzzle"], [muzzle_mode, "--json"], source_root, output_dir, secrets)
-    results = push(results, muzzle)
-    mut all_ok := true
-    mut i := 0
-    while i < len(results) {
-        if results[i]["enabled"]&&results[i]["ok"] == false {all_ok = false}
-        i = i + 1
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+integrations := get_or(definition, "integrations", {})
+secrets := definition["secrets"]
+mut results := []
+runledger := run_runledger(get_or(integrations, "runledger", {}), definition, source_root, output_dir, receipt_path, final_status, final_ok, secrets)
+results = push(results, runledger)
+changebucket := run_standard("changebucket", get_or(integrations, "changebucket", {}), ["changebucket"], ["--repo", source_root, "--json"], source_root, output_dir, secrets)
+results = push(results, changebucket)
+shipcheck_config := get_or(integrations, "shipcheck", {})
+shipcheck_mode := get_or(shipcheck_config, "mode", "scan")
+shipcheck := run_standard("shipcheck", shipcheck_config, ["shipcheck"], [shipcheck_mode, "--dir", source_root, "--format", "json"], source_root, output_dir, secrets)
+results = push(results, shipcheck)
+fence_config := get_or(integrations, "fence", {})
+fence := run_standard("fence", fence_config, [], ["check", "--format", "json"], source_root, output_dir, secrets)
+results = push(results, fence)
+packwrite_config := get_or(integrations, "packwrite", {})
+packwrite_mode := get_or(packwrite_config, "mode", "validate")
+packwrite := run_standard("packwrite", packwrite_config, ["packwrite"], [packwrite_mode], source_root, output_dir, secrets)
+results = push(results, packwrite)
+muzzle_config := get_or(integrations, "muzzle", {})
+muzzle_mode := get_or(muzzle_config, "mode", "list")
+muzzle := run_standard("muzzle", muzzle_config, ["muzzle"], [muzzle_mode, "--json"], source_root, output_dir, secrets)
+results = push(results, muzzle)
+mut all_ok := true
+mut i := 0
+while i < len(results) {
+    if results[i]["enabled"]&&results[i]["ok"] == false {all_ok = false}
+    i = i + 1
+}
 return {"schema_version": "workcell-integrations/v1", "ok": all_ok, "results": results}
 }
 
 export func dry_run_integrations(definition, output_dir) {
-    integrations := get_or(definition, "integrations", {})
-    mut results := []
-    mut enabled_count := 0
-    names := ["runledger", "changebucket", "shipcheck", "fence", "packwrite", "muzzle"]
-    mut i := 0
-    while i < len(names) {
-        name := names[i]
-        config := get_or(integrations, name, {})
-        if enabled(config) {
-            enabled_count = enabled_count + 1
-            results = push(results, skipped_report(name, output_dir))
-        } else {
-        results = push(results, disabled_report(name, output_dir))
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+integrations := get_or(definition, "integrations", {})
+mut results := []
+mut enabled_count := 0
+names := ["runledger", "changebucket", "shipcheck", "fence", "packwrite", "muzzle"]
+mut i := 0
+while i < len(names) {
+    name := names[i]
+    config := get_or(integrations, name, {})
+    if enabled(config) {
+        enabled_count = enabled_count + 1
+        results = push(results, skipped_report(name, output_dir))
+    } else {
+    results = push(results, disabled_report(name, output_dir))
+}
 i = i + 1
 }
 status := "disabled"

@@ -2,9 +2,10 @@
 
 from src.artifacts.exporter import export_declared, export_declared_with_policy, write_execution_logs
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
-from src.policy.policy import build_policy, inspect_policy, spawn_options
+from src.policy.policy import build_policy, inspect_policy, labels_for, spawn_options
 from src.receipts.manifest import verify_manifest, write_manifest
 from src.receipts.receipt import add_error, new_receipt
+from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
 from src.util import ensure_dir, get_or, load_json, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
 from src.integrations.integrations import dry_run_integrations, run_integrations
@@ -320,6 +321,26 @@ partial_inspection := inspect_policy({}, "test-partial-inspection", "/tmp/workce
 expect("partial policy inspection is rejected without runtime crash", partial_inspection["ok"] == false)
 partial_spawn := spawn_options({})
 expect("partial spawn options are rejected without runtime crash", partial_spawn["ok"] == false)
+partial_labels := labels_for({}, "test-partial-labels")
+expect("partial labels definition is rejected without runtime crash", partial_labels["ok"] == false)
+partial_summary := definition_summary({})
+expect("partial definition summary is rejected without runtime crash", partial_summary["ok"] == false)
+partial_daemon_security := verify_daemon_security({})
+expect("partial daemon security definition is rejected without runtime crash", partial_daemon_security["ok"] == false)
+partial_verification := run_verification_checks({}, {}, "test-partial-verification", [], false)
+expect("partial verification definition is rejected without runtime crash", partial_verification["ok"] == false)
+partial_integrations := run_integrations({}, "/tmp", "/tmp", "/tmp/receipt.json", "completed", true)
+expect("partial integrations definition is rejected without runtime crash", partial_integrations["ok"] == false)
+partial_dry_integrations := dry_run_integrations({}, "/tmp")
+expect("partial dry-run integrations definition is rejected without runtime crash", partial_dry_integrations["ok"] == false)
+partial_build := build_image("image", "/tmp", "test-partial-build", {})
+expect("partial image build definition is rejected without runtime crash", partial_build["ok"] == false)
+partial_ensure := ensure_image({}, "/tmp", "test-partial-ensure", true, false)
+expect("partial image ensure definition is rejected without runtime crash", partial_ensure["ok"] == false)
+partial_receipt := new_receipt({}, "", "test-partial-receipt", {}, {}, {}, "/tmp")
+expect("partial receipt definition is rejected without runtime crash", partial_receipt["ok"] == false)
+partial_container := run_container(definition, {}, {})
+expect("partial container policy is rejected without runtime crash", partial_container["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

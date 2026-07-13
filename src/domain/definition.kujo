@@ -1077,29 +1077,33 @@ return {"ok": true, "definition": definition}
 }
 
 export func definition_summary(definition) {
-    return {
-        "name": definition["name"],
-        "version": definition["version"],
-        "backend": definition["runtime"]["backend"],
-        "engine_runtime": definition["runtime"]["engine_runtime"],
-        "image": definition["runtime"]["image"],
-        "image_digest": definition["runtime"]["image_digest"],
-        "signature_key": definition["runtime"]["signature_key"],
-        "require_digest": definition["runtime"]["require_digest"],
-        "require_signature": definition["runtime"]["require_signature"],
-        "registry_allowlist": definition["runtime"]["registry_allowlist"],
-        "command": definition["command"],
-        "network_mode": definition["network"]["mode"],
-        "network_egress": definition["network"]["egress"],
-        "timeout_ms": definition["resources"]["timeout_ms"],
-        "max_output_bytes": definition["resources"]["max_output_bytes"],
-        "workspace_run_as": definition["workspace"]["run_as"],
-        "workspace_scan": definition["workspace"]["scan"],
-        "artifact_policy": definition["artifacts"],
-        "verification_checks": len(definition["verification"]["commands"]),
-        "trust_profile": definition["trust_profile"]
-        , "integrations": definition["integrations"]
+    definition_check := validate_definition(definition)
+    if definition_check["ok"] == false {
+        return definition_check
     }
+return {
+    "name": definition["name"],
+    "version": definition["version"],
+    "backend": definition["runtime"]["backend"],
+    "engine_runtime": definition["runtime"]["engine_runtime"],
+    "image": definition["runtime"]["image"],
+    "image_digest": definition["runtime"]["image_digest"],
+    "signature_key": definition["runtime"]["signature_key"],
+    "require_digest": definition["runtime"]["require_digest"],
+    "require_signature": definition["runtime"]["require_signature"],
+    "registry_allowlist": definition["runtime"]["registry_allowlist"],
+    "command": definition["command"],
+    "network_mode": definition["network"]["mode"],
+    "network_egress": definition["network"]["egress"],
+    "timeout_ms": definition["resources"]["timeout_ms"],
+    "max_output_bytes": definition["resources"]["max_output_bytes"],
+    "workspace_run_as": definition["workspace"]["run_as"],
+    "workspace_scan": definition["workspace"]["scan"],
+    "artifact_policy": definition["artifacts"],
+    "verification_checks": len(definition["verification"]["commands"]),
+    "trust_profile": definition["trust_profile"]
+    , "integrations": definition["integrations"]
+}
 }
 
 export func definition_schema() {

@@ -23,9 +23,19 @@ blockers:
     next_action: "Use a rootless Docker/VM/microVM deployment for multi-tenant untrusted workloads."
   - id: podman-live-host
     command: "podman info"
-    evidence: "Podman is not installed on the current macOS host; offline Podman policy/validation/cleanup coverage passed, while Docker/Colima remains the live integration evidence."
+    evidence: "Podman is unavailable on the current Intel macOS host; Homebrew's Podman formula requires arm64. The required CI Podman job is configured, while offline Podman policy/validation/cleanup coverage passed."
     status: host-owned
     next_action: "Run the backend integration suite on a supported rootless Podman host."
+  - id: github-actions-billing
+    command: "gh run view 29221960464 --repo kujolang/workcell"
+    evidence: "The pushed CI run was not started because the GitHub account has failed recent payments or exceeded its spending limit."
+    status: external-blocked
+    next_action: "Restore GitHub Actions billing/account capacity, then review the required Linux Podman OCI smoke output."
+  - id: egress-host-enforcement
+    command: "tests/oci_smoke.sh podman"
+    evidence: "Repository-side network.egress validation, receipt recording, unmanaged warnings, and managed example coverage pass. No host firewall/proxy deployment has yet proved allowed and denied destinations."
+    status: deployment-owned
+    next_action: "Run a supported network deployment test with explicit allowed and denied destinations and attach the host enforcement profile evidence."
 
 Resolved evidence:
 

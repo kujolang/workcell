@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (88), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, final clean-tree and push verification
+- passed: kujo_checks, kujo_tests, cli_smoke, schema_contract, report_contract, examples, diff_check, doctor, Docker integration, Workcell assertions (97), workspace assertions (11), performance/stress assertions (5), adversarial/path-safety, egress-policy receipt/example coverage, final clean-tree and push verification
 - blocked: none
 - failed: none after the registry validation fix and receipt/cleanup hardening
 
@@ -23,6 +23,7 @@ success
 ## Remaining
 
 - local P3 review backlog completed: Kujo-native release report, expanded example matrix, and versioned API compatibility policy
+- repository-side egress contract completed in iteration 010; deployment host enforcement and rootless evidence remain open
 - OCI smoke evidence and required CI Podman gate added in iteration 009; rootless Linux and egress enforcement remain deployment-owned
 
 ## External Blockers
@@ -37,4 +38,4 @@ success
 
 ## Next Start
 
-- iteration 009: OCI Docker smoke and all local/ecosystem gates passed; run the required CI Podman job to obtain rootless Linux evidence
+- iteration 010: egress policy/DNS/proxy/profile contracts and receipt evidence passed; run the required CI Podman job and supported host egress test before closing deployment backlog items

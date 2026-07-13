@@ -1,0 +1,11 @@
+offline suite: passed 97 policy/artifact/verification, 11 workspace, 5 stress assertions
+Docker integration: passed, including managed egress receipt and compatibility warning assertions
+release report: passed; workcell-report/v1; totals.passed=113; totals.failed=0
+format/lint/check/diff: passed
+doctor and clean: passed; no active Workcell containers or temporary workspaces remained
+local Docker OCI smoke: passed; rootless=false on Colima
+Podman rootless smoke: unavailable; Intel macOS/Homebrew Podman formula requires arm64
+GitHub CI: not started; account billing/spending-limit failure reported by GitHub
+Kennel validation: passed
+ShipCheck: passed; 16/16; warnings=0
+Fence: passed; violations=0; warnings=0

@@ -1,0 +1,12 @@
+diff --git a/src/util.kujo b/src/util.kujo
+@@
++directory creation failures now return false instead of crashing the VM
+diff --git a/src/execution/coordinator.kujo b/src/execution/coordinator.kujo
+@@
++run preparation now requires writable output root/run directories
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++occupied output-path regressions added
+diff --git a/docs/ci-status.md b/docs/ci-status.md
+@@
++authoritative hosted CI billing blocker recorded

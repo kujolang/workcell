@@ -147,6 +147,7 @@ Docker and Podman integration tests are opt-in because an engine may not be avai
 - [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Definition reference](docs/workcell-definition.md)
 - [Platform compatibility](docs/compatibility.md)
+- [Hosted CI status](docs/ci-status.md)
 - [API compatibility](docs/api-compatibility.md)
 - [Lifecycle](docs/runtime-lifecycle.md)
 - [Development](docs/development.md)

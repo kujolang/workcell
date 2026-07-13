@@ -56,7 +56,7 @@ func suite_result(report_dir, name) {
     failed_result := metric_result(output, "Failed: ")
     passed := passed_result["value"]
     failed := failed_result["value"]
-    passed_ok := exit_code == 0&&failed == 0&&passed_result["ok"]&&failed_result["ok"]
+    passed_ok := exit_code == 0&&passed >= 0&&failed >= 0&&failed == 0&&passed_result["ok"]&&failed_result["ok"]
     return {"name": name, "passed": passed, "failed": failed, "exit_code": exit_code, "elapsed_ms": elapsed_ms, "ok": passed_ok}
 }
 

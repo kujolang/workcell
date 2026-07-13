@@ -21,4 +21,7 @@ printf 'Passed: 999999999999999999999\nFailed: 0\n' > "$TMP_DIR/policy-artifact-
 printf '0\n' > "$TMP_DIR/policy-artifact-verification.exit"
 malformed_metric_report="$($KUJO run "$ROOT/src/report/report.kujo" -- --dir "$TMP_DIR")"
 printf '%s\n' "$malformed_metric_report" | jq -e '.schema_version == "workcell-report/v1" and .ok == false and .suites[0].passed == 0 and .suites[0].exit_code == 0' >/dev/null
+printf 'Passed: -1\nFailed: 0\n' > "$TMP_DIR/policy-artifact-verification.log"
+negative_metric_report="$($KUJO run "$ROOT/src/report/report.kujo" -- --dir "$TMP_DIR")"
+printf '%s\n' "$negative_metric_report" | jq -e '.schema_version == "workcell-report/v1" and .ok == false and .suites[0].passed == -1 and .suites[0].exit_code == 0' >/dev/null
 echo "Report contract passed"

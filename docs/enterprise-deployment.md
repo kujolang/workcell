@@ -4,7 +4,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 
 ## Isolation
 
-- Leave `workspace.run_as` at its default `host` value for least-privilege owner-only bind-mount access. Use a fixed non-root `uid:gid` only when the host can assign that ownership; Workcell refuses root identities and fails closed when fixed ownership cannot be applied.
+- Leave `workspace.run_as` at its default `host` value for least-privilege owner-only bind-mount access on rootful engines. For rootless Docker or Podman, set `workspace.run_as` to `rootless`; Workcell then uses container `0:0`, which the rootless engine maps to its unprivileged daemon user, and fails closed if the engine mode does not match. Use a fixed non-root `uid:gid` only when the host can assign that ownership; Workcell refuses explicit root identities and fails closed when fixed ownership cannot be applied.
 - Prefer a rootless Docker or Colima daemon for untrusted workloads where the image and workload compatibility permits it.
 - For higher-risk multi-tenant workloads, place the daemon behind a VM, Kata/gVisor runtime, or microVM service. Workcell's container policy remains useful inside that stronger boundary, but it does not create the boundary itself.
 - Keep the daemon socket private to the operator and do not mount it into workloads.
@@ -16,7 +16,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 - For a reproducible controlled boundary, pre-create an internal or proxy-enforced Docker network and use `network.mode: custom` with its `network.name`; Workcell will attach only to that named network and will not create or mutate it.
 - Treat `network.egress.policy: unmanaged` as a compatibility mode only. It is accepted for older definitions, produces a receipt warning, and is not sufficient release evidence.
 - Docker's default seccomp and AppArmor profiles must remain enabled. Do not run the daemon with `seccomp=unconfined` or equivalent relaxed profiles for production workloads.
-- `workcell doctor --backend docker|podman` verifies the selected engine; Docker must report seccomp/AppArmor and Podman must report its rootless state. A non-rootless engine is surfaced as a warning so operators can choose a rootless or VM/microVM boundary.
+- `workcell doctor --backend docker|podman` verifies the selected engine; rootful Docker must report seccomp/AppArmor, while rootless Docker must report seccomp and may warn that AppArmor is not advertised. Podman must report its rootless state. A non-rootless engine is surfaced as a warning so operators can choose a rootless or VM/microVM boundary.
 - Set `filesystem.seccomp_profile` and `filesystem.apparmor_profile` only to profiles installed and reviewed on the target daemon; Workcell passes those names through and rejects `unconfined`.
 - Use `trust_profile: native-guarded` to make runs fail closed on a non-rootless daemon; this does not provision the daemon or a microVM for you.
 

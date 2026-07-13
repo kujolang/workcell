@@ -1,0 +1,6 @@
+diff --git a/src/artifacts/exporter.kujo b/src/artifacts/exporter.kujo
+@@
++artifact scanning, redaction traversal, and output preparation now fail closed on filesystem errors
+diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
+@@
++permission-denied artifact scan regression added

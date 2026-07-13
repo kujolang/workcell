@@ -1,0 +1,6 @@
+diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
+@@
++workspace scan directory listing and file-size inspection now return structured failures
+diff --git a/tests/workspace_test.kujo b/tests/workspace_test.kujo
+@@
++permission-denied workspace scan regression added

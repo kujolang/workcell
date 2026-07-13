@@ -1,0 +1,9 @@
+targeted probe before fix: permission-denied workspace scan crashed the Kujo VM while listing the directory
+targeted test after fix: permission-denied workspace scan returned a structured failure
+KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 180, workspace 19, stress 5
+KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 204 failed 0
+KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh docker: passed
+REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/egress_integration.sh docker: passed
+REQUIRE_BACKEND=true KUJO=../kujo/target/release/kujo ./tests/load_integration.sh docker: passed; four concurrent runs verified
+KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh docker: passed
+GitHub Actions latest observed failure: external billing/spending-limit restriction before job start

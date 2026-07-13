@@ -31,33 +31,36 @@ return fallback
 }
 
 func parse_args(tokens) {
-    bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-    value_flags := ["file", "repo", "output", "backend", "run"]
-    mut positionals := []
-    mut flags := {}
-    mut i := 0
-    while i < len(tokens) {
-        token := tokens[i]
-        if starts_with(token, "--") {
-            name := substring(token, 2, len(token))
-            known := false
-            mut b := 0
-            while b < len(bool_flags) {
-                if name == bool_flags[b] {
-                    known = true
-                }
-            b = b + 1
-        }
-    mut v := 0
-    while v < len(value_flags) {
-        if name == value_flags[v] {
-            known = true
-            if i + 1 >= len(tokens)||starts_with(tokens[i + 1], "--") {
-                return {"error": "missing value for --" + name}
-            }
-        flags[name] := tokens[i + 1]
-        i = i + 1
+    if type(tokens) != "array" {
+        return {"error": "arguments must be an array"}
     }
+bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
+value_flags := ["file", "repo", "output", "backend", "run"]
+mut positionals := []
+mut flags := {}
+mut i := 0
+while i < len(tokens) {
+    token := tokens[i]
+    if starts_with(token, "--") {
+        name := substring(token, 2, len(token))
+        known := false
+        mut b := 0
+        while b < len(bool_flags) {
+            if name == bool_flags[b] {
+                known = true
+            }
+        b = b + 1
+    }
+mut v := 0
+while v < len(value_flags) {
+    if name == value_flags[v] {
+        known = true
+        if i + 1 >= len(tokens)||starts_with(tokens[i + 1], "--") {
+            return {"error": "missing value for --" + name}
+        }
+    flags[name] := tokens[i + 1]
+    i = i + 1
+}
 v = v + 1
 }
 if known == false {

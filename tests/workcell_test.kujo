@@ -7,6 +7,7 @@ from src.receipts.manifest import verify_manifest, write_manifest
 from src.workspace.workspace import create_workspace, find_symlink, inspect_repository
 from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
+from src.cli.cli import main
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
 from src.runtime.docker import image_metadata, pull_image, remove_container, stop_container
@@ -385,6 +386,7 @@ expect("invalid workspace creation input is handled without runtime crash", crea
 expect("invalid doctor input is handled without runtime crash", report(null, null)["ok"] == false)
 expect("invalid policy construction input is handled without runtime crash", build_policy(default_definition(), null, null)["ok"] == false&&inspect_policy(default_definition(), null, null, null)["ok"] == false)
 expect("null coordinator output input is handled without runtime crash", run_workcell("examples/hello/workcell.json", ".", null, {"dry_run": true})["ok"] == false)
+expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

@@ -1,7 +1,7 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
 from src.util import ensure_dir, load_json, read_text, run_argv, run_id
-from src.workspace.workspace import cleanup_workspace, clean_stale_workspaces, create_workspace, inspect_repository, make_patch, temp_root, write_change_report
+from src.workspace.workspace import cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report
 
 mut passed := 0
 mut failed := 0
@@ -67,6 +67,9 @@ orphan_workspace := temp_root() + "/kujo-workcell-" + orphan_run
 ensure_dir(orphan_workspace)
 orphan_cleanup := clean_stale_workspaces([])
 expect("empty orphan workspace is safely recovered", file_exists(orphan_workspace) == false&&contains(to_string(orphan_cleanup["removed"]), "empty orphan recovered") == 1)
+
+missing_scan := find_symlink_with_limits(temp_root() + "/kujo-workcell-missing-" + run_id(), {"max_files": 100, "max_bytes": 1000000, "max_depth": 8})
+expect("missing workspace scan fails with a structured result", missing_scan["ok"] == false&&contains(missing_scan["error"], "workspace disappeared during scan") == 1)
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

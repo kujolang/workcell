@@ -61,6 +61,38 @@ jq -e '.stage == "preparing" and (.error | contains("signature_key"))' "$OUT_ROO
 jq --arg network "$INTERNAL_NETWORK" '.network.mode = "custom" | .network.name = $network' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/internal-network.json"
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/internal-network.json" --repo "$TMP_REPO" --output "$OUT_ROOT/internal-network"
 
+jq --arg network "$INTERNAL_NETWORK" '.network.name = $network' "$ROOT/examples/custom-network/workcell.json" > "$OUT_ROOT/custom-network-example.json"
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/custom-network-example.json" --repo "$TMP_REPO" --output "$OUT_ROOT/custom-network-example"
+CUSTOM_NETWORK_RECEIPT="$(find "$OUT_ROOT/custom-network-example" -name receipt.json -print -quit)"
+jq --arg network "$INTERNAL_NETWORK" -e '.network_mode == $network and .artifact_files == 1' "$CUSTOM_NETWORK_RECEIPT" >/dev/null
+
+WORKCELL_GREETING="secret-example-value" KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/secrets/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/secrets-example"
+SECRETS_RECEIPT="$(find "$OUT_ROOT/secrets-example" -name receipt.json -print -quit)"
+SECRETS_RUN_DIR="$(dirname "$SECRETS_RECEIPT")"
+jq -e '.artifact_files == 1 and .schema_version == "workcell-receipt/v1"' "$SECRETS_RECEIPT" >/dev/null
+grep -Fq '[REDACTED]' "$SECRETS_RUN_DIR/artifacts/greeting.txt"
+
+set +e
+WORKCELL_ARTIFACT_SECRET="artifact-example-secret" KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/artifact-policy/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/artifact-policy-example" --json > "$OUT_ROOT/artifact-policy-example.json"
+ARTIFACT_POLICY_CODE=$?
+set -e
+test "$ARTIFACT_POLICY_CODE" -eq 8
+jq -e '.stage == "artifact-failed" and (.error | contains("secret"))' "$OUT_ROOT/artifact-policy-example.json" >/dev/null
+
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/provenance/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/provenance-example" --json > "$OUT_ROOT/provenance-example.json"
+PROVENANCE_EXAMPLE_CODE=$?
+set -e
+test "$PROVENANCE_EXAMPLE_CODE" -eq 4
+jq -e '.stage == "preparing" and (.error | contains("image_digest"))' "$OUT_ROOT/provenance-example.json" >/dev/null
+
+set +e
+KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$ROOT/examples/signature/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/signature-example" --json > "$OUT_ROOT/signature-example.json"
+SIGNATURE_EXAMPLE_CODE=$?
+set -e
+test "$SIGNATURE_EXAMPLE_CODE" -eq 4
+jq -e '.stage == "preparing" and (.error | contains("cosign") or contains("signature_key"))' "$OUT_ROOT/signature-example.json" >/dev/null
+
 jq '.trust_profile = "native-guarded"' "$ROOT/examples/hello/workcell.json" > "$OUT_ROOT/native-guarded.json"
 set +e
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/native-guarded.json" --repo "$TMP_REPO" --output "$OUT_ROOT/native-guarded" --json > "$OUT_ROOT/native-guarded.json.result"
@@ -90,6 +122,7 @@ HELLO_RUN_DIR="$(dirname "$HELLO_RECEIPT")"
 test -f "$HELLO_RUN_DIR/stdout.log"
 test -f "$HELLO_RUN_DIR/stderr.log"
 jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
+jq -e '.schema_version == "workcell-receipt/v1"' "$HELLO_RECEIPT" >/dev/null
 jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.cancelled == false' "$HELLO_RECEIPT" >/dev/null
 jq -e '.manifest_path == "manifest.json" and .manifest_schema_version == "workcell-manifest/v1"' "$HELLO_RECEIPT" >/dev/null

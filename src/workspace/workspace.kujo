@@ -60,17 +60,20 @@ export func find_symlink_with_limits(root, limits) {
         if depth > limits["max_depth"] {
             return {"ok": false, "error": "workspace scan exceeded max depth " + to_string(limits["max_depth"]) + ": " + current}
         }
-    entries := list_dir(current)
-    mut entry_i := 0
-    while entry_i < len(entries) {
-        name := to_string(entries[entry_i])
-        candidate := current + "/" + name
-        mut is_link := false
-        try {
-            is_link = path_is_symlink(candidate)
-        } except err {
-        is_link = false
+    if path_is_dir(current) == false {
+        return {"ok": false, "error": "workspace disappeared during scan: " + current}
     }
+entries := list_dir(current)
+mut entry_i := 0
+while entry_i < len(entries) {
+    name := to_string(entries[entry_i])
+    candidate := current + "/" + name
+    mut is_link := false
+    try {
+        is_link = path_is_symlink(candidate)
+    } except err {
+    is_link = false
+}
 if is_link {
     return {"ok": false, "path": candidate, "error": "symlink is not allowed in a Workcell workspace: " + candidate}
 }

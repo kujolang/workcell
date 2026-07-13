@@ -11,7 +11,7 @@ func flag_value(argv, name, fallback) {
 return fallback
 }
 
-func metric(text, label) {
+func metric_result(text, label) {
     lines := split(text, "\n")
     mut i := 0
     while i < len(lines) {
@@ -21,13 +21,17 @@ func metric(text, label) {
             try {
                 value = parse_int(trim(substring(line, len(label), len(line))))
             } except err {
-            return 0
+            return {"ok": false, "value": 0}
         }
-    return value
+    return {"ok": true, "value": value}
 }
 i = i + 1
 }
-return 0
+return {"ok": true, "value": 0}
+}
+
+func metric(text, label) {
+    return metric_result(text, label)["value"]
 }
 
 func number_file(path, fallback) {
@@ -48,9 +52,11 @@ func suite_result(report_dir, name) {
     if log["ok"] {output = log["text"]}
     exit_code := number_file(report_dir + "/" + name + ".exit", 127)
     elapsed_ms := number_file(report_dir + "/" + name + ".elapsed_ms", 0)
-    passed := metric(output, "Passed: ")
-    failed := metric(output, "Failed: ")
-    passed_ok := exit_code == 0&&failed == 0
+    passed_result := metric_result(output, "Passed: ")
+    failed_result := metric_result(output, "Failed: ")
+    passed := passed_result["value"]
+    failed := failed_result["value"]
+    passed_ok := exit_code == 0&&failed == 0&&passed_result["ok"]&&failed_result["ok"]
     return {"name": name, "passed": passed, "failed": failed, "exit_code": exit_code, "elapsed_ms": elapsed_ms, "ok": passed_ok}
 }
 

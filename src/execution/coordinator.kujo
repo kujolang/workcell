@@ -242,10 +242,12 @@ if start_stop["ok"] == false||container_cleanup["ok"] == false {
     cleanup_status = "failed"
 }
 start_status := "failed"
+start_stage := "starting"
 start_exit_code := 5
 start_error := container["error"]
 if cleanup_status == "failed" {
     start_status = "cleanup-failed"
+    start_stage = "cleanup-failed"
     start_exit_code = 9
     start_error = "container startup failed and cleanup was incomplete"
 }
@@ -260,7 +262,7 @@ if start_manifest["ok"] == false {
     write_receipt(receipt, receipt_path)
     return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_manifest["error"], 10, false, false, cleanup_status)
 }
-return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_status, redact_with_env(start_error, definition["secrets"]), start_exit_code, false, false, cleanup_status)
+return final_result(run_identifier, receipt_path, output_dir, receipt, false, start_stage, redact_with_env(start_error, definition["secrets"]), start_exit_code, false, false, cleanup_status)
 }
 receipt = add_state(receipt, "running")
 receipt["stdout_truncated"] := container["stdout_truncated"]

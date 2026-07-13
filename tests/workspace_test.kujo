@@ -1,7 +1,7 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
 from src.util import ensure_dir, load_json, process_ok, read_text, run_argv, run_id
-from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report, write_change_report_from_details
+from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, workspace_inventory, write_change_report, write_change_report_from_details
 
 mut passed := 0
 mut failed := 0
@@ -75,6 +75,20 @@ write_file_atomic(spoof + ".owner", "workcell-run-id=not-a-real-run\n", true)
 stale := clean_stale_workspaces([])
 expect("spoofed workspace marker is not removed", file_exists(spoof)&&contains(to_string(stale["skipped"]), spoof) == 1)
 run_argv(["rm", "-rf", spoof, spoof + ".owner"], 30000)
+
+symlink_marker_run := run_id()
+symlink_marker_workspace := temp_root() + "/kujo-workcell-" + symlink_marker_run
+symlink_marker_target := temp_root() + "/workcell-owner-target-" + symlink_marker_run
+ensure_dir(symlink_marker_workspace)
+write_file_atomic(symlink_marker_target, "workcell-run-id=" + symlink_marker_run + "\n", true)
+run_argv(["ln", "-s", symlink_marker_target, symlink_marker_workspace + ".owner"], 30000)
+symlink_marker_cleanup := cleanup_workspace({"workspace_path": symlink_marker_workspace, "source_root": "/tmp", "strategy": "isolated-clone"}, false)
+symlink_marker_inventory := workspace_inventory()
+symlink_marker_stale := clean_stale_workspaces([])
+expect("symlinked ownership marker cannot authorize direct cleanup", symlink_marker_cleanup["ok"] == false&&file_exists(symlink_marker_workspace))
+expect("symlinked ownership marker cannot authorize stale cleanup", symlink_marker_stale["ok"] == false&&file_exists(symlink_marker_workspace)&&contains(to_string(symlink_marker_stale["skipped"]), "path/marker is a symlink") == 1)
+expect("workspace inventory identifies symlinked ownership markers", symlink_marker_inventory["ok"]&&contains(to_json(symlink_marker_inventory["workspaces"]), "marker-symlink") == 1)
+run_argv(["rm", "-rf", symlink_marker_workspace, symlink_marker_workspace + ".owner", symlink_marker_target], 30000)
 
 active_run := run_id()
 active_workspace := temp_root() + "/kujo-workcell-" + active_run

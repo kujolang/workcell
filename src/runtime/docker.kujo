@@ -412,6 +412,10 @@ result := runtime_result(backend, ["rm", "-f", container_name], 30000)
 if process_ok(result) {
     return {"ok": true, "message": "container removed"}
 }
+message := to_lower(trim(result.stderr))
+if contains(message, "no such container") == 1||contains(message, "no container with") == 1||contains(message, "container not found") == 1 {
+    return {"ok": true, "message": trim(result.stderr)}
+}
 return {"ok": false, "message": trim(result.stderr), "exit_code": result.exitcode}
 }
 

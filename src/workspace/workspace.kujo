@@ -485,6 +485,9 @@ run_prefix := "kujo-workcell-"
 if starts_with(run_name, run_prefix) == false||valid_run_id(substring(run_name, len(run_prefix), len(run_name))) == false {
     return {"ok": false, "error": "refusing to remove a workspace with an invalid Workcell run ID: " + path}
 }
+if path_has_symlink(owner_path) {
+    return {"ok": false, "error": "refusing to remove a workspace with a symlinked ownership marker: " + owner_path}
+}
 owner := read_text(owner_path)
 expected_owner := "workcell-run-id=" + substring(run_name, len(run_prefix), len(run_name)) + "\n"
 if owner["ok"] == false||owner["text"] != expected_owner {
@@ -531,7 +534,7 @@ while i < len(entries) {
             skipped = push(skipped, path + ": invalid Workcell run ID")
         } else if contains(to_json(active_run_ids), run_value) == 1 {
         skipped = push(skipped, path + ": active Workcell run is still running")
-    } else if file_exists(owner_path)&&path_is_symlink(path) == false&&path_is_dir(path) {
+    } else if file_exists(owner_path)&&path_is_symlink(path) == false&&path_has_symlink(owner_path) == false&&path_is_dir(path) {
     owner := read_text(owner_path)
     expected_owner := "workcell-run-id=" + run_value + "\n"
     if owner["ok"] == false||owner["text"] != expected_owner {
@@ -554,7 +557,7 @@ skipped = push(skipped, path + ": could not inspect orphan workspace: " + to_str
 i = i + 1
 continue
 }
-if len(entries_in_orphan) == 0&&path_is_symlink(path) == false {
+if len(entries_in_orphan) == 0&&path_is_symlink(path) == false&&path_has_symlink(owner_path) == false {
     orphan_result := run_argv(["rmdir", path], 30000)
     if process_ok(orphan_result) {
         removed = push(removed, path + " (empty orphan recovered)")
@@ -562,7 +565,7 @@ if len(entries_in_orphan) == 0&&path_is_symlink(path) == false {
     skipped = push(skipped, path + ": empty orphan could not be removed")
 }
 } else {
-skipped = push(skipped, path + ": ownership marker missing or path is a symlink")
+skipped = push(skipped, path + ": ownership marker missing or path/marker is a symlink")
 }
 }
 }
@@ -596,8 +599,10 @@ while i < len(entries) {
             status = "invalid-run-id"
         } else if path_is_symlink(path) {
         status = "symlink"
-    } else if path_is_dir(path) == false {
-    status = "not-directory"
+    } else if path_has_symlink(owner_path) {
+    status = "marker-symlink"
+} else if path_is_dir(path) == false {
+status = "not-directory"
 } else {
 owner := read_text(owner_path)
 expected_owner := "workcell-run-id=" + run_value + "\n"

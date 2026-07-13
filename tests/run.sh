@@ -15,10 +15,13 @@ check_all() {
   "$KUJO" check "$ROOT/tests/stress_test.kujo"
   "$KUJO" check "$ROOT/tests/podman_security_contract.kujo"
   "$KUJO" check "$ROOT/tests/verification_cleanup_contract.kujo"
+  "$KUJO" check "$ROOT/tests/runtime_cleanup_contract.kujo"
   bash -n "$ROOT/tests/egress_deployment_contract.sh"
   bash -n "$ROOT/tests/load_integration.sh"
   bash -n "$ROOT/tests/quality.sh"
   bash -n "$ROOT/tests/verification_cleanup_contract.sh"
+  bash -n "$ROOT/tests/runtime_cleanup_contract.sh"
+  bash -n "$ROOT/tests/startup_failure_contract.sh"
 }
 
 if [ "${1:-}" = "--check-only" ]; then
@@ -42,4 +45,6 @@ KUJO="$KUJO" "$ROOT/tests/schema_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/report_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/podman_security_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/verification_cleanup_contract.sh"
+KUJO="$KUJO" "$ROOT/tests/runtime_cleanup_contract.sh"
+KUJO="$KUJO" "$ROOT/tests/startup_failure_contract.sh"
 "$ROOT/tests/version_consistency.sh"

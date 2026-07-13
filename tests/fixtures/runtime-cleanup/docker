@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  rm)
+    echo "Error response from daemon: No such container: ${3:-missing-container}" >&2
+    exit 1
+    ;;
+  stop)
+    echo "Error response from daemon: No such container: ${3:-missing-container}" >&2
+    exit 1
+    ;;
+  *)
+    exit 0
+    ;;
+esac

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+marker="${WORKCELL_STARTUP_MARKER:?}"
+case "${1:-}" in
+  info)
+    printf '["name=seccomp,profile=builtin","name=apparmor"]\n'
+    ;;
+  image)
+    if [ "${2:-}" = "inspect" ] && [ "${3:-}" = "--format" ]; then
+      case "${4:-}" in
+        *Id*) printf 'sha256:%064d\n' 1 ;;
+        *RepoDigests*) printf '<no value>\n' ;;
+        *Os*Architecture*) printf 'linux/amd64\n' ;;
+        *Config.Labels*) printf '{}\n' ;;
+      esac
+    fi
+    ;;
+  run)
+    touch "$marker.run"
+    echo "daemon startup failure" >&2
+    exit 125
+    ;;
+  inspect)
+    touch "$marker.inspect"
+    echo "No such container" >&2
+    exit 1
+    ;;
+  stop)
+    touch "$marker.stop"
+    echo "No such container" >&2
+    exit 1
+    ;;
+  rm)
+    touch "$marker.rm"
+    echo "No such container" >&2
+    exit 1
+    ;;
+  *)
+    exit 0
+    ;;
+esac

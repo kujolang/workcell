@@ -4,7 +4,7 @@ from src.artifacts.exporter import export_declared, export_declared_with_policy,
 from src.domain.definition import default_definition, definition_summary, resolve_definition, validate_definition
 from src.policy.policy import build_policy, inspect_policy, labels_for, spawn_options
 from src.receipts.manifest import verify_manifest, write_manifest
-from src.receipts.receipt import add_error, new_receipt
+from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, ensure_image, run_container, verify_daemon_security
 from src.util import ensure_dir, get_or, load_json, normalized_relative, process_error, read_text, redact, run_argv, run_id
 from src.verification.verification import run_verification_checks
@@ -339,8 +339,16 @@ partial_ensure := ensure_image({}, "/tmp", "test-partial-ensure", true, false)
 expect("partial image ensure definition is rejected without runtime crash", partial_ensure["ok"] == false)
 partial_receipt := new_receipt({}, "", "test-partial-receipt", {}, {}, {}, "/tmp")
 expect("partial receipt definition is rejected without runtime crash", partial_receipt["ok"] == false)
+partial_receipt_path := new_receipt(definition, "", "test-partial-receipt-path", {}, {}, {}, "/tmp")
+expect("partial receipt path input is rejected without runtime crash", partial_receipt_path["ok"] == false)
 partial_container := run_container(definition, {}, {})
 expect("partial container policy is rejected without runtime crash", partial_container["ok"] == false)
+partial_state := add_state({}, "failed")
+expect("partial receipt state input is rejected without runtime crash", partial_state["ok"] == false)
+partial_error := add_error({}, "stage", "message")
+expect("partial receipt error input is rejected without runtime crash", partial_error["ok"] == false)
+partial_finish := finish_receipt({}, "failed", 1, false, "", [], "", [], "failed", 1, false, false)
+expect("partial receipt finish input is rejected without runtime crash", partial_finish["ok"] == false)
 expect("policy includes network mode", contains(to_string(args), "none") == 1)
 custom_policy := build_policy(with_custom_network(definition, "workcell-internal"), "test-custom-network", "/tmp/workcell-test-workspace")
 expect("policy attaches custom network by name", contains(to_string(custom_policy["docker_args"]), "workcell-internal") == 1&&custom_policy["network_mode"] == "workcell-internal")

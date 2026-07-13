@@ -1,6 +1,6 @@
 # Structured Workcell execution receipts.
 
-from src.util import redact_with_env, save_json
+from src.util import get_or, redact_with_env, save_json
 from src.domain.definition import validate_definition
 
 func redacted_command(command, secret_names) {
@@ -18,6 +18,21 @@ export func new_receipt(definition, definition_path, run_identifier, source, wor
     if definition_check["ok"] == false {
         return definition_check
     }
+if type(definition_path) != "string"||definition_path == ""||file_exists(definition_path) == false {
+    return {"ok": false, "error": "receipt definition path is missing or does not exist"}
+}
+if type(source) != "dict"||get_or(source, "source_root", "") == ""||get_or(source, "source_commit", "") == "" {
+    return {"ok": false, "error": "receipt source input is incomplete"}
+}
+if type(workspace) != "dict"||get_or(workspace, "strategy", "") == ""||get_or(workspace, "workspace_path", "") == "" {
+    return {"ok": false, "error": "receipt workspace input is incomplete"}
+}
+if type(policy) != "dict"||get_or(policy, "runtime_backend", "") == ""||get_or(policy, "container_name", "") == "" {
+    return {"ok": false, "error": "receipt policy input is incomplete"}
+}
+if type(output_dir) != "string"||output_dir == "" {
+    return {"ok": false, "error": "receipt output directory is missing"}
+}
 return {
     "schema_version": "workcell-receipt/v1",
     "run_id": run_identifier,
@@ -86,37 +101,46 @@ return {
 }
 
 export func add_state(receipt, state) {
-    receipt["lifecycle"] := push(receipt["lifecycle"], state)
-    receipt["final_status"] := state
-    return receipt
+    if type(receipt) != "dict"||type(get_or(receipt, "lifecycle", null)) != "array" {
+        return {"ok": false, "error": "receipt input is missing lifecycle"}
+    }
+receipt["lifecycle"] := push(receipt["lifecycle"], state)
+receipt["final_status"] := state
+return receipt
 }
 
 export func add_error(receipt, stage, message) {
-    errors := receipt["errors"]
-    safe_message := redact_with_env(to_string(message), receipt["secret_names"])
-    errors = push(errors, {"stage": stage, "message": safe_message})
-    receipt["errors"] := errors
-    return receipt
+    if type(receipt) != "dict"||type(get_or(receipt, "errors", null)) != "array"||type(get_or(receipt, "secret_names", null)) != "array" {
+        return {"ok": false, "error": "receipt input is missing errors or secret_names"}
+    }
+errors := receipt["errors"]
+safe_message := redact_with_env(to_string(message), receipt["secret_names"])
+errors = push(errors, {"stage": stage, "message": safe_message})
+receipt["errors"] := errors
+return receipt
 }
 
 export func finish_receipt(receipt, final_status, exit_code, timed_out, image_digest, changed, patch_path, artifacts, cleanup_status, elapsed_ms, execution_succeeded, artifacts_succeeded) {
-    receipt["end_time"] := now_utc()
-    receipt["exit_code"] := exit_code
-    receipt["timeout"] := timed_out
-    receipt["elapsed"] := elapsed_ms
-    receipt["elapsed_ms"] := elapsed_ms
-    receipt["container_image_digest"] := image_digest
-    receipt["changed_files"] := changed
-    receipt["patch_path"] := patch_path
-    receipt["exported_artifacts"] := artifacts
-    receipt["cleanup_status"] := cleanup_status
-    receipt["final_status"] := final_status
-    verification := receipt["verification"]
-    verification["execution_succeeded"] := final_status != "dry-run"&&execution_succeeded&&timed_out == false
-    verification["artifacts_exported"] := final_status != "dry-run"&&artifacts_succeeded == true
-    verification["cleanup_succeeded"] := cleanup_status == "complete"||cleanup_status == "preserved"
-    receipt["verification"] := verification
-    return receipt
+    if type(receipt) != "dict"||type(get_or(receipt, "verification", null)) != "dict" {
+        return {"ok": false, "error": "receipt input is missing verification"}
+    }
+receipt["end_time"] := now_utc()
+receipt["exit_code"] := exit_code
+receipt["timeout"] := timed_out
+receipt["elapsed"] := elapsed_ms
+receipt["elapsed_ms"] := elapsed_ms
+receipt["container_image_digest"] := image_digest
+receipt["changed_files"] := changed
+receipt["patch_path"] := patch_path
+receipt["exported_artifacts"] := artifacts
+receipt["cleanup_status"] := cleanup_status
+receipt["final_status"] := final_status
+verification := receipt["verification"]
+verification["execution_succeeded"] := final_status != "dry-run"&&execution_succeeded&&timed_out == false
+verification["artifacts_exported"] := final_status != "dry-run"&&artifacts_succeeded == true
+verification["cleanup_succeeded"] := cleanup_status == "complete"||cleanup_status == "preserved"
+receipt["verification"] := verification
+return receipt
 }
 
 export func write_receipt(receipt, output_path) {

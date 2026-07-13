@@ -44,18 +44,18 @@ func collect_files(root, relative, depth) {
         digest = sha256_file(child_path)
     } except err {
     return {"ok": false, "error": "could not hash manifest source " + child_relative + ": " + to_string(err)}
-    }
-    bytes := file_size(child_path)
-    files = push(files, {"path": child_relative, "sha256": digest, "bytes": bytes})
-    total_bytes = total_bytes + bytes
-    if len(files) > 100000 {return {"ok": false, "error": "manifest exceeds 100000 files"}}
-    }
-    }
-    entry_i = entry_i + 1
-    }
-    }
-    queue_i = queue_i + 1
-    }
+}
+bytes := file_size(child_path)
+files = push(files, {"path": child_relative, "sha256": digest, "bytes": bytes})
+total_bytes = total_bytes + bytes
+if len(files) > 100000 {return {"ok": false, "error": "manifest exceeds 100000 files"}}
+}
+}
+entry_i = entry_i + 1
+}
+}
+queue_i = queue_i + 1
+}
 return {"ok": true, "files": files, "bytes": total_bytes}
 }
 
@@ -72,15 +72,15 @@ export func write_manifest(output_dir, run_identifier) {
         "manifest_path": "manifest.json",
         "excluded_paths": ["manifest.json"]
     }
-    path := output_dir + "/manifest.json"
-    try {
-        persisted := save_json(path, value)
-        if persisted != true {
-            return {"ok": false, "error": "could not write integrity manifest: atomic write returned false"}
-        }
-    } except err {
-    return {"ok": false, "error": "could not write integrity manifest: " + to_string(err)}
+path := output_dir + "/manifest.json"
+try {
+    persisted := save_json(path, value)
+    if persisted != true {
+        return {"ok": false, "error": "could not write integrity manifest: atomic write returned false"}
     }
+} except err {
+return {"ok": false, "error": "could not write integrity manifest: " + to_string(err)}
+}
 return {"ok": true, "path": path, "relative_path": "manifest.json", "files": len(manifest["files"]), "bytes": manifest["bytes"]}
 }
 
@@ -89,12 +89,12 @@ export func verify_manifest(output_dir) {
     if path_has_symlink(manifest_path) {
         return {"ok": false, "error": "integrity manifest path contains a symlink"}
     }
-    loaded := load_json(manifest_path)
-    if loaded["ok"] == false {return loaded}
-    value := loaded["value"]
-    if type(value) != "dict"||get_or(value, "schema_version", "") != "workcell-manifest/v1" {
-        return {"ok": false, "error": "unsupported or invalid integrity manifest schema"}
-    }
+loaded := load_json(manifest_path)
+if loaded["ok"] == false {return loaded}
+value := loaded["value"]
+if type(value) != "dict"||get_or(value, "schema_version", "") != "workcell-manifest/v1" {
+    return {"ok": false, "error": "unsupported or invalid integrity manifest schema"}
+}
 files := get_or(value, "files", [])
 if type(files) != "array"||len(files) > 100000 {
     return {"ok": false, "error": "integrity manifest file list is invalid or exceeds 100000 entries"}
@@ -115,7 +115,7 @@ path := output_dir + "/" + relative
 if path_within(output_dir, path) == false||path_has_symlink(path)||file_exists(path) == false {
     return {"ok": false, "error": "integrity manifest file is missing or unsafe: " + relative}
 }
-expected_bytes := get_or(entry, "bytes", -1)
+expected_bytes := get_or(entry, "bytes", - 1)
 if type(expected_bytes) != "int"||file_size(path) != expected_bytes {
     return {"ok": false, "error": "integrity manifest byte count mismatch: " + relative}
 }
@@ -127,7 +127,7 @@ if expected_digest == ""||actual_digest != expected_digest {
 total_bytes = total_bytes + expected_bytes
 i = i + 1
 }
-if get_or(value, "total_files", -1) != len(files)||get_or(value, "total_bytes", -1) != total_bytes {
+if get_or(value, "total_files", - 1) != len(files)||get_or(value, "total_bytes", - 1) != total_bytes {
     return {"ok": false, "error": "integrity manifest totals do not match its file entries"}
 }
 return {"ok": true, "schema_version": value["schema_version"], "files": len(files), "bytes": total_bytes}

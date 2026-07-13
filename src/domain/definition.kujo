@@ -353,7 +353,12 @@ while digit_i < len(part) {
     }
 digit_i = digit_i + 1
 }
-numeric := parse_int(part)
+mut numeric := 0
+try {
+    numeric = parse_int(part)
+} except err {
+return {"ok": false, "error": "workspace.run_as contains an invalid uid/gid number"}
+}
 if numeric <= 0||numeric > 65534 {
     return {"ok": false, "error": "workspace.run_as uid and gid must be between 1 and 65534"}
 }
@@ -412,7 +417,12 @@ while i < len(amount_text) {
     }
 i = i + 1
 }
-amount := parse_int(amount_text)
+mut amount := 0
+try {
+    amount = parse_int(amount_text)
+} except err {
+return false
+}
 if amount <= 0 {
     return false
 }

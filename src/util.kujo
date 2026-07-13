@@ -381,7 +381,12 @@ while i < len(value) {
     }
 i = i + 1
 }
-number := parse_int(value)
+mut number := 0
+try {
+    number = parse_int(value)
+} except err {
+return false
+}
 return number > 0&&number <= 65534
 }
 

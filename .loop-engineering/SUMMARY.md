@@ -41,7 +41,8 @@ success
 - `6f8af19` — fix: pin exact Kujo runtime commit
 - `4362a25` — fix P2 failure-path checks, truthful dry-run integration status, runtime-class validation, backend-aware doctor, and adversarial coverage
 - `9afc769` — docs: record P2 adversarial audit evidence
-- review — changed-file analysis reuse, backend-neutral CLI contracts, RunLedger finish status, safe doctor temp-root handling, exact Kujo Docker pin parity, digest-pinned example bases, README refresh, and next review backlog (pending commit)
+- `735b8cb` — changed-file analysis reuse, backend-neutral CLI contracts, RunLedger finish status, safe doctor temp-root handling, exact Kujo Docker pin parity, and digest-pinned example bases
+- `c7263c7` — README refresh, enterprise-readiness documentation, and next review backlog
 
 ## Remaining
 

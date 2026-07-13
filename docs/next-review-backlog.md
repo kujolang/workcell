@@ -4,7 +4,7 @@ Updated: 2026-07-12
 
 ## Review conclusion
 
-Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 88 offline policy/artifact/verification assertions, 11 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
+Workcell is a strong, production-oriented local Docker MVP and a credible Kujo showcase. It is not universally enterprise-grade in isolation: the Docker daemon, host kernel, image supply chain, network egress, credentials, and deployment boundary remain operator-owned. The current repository has 97 offline policy/artifact/verification assertions, 11 workspace assertions, 5 deterministic stress assertions, a machine-readable `workcell-report/v1` release summary, an explicit example matrix, adversarial request rejection, Docker integration coverage, structured receipts, versioned integrity manifests, and explicit ecosystem integration boundaries.
 
 The next work should preserve the current contract: Docker remains the default, Podman remains an explicit OCI backend, all external tools remain opt-in and bounded, and failures must stay visible without weakening the primary sandbox verdict.
 

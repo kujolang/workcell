@@ -58,11 +58,14 @@ mut v := 0
 while v < len(value_flags) {
     if name == value_flags[v] {
         known = true
-        if i + 1 >= len(tokens)||starts_with(tokens[i + 1], "--") {
-            return {"error": "missing value for --" + name}
+        if i + 1 >= len(tokens)||type(tokens[i + 1]) != "string" {
+            return {"error": "arguments must contain only strings"}
         }
-    flags[name] := tokens[i + 1]
-    i = i + 1
+        if starts_with(tokens[i + 1], "--") {
+        return {"error": "missing value for --" + name}
+    }
+flags[name] := tokens[i + 1]
+i = i + 1
 }
 v = v + 1
 }

@@ -414,6 +414,7 @@ expect("occupied JSON parent input is handled without runtime crash", save_json(
 run_argv(["rm", "-f", occupied_save_parent], 10000)
 expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
 expect("non-string CLI argument input is handled without runtime crash", main([null]) == 2)
+expect("non-string CLI value input is handled without runtime crash", main(["--file", null]) == 2)
 invalid_integration_definition := default_definition()
 invalid_integration_config := invalid_integration_definition["integrations"]
 invalid_integration_config["changebucket"] := {"enabled": true, "command": ["true"], "timeout_ms": 1000}

@@ -1,6 +1,6 @@
 # Workspace contract test: untracked files must appear in generated patches and reports.
 
-from src.util import ensure_dir, load_json, read_text, run_argv, run_id
+from src.util import ensure_dir, load_json, process_ok, read_text, run_argv, run_id
 from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report, write_change_report_from_details
 
 mut passed := 0
@@ -20,6 +20,13 @@ partial_cleanup := cleanup_workspace({}, false)
 expect("partial cleanup workspace is rejected without runtime crash", partial_cleanup["ok"] == false)
 partial_scan_limits := find_symlink_with_limits("/tmp", {})
 expect("partial workspace scan limits are rejected without runtime crash", partial_scan_limits["ok"] == false)
+denied_scan_path := temp_root() + "/kujo-workcell-scan-denied-" + run_id()
+denied_created := run_argv(["mkdir", "-p", denied_scan_path], 10000)
+denied_mode := run_argv(["chmod", "000", denied_scan_path], 10000)
+denied_scan := find_symlink_with_limits(denied_scan_path, {"max_files": 10, "max_bytes": 1000, "max_depth": 2})
+run_argv(["chmod", "700", denied_scan_path], 10000)
+run_argv(["rm", "-rf", denied_scan_path], 10000)
+expect("permission-denied workspace scan is handled without runtime crash", process_ok(denied_created)&&process_ok(denied_mode)&&denied_scan["ok"] == false)
 
 func expect(label, condition) {
     if condition {

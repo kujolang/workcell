@@ -94,21 +94,26 @@ func scan_artifact(path, relative, depth, policy, limit, secrets) {
         return {"ok": false, "error": "artifact exceeds max depth " + to_string(max_depth) + ": " + relative}
     }
 if path_is_dir(path) {
-    entries := list_dir(path)
-    mut total_bytes := 0
-    mut total_files := 0
-    mut i := 0
-    while i < len(entries) {
-        name := to_string(entries[i])
-        child := path + "/" + name
-        child_relative := relative + "/" + name
-        if path_is_symlink(child) {
-            return {"ok": false, "error": "artifact source contains a symlink: " + child_relative}
-        }
-    child_stats := scan_artifact(child, child_relative, depth + 1, policy, limit, secrets)
-    if child_stats["ok"] == false {
-        return child_stats
+    mut entries := []
+    try {
+        entries = list_dir(path)
+    } except err {
+    return {"ok": false, "error": "artifact could not list directory " + relative + ": " + to_string(err)}
+}
+mut total_bytes := 0
+mut total_files := 0
+mut i := 0
+while i < len(entries) {
+    name := to_string(entries[i])
+    child := path + "/" + name
+    child_relative := relative + "/" + name
+    if path_is_symlink(child) {
+        return {"ok": false, "error": "artifact source contains a symlink: " + child_relative}
     }
+child_stats := scan_artifact(child, child_relative, depth + 1, policy, limit, secrets)
+if child_stats["ok"] == false {
+    return child_stats
+}
 total_bytes = total_bytes + child_stats["bytes"]
 total_files = total_files + child_stats["files"]
 i = i + 1
@@ -118,7 +123,12 @@ return enforce_artifact_limits(relative, total_bytes, total_files, policy, limit
 if extension_allowed(relative, get_or(policy, "allowed_extensions", [])) == false {
     return {"ok": false, "error": "artifact content type is not allowed: " + relative}
 }
-bytes := file_size(path)
+mut bytes := 0
+try {
+    bytes = file_size(path)
+} except err {
+return {"ok": false, "error": "artifact could not inspect file " + relative + ": " + to_string(err)}
+}
 secret_action := get_or(policy, "secret_action", "allow")
 if secret_action != "allow"&&len(secrets) > 0 {
     text_result := read_text(path)
@@ -147,21 +157,31 @@ return {"ok": true, "bytes": bytes, "files": files}
 
 func redact_tree(path, secrets, relative) {
     if path_is_dir(path) {
-        entries := list_dir(path)
-        mut i := 0
-        while i < len(entries) {
-            child_relative := relative + "/" + to_string(entries[i])
-            result := redact_tree(path + "/" + to_string(entries[i]), secrets, child_relative)
-            if result["ok"] == false {return result}
-            i = i + 1
-        }
-    return {"ok": true}
+        mut entries := []
+        try {
+            entries = list_dir(path)
+        } except err {
+        return {"ok": false, "error": "artifact could not list redaction directory " + relative + ": " + to_string(err)}
+    }
+mut i := 0
+while i < len(entries) {
+    child_relative := relative + "/" + to_string(entries[i])
+    result := redact_tree(path + "/" + to_string(entries[i]), secrets, child_relative)
+    if result["ok"] == false {return result}
+    i = i + 1
+}
+return {"ok": true}
 }
 text_result := read_text(path)
 if text_result["ok"] == false {
     return {"ok": false, "error": "artifact could not be redacted safely"}
 }
-written := write_file_atomic(path, redact(text_result["text"], secrets), true)
+mut written := false
+try {
+    written = write_file_atomic(path, redact(text_result["text"], secrets), true)
+} except err {
+return {"ok": false, "error": "artifact redaction write failed for " + relative + ": " + to_string(err)}
+}
 if written != true {
     return {"ok": false, "error": "could not write redacted artifact: " + relative}
 }
@@ -180,7 +200,9 @@ if policy_check["ok"] == false {return policy_check}
 if path_has_symlink(output_dir) {
     return {"ok": false, "error": "artifact output path contains a symlink: " + output_dir}
 }
-ensure_dir(output_dir)
+if ensure_dir(output_dir) == false||path_is_dir(output_dir) == false {
+    return {"ok": false, "error": "artifact output directory could not be prepared: " + output_dir}
+}
 mut exported := []
 mut total_bytes := 0
 mut total_files := 0
@@ -231,7 +253,9 @@ slash = slash - 1
 if path_has_symlink(parent) {
     return {"ok": false, "error": "artifact destination contains a symlink: " + destination}
 }
-ensure_dir(parent)
+if ensure_dir(parent) == false||path_is_dir(parent) == false {
+    return {"ok": false, "error": "artifact destination directory could not be prepared: " + destination}
+}
 if file_exists(destination)||path_is_dir(destination) {
     run_argv(["rm", "-rf", destination], 30000)
 }

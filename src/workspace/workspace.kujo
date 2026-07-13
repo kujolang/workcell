@@ -78,7 +78,12 @@ while queue_i < len(queue) {
 if path_is_dir(current) == false {
     return {"ok": false, "error": "workspace disappeared during scan: " + current}
 }
-entries := list_dir(current)
+mut entries := []
+try {
+    entries = list_dir(current)
+} except err {
+return {"ok": false, "error": "workspace scan could not list directory " + current + ": " + to_string(err)}
+}
 mut entry_i := 0
 while entry_i < len(entries) {
     name := to_string(entries[entry_i])
@@ -97,7 +102,13 @@ if path_is_dir(candidate) {
     depths = push(depths, depth + 1)
 } else {
 scanned_files = scanned_files + 1
-scanned_bytes = scanned_bytes + file_size(candidate)
+mut candidate_bytes := 0
+try {
+    candidate_bytes = file_size(candidate)
+} except err {
+return {"ok": false, "error": "workspace scan could not inspect file " + candidate + ": " + to_string(err)}
+}
+scanned_bytes = scanned_bytes + candidate_bytes
 if scanned_files > max_files {
     return {"ok": false, "error": "workspace scan exceeded max files " + to_string(max_files)}
 }

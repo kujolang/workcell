@@ -1,0 +1,5 @@
+CLI boundary hardening:
+
+- `src/cli/cli.kujo`: global help/version support and strict command option/positional validation.
+- `tests/cli_smoke.sh` and `tests/schema_contract.sh`: regression and contract coverage.
+- API, security, development, README, audit, and backlog docs updated.

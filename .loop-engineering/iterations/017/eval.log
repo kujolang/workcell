@@ -1,0 +1,6 @@
+Kujo check, syntax-preserving format, source lint, shell syntax, and git diff checks passed.
+CLI smoke passed for global help/version, extra positional rejection, invalid command-option rejection, initialization, inspect, doctor, validation, and failure output.
+Offline suite passed: 99 policy, 11 workspace, and 5 stress assertions; adversarial, path-safety, dry-run, examples, schema, report, and version contracts passed.
+Release report passed with workcell-report/v1 and 115 total assertions.
+Rootful Docker integration, egress, and concurrent load passed. CLI smoke and concurrent load passed for rootless Docker and rootless Podman in the Colima Linux VM.
+Hosted CI run `29229485108` remains externally blocked before job start by account billing/spending limits.

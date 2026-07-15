@@ -1,9 +1,0 @@
-Before the fix, oversized timeout probes raised `[KUJOVM001] Runtime Error` during parse and multiplication overflow.
-After the fix, all oversized timeout probes returned `ok=false` with `invalid timeout` and exit code 0 from the probe.
-Kujo check, syntax-preserving format, source lint, shell syntax, and git diff checks passed.
-Offline suite passed: 104 policy/artifact/verification, 11 workspace, and 5 stress assertions; adversarial, path-safety, dry-run, examples, schema, report, and version contracts passed.
-Quality gates passed.
-Release report passed with workcell-report/v1 and 120 total assertions.
-Rootful Docker integration, custom-network egress, and four-run concurrent load passed.
-All commits pushed; working tree is clean and matches origin/main.
-Hosted CI remains externally blocked before job start by account billing/spending limits; production firewall/proxy and image-governance evidence remain deployment-owned.

@@ -1,6 +1,0 @@
-diff --git a/src/verification/verification.kujo b/src/verification/verification.kujo
-@@
-+verification execution now rejects malformed workspace/run-ID/secrets/workload-result inputs before command execution
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+verification execution invalid-input regression added

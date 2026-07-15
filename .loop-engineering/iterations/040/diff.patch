@@ -1,6 +1,0 @@
-diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
-@@
-+change-detail consumers now reject malformed file entries and report metadata before dereferencing or persisting them
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+malformed change-detail/report invalid-input regressions added

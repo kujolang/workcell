@@ -1,7 +1,0 @@
-targeted resources-empty probe before fix: exit 4; VM error Missing map key: "cpus"
-targeted resources-empty probe after fix: exit 0; structured resources.cpus validation error
-targeted scan-empty probe after fix: exit 0; structured workspace.scan.max_files validation error
-empty-section fuzz after fix: exit 0; all sections returned structured results
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 108, workspace 11, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 124 failed 0

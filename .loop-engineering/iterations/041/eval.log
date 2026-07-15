@@ -1,7 +1,0 @@
-targeted review before fix: receipt construction accepted null run identifiers and non-string source metadata
-targeted probes after fix: invalid receipt metadata returns stable structured failures
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 171, workspace 18, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 194 failed 0
-KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

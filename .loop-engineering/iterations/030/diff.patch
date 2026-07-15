@@ -1,6 +1,0 @@
-diff --git a/src/util.kujo b/src/util.kujo
-@@
-+utility text, process-result, redaction, and environment-secret helpers now guard invalid inputs
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+six null/invalid utility input regressions added

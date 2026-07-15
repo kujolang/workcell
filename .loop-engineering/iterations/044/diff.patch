@@ -1,6 +1,0 @@
-diff --git a/src/artifacts/exporter.kujo b/src/artifacts/exporter.kujo
-@@
-+artifact policy now validates top-level limits and extension entries before comparisons or conversion
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+malformed artifact limit/extension invalid-input regression added

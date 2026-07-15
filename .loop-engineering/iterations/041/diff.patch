@@ -1,6 +1,0 @@
-diff --git a/src/receipts/receipt.kujo b/src/receipts/receipt.kujo
-@@
-+receipt constructors and mutation APIs now validate identity, metadata, and final-state types before producing evidence
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+receipt identity/source invalid-input regressions added

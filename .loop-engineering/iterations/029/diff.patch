@@ -1,7 +1,0 @@
-diff --git a/src/receipts/receipt.kujo b/src/receipts/receipt.kujo
-@@
-+receipt mutation functions validate required lifecycle/errors/verification fields
-+new_receipt validates definition path and source/workspace/policy/output inputs
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+four incomplete receipt mutation/path regressions added

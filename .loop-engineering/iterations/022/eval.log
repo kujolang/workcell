@@ -1,6 +1,0 @@
-targeted malformed report probe before fix: exit 4; VM error parsing oversized exit metric
-targeted malformed report probe after fix: exit 0; structured unsuccessful workcell-report/v1 output
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 106, workspace 11, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/report_contract.sh: passed valid and malformed evidence contracts
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 122 failed 0

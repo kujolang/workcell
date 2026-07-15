@@ -1,6 +1,0 @@
-diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
-@@
-+patch generation now validates its output path before Git and filesystem operations
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+invalid patch destination regression added

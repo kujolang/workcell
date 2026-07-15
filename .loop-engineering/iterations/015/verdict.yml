@@ -1,8 +1,0 @@
-iteration: 015
-objective: add non-mutating operator-supplied egress deployment evidence
-verdict: success
-progress: 1
-local_gates: passed
-deployment_contract: passed
-network_mutation: false
-external_boundaries: hosted_ci_and_production_host_egress_controls

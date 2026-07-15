@@ -1,8 +1,0 @@
-iteration: 009
-status: success
-local_changes: complete
-required_gates: passed
-deployment_evidence: pending
-external_blockers:
-  - rootless Linux/Podman receipt evidence
-  - host-enforced egress/proxy allow-deny evidence

@@ -1,7 +1,0 @@
-targeted probe before fix: exit 4 VM crash for `changed_files_from_details` with a null file entry
-targeted probe after fix: exit 0 structured change-details failure
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 169, workspace 18, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 192 failed 0
-KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

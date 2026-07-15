@@ -1,6 +1,0 @@
-diff --git a/src/workspace/workspace.kujo b/src/workspace/workspace.kujo
-@@
-+stale-workspace root and orphan listings now fail closed with preserved paths
-diff --git a/tests/workspace_test.kujo b/tests/workspace_test.kujo
-@@
-+permission-denied orphan cleanup regression added

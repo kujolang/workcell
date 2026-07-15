@@ -1,7 +1,0 @@
-targeted probe before fix: exit 4 VM crash when a top-level artifact max-bytes value was a string
-targeted tests after fix: malformed artifact limits/extensions return stable structured failures
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 174, workspace 18, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 197 failed 0
-KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

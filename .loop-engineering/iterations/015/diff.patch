@@ -1,5 +1,0 @@
-Deployment-owned egress acceptance:
-
-- `tests/egress_deployment_contract.sh`: validate allowed and denied probes on an operator-supplied network without network mutation.
-- `tests/run.sh` and `tests/schema_contract.sh`: include shell and evidence-contract coverage.
-- README, development, API compatibility, and review backlog docs: describe the runner and preserve the deployment-owned boundary.

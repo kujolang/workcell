@@ -1,6 +1,0 @@
-iteration: 4
-verdict: success
-progress: 1
-required_failures: 0
-external_blockers: 0
-stop_reason: "all local hardening gates passed; external deployment/toolchain boundaries retained"

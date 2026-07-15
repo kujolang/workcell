@@ -1,6 +1,0 @@
-Kujo check, syntax-preserving format, source lint, shell syntax, and git diff checks passed.
-Offline suite passed: 101 policy/artifact/verification, 11 workspace, and 5 stress assertions; adversarial, path-safety, dry-run, examples, schema, report, and version contracts passed.
-Quality gates passed.
-Release report passed with workcell-report/v1 and 117 total assertions.
-Rootful Docker integration, custom-network egress, and four-run concurrent load passed.
-Hosted CI remains externally blocked before job start by account billing/spending limits; production firewall/proxy and image-governance evidence remain deployment-owned.

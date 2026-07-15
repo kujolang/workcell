@@ -1,7 +1,0 @@
-targeted workspace API probes before fix: exit 4 VM crashes for missing workspace/detail/scan-limit keys
-targeted workspace API probes after fix: exit 0 structured input errors
-KUJO=../kujo/target/release/kujo ./tests/run.sh: passed; Workcell 121, workspace 18, stress 5
-KUJO=../kujo/target/release/kujo ./tests/quality.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/release_report.sh: passed; workcell-report/v1 totals passed 144 failed 0
-KUJO=../kujo/target/release/kujo ./tests/docker_integration.sh: passed
-KUJO=../kujo/target/release/kujo ./tests/oci_smoke.sh: passed; Docker OCI evidence emitted

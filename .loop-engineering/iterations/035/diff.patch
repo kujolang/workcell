@@ -1,6 +1,0 @@
-diff --git a/src/execution/coordinator.kujo b/src/execution/coordinator.kujo
-@@
-+coordinator output-boundary validation now accepts only non-empty strings before prefix checks
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+high-level coordinator null-output regression added

@@ -1,6 +1,0 @@
-diff --git a/src/receipts/receipt.kujo b/src/receipts/receipt.kujo
-@@
-+receipt definition hashing now fails closed on unreadable input
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+unreadable receipt definition regression added

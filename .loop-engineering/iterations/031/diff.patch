@@ -1,6 +1,0 @@
-diff --git a/src/util.kujo b/src/util.kujo
-@@
-+utility filesystem, path, mount-safety, and text-search helpers now guard invalid inputs
-diff --git a/tests/workcell_test.kujo b/tests/workcell_test.kujo
-@@
-+twelve null/invalid utility path and text input regressions added

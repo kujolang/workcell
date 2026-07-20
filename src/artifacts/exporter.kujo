@@ -85,6 +85,17 @@ func artifact_limit(policy, relative) {
     if type(limits) == "dict"&&has_key(limits, relative) == 1 {
         return limits[relative]
     }
+if type(limits) == "dict" {
+    names := keys(limits)
+    mut i := 0
+    while i < len(names) {
+        checked := normalized_relative(names[i])
+        if checked["ok"]&&checked["path"] == relative {
+            return limits[names[i]]
+        }
+    i = i + 1
+}
+}
 return {}
 }
 

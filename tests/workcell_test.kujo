@@ -137,6 +137,13 @@ func with_artifact_policy(definition, key, value) {
     return definition
 }
 
+func with_artifact_limits(definition, limits) {
+    artifacts := definition["artifacts"]
+    artifacts["limits"] := limits
+    definition["artifacts"] := artifacts
+    return definition
+}
+
 func with_verification(definition, commands) {
     verification := definition["verification"]
     verification["commands"] := commands
@@ -288,6 +295,7 @@ expect("secret assignment rejected", validate_definition(with_secret(definition,
 expect("duplicate secret rejected", validate_definition(with_duplicate_secret(definition))["ok"] == false)
 expect("duplicate artifact rejected", validate_definition(with_duplicate_artifact(definition))["ok"] == false)
 expect("artifact max bytes is bounded", validate_definition(with_artifact_policy(definition, "max_bytes", 1000000001))["ok"] == false)
+expect("artifact non-normalized limit paths rejected", validate_definition(with_artifact_limits(definition, {"nested/result.txt": {"max_bytes": 8}, "nested/./result.txt": {"max_bytes": 4}}))["ok"] == false)
 expect("artifact extension policy is validated", validate_definition(with_artifact_policy(definition, "allowed_extensions", ["txt"]))["ok"] == false)
 expect("artifact secret action is validated", validate_definition(with_artifact_policy(definition, "secret_action", "leak"))["ok"] == false)
 expect("verification command is accepted", validate_definition(with_verification(definition, [{"name": "smoke", "command": ["sh", "-lc", "true"]}]))["ok"])
@@ -311,8 +319,10 @@ expect("overflow memory limit rejected without runtime crash", validate_definiti
 expect("PID limit is bounded", validate_definition(with_resource(definition, "pids", 70000))["ok"] == false)
 expect("environment names are validated", validate_definition(with_environment_set(definition, "BAD-NAME", "x"))["ok"] == false)
 expect("environment values are strings", validate_definition(with_environment_set(definition, "GOOD_NAME", 7))["ok"] == false)
+expect("host-control environment set rejected", validate_definition(with_environment_set(definition, "DOCKER_HOST", "tcp://docker.example:2375"))["ok"] == false)
 expect("host-control environment allow rejected", validate_definition(with_environment_allow(definition, "DOCKER_HOST"))["ok"] == false)
 expect("proxy environment allow rejected", validate_definition(with_environment_allow(definition, "HTTP_PROXY"))["ok"] == false)
+expect("lowercase proxy environment allow rejected", validate_definition(with_environment_allow(definition, "http_proxy"))["ok"] == false)
 expect("cloud credential environment allow rejected", validate_definition(with_environment_allow(definition, "AWS_SESSION_TOKEN"))["ok"] == false&&validate_definition(with_environment_allow(definition, "GOOGLE_APPLICATION_CREDENTIALS"))["ok"] == false)
 expect("runtime control environment allow rejected", validate_definition(with_environment_allow(definition, "DOCKER_CONTEXT"))["ok"] == false&&validate_definition(with_environment_allow(definition, "CONTAINER_HOST"))["ok"] == false)
 malformed_secrets := default_definition()
@@ -565,6 +575,8 @@ write_file_atomic(policy_fixture + "/workspace/nested/result.txt", "artifact-sec
 limited_policy := {"export": ["nested"], "limits": {}, "max_bytes": 4, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}
 limited_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/limited", limited_policy, [])
 expect("artifact byte limit rejects oversized export", limited_export["ok"] == false&&contains(limited_export["error"], "max bytes") == 1)
+normalized_limit_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/normalized-limit", {"export": ["nested/result.txt"], "limits": {"nested/./result.txt": {"max_bytes": 4}}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
+expect("artifact exporter applies normalized per-path limits", normalized_limit_export["ok"] == false&&contains(normalized_limit_export["error"], "max bytes") == 1)
 duplicate_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/duplicate", {"export": ["nested/result.txt", "nested/result.txt"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "allow"}, [])
 expect("artifact exporter rejects duplicate declarations", duplicate_export["ok"] == false&&contains(duplicate_export["error"], "duplicate") == 1)
 extension_policy := {"export": ["nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [".md"], "secret_action": "allow"}

@@ -385,7 +385,9 @@ numstat_i = numstat_i + 1
 mut file_i := 0
 while file_i < len(files) {
     if has_key_safe(binary_paths, files[file_i]["path"]) {
-        files[file_i]["binary"] := true
+        mut updated_file := files[file_i]
+        updated_file["binary"] := true
+        files[file_i] := updated_file
     }
 file_i = file_i + 1
 }
@@ -461,17 +463,31 @@ if process_ok(untracked_result) == false {
     return {"ok": false, "error": process_error(untracked_result, "collect untracked files for Git patch")}
 }
 untracked := lines_of(trim(untracked_result.stdout))
+mut untracked_paths := []
 mut i := 0
 while i < len(untracked) {
     relative := trim(untracked[i])
     if relative != "" {
-        added := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", "--no-index", "--", "/dev/null", relative], 60000)
-        if added.exitcode != 0&&added.exitcode != 1 {
-            return {"ok": false, "error": process_error(added, "generate Git patch for " + relative)}
-        }
-    patch_text = patch_text + added.stdout
-}
+        untracked_paths = push(untracked_paths, relative)
+    }
 i = i + 1
+}
+if len(untracked_paths) > 0 {
+    mut add_args := ["git", "-C", workspace["workspace_path"], "add", "--intent-to-add", "--"]
+    i = 0
+    while i < len(untracked_paths) {
+        add_args = push(add_args, untracked_paths[i])
+        i = i + 1
+    }
+intent_result := git_result(add_args, 60000)
+if process_ok(intent_result) == false {
+    return {"ok": false, "error": process_error(intent_result, "stage untracked files for patch metadata")}
+}
+patch_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
+if process_ok(patch_result) == false {
+    return {"ok": false, "error": process_error(patch_result, "generate Git patch including untracked files")}
+}
+patch_text = patch_result.stdout
 }
 if file_exists(patch_path) {
     delete_file(patch_path)

@@ -160,9 +160,10 @@ The runtime boundary leaves room for gVisor-compatible Docker runtimes, remote e
 
 ## Launch readiness
 
-Current next-batch scope: not yet proven. The 2026-07-28 local proof passes the
-native offline checks, definition validation, quality gate, and formatting
-check, but Docker image build and Workcell receipt proof are blocked in this
-environment by Docker Hub DNS/metadata fetch failure for the pinned Alpine base
-image. See [`docs/launch-checklist.md`](docs/launch-checklist.md) before making
-release-candidate claims from this checkout.
+Current next-batch scope: locally verified technical preview. The 2026-07-28
+local proof passes the native offline checks, definition validation, quality
+gate, formatting check, Workcell self-run, and Workcell receipt verification.
+Release-candidate scope still requires clean-machine setup proof and the
+broader Docker/Podman integration gate set. See
+[`docs/launch-checklist.md`](docs/launch-checklist.md) before making stronger
+readiness claims from this checkout.

@@ -1,6 +1,6 @@
 # Launch Checklist
 
-Current launch scope: `not yet proven` for this batch because Workcell's Docker proof could not run in the local environment. Native offline checks passed locally; release-candidate scope requires a current Workcell receipt for the exact commit.
+Current launch scope: `locally verified technical preview`. Native offline checks and Workcell self-proof passed locally for the exact batch commit. Release-candidate scope still requires clean-machine setup proof and the broader Docker/Podman integration gate set.
 
 ## Local Gates
 
@@ -9,22 +9,24 @@ Current launch scope: `not yet proven` for this batch because Workcell's Docker 
 - [x] Native offline suite checked with `./tests/run.sh`.
 - [x] Kujo/shell quality gate checked with `./tests/quality.sh`.
 - [x] Formatting checked with `git diff --check`.
-- [ ] Docker image build checked with `docker build --tag kujolang/workcell-base:local docker/`.
-- [ ] Workcell run checked with `./bin/workcell run --file workcell.json --repo .`.
-- [ ] Workcell receipt verification checked with `./bin/workcell verify --run <run-dir> --json`.
+- [x] Docker image build checked with `DOCKER_BUILDKIT=0 docker build --tag kujolang/workcell-base:local docker/`.
+- [x] Workcell run checked with `./bin/workcell run --file workcell.json --repo . --no-pull`.
+- [x] Workcell receipt verification checked with `./bin/workcell verify --run <run-dir> --json`.
 
-## Current External Blocker
+## Workcell Proof Notes
 
-Docker proof is blocked by the local Docker host's inability to fetch the pinned Alpine base image from Docker Hub. The attempted build failed after the credential-helper workaround with `lookup auth.docker.io: i/o timeout`.
+The initial Workcell proof was blocked by Docker Desktop credential-helper and BuildKit IPv6/DNS behavior. The successful local proof used a credential-free temporary Docker config, the Colima Workcell Docker host, `DOCKER_BUILDKIT=0`, and `TMPDIR` under `/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp` so the mounted worktree was visible inside the Colima VM.
 
-Closest equivalent proof: native offline Workcell checks, definition validation, and local doctor checks.
-
-Safe resume command:
+Reproduction command:
 
 ```bash
 export KUJO=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo
-DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock docker build --tag kujolang/workcell-base:local docker/
-./bin/workcell run --file workcell.json --repo .
+export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
+export DOCKER_CONFIG=/tmp/kujo-next-batch-docker-config
+export DOCKER_BUILDKIT=0
+export TMPDIR=/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp
+docker build --tag kujolang/workcell-base:local docker/
+./bin/workcell run --file workcell.json --repo . --no-pull
 ./bin/workcell verify --run .workcell/runs/<run-id> --json
 ```
 

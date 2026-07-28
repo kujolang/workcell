@@ -157,3 +157,12 @@ Docker and Podman integration tests are opt-in because an engine may not be avai
 - [Repository conventions](docs/repository-conventions.md)
 
 The runtime boundary leaves room for gVisor-compatible Docker runtimes, remote execution, and microVMs later. Docker is the default implementation and Podman is available through the explicit OCI backend contract; remote and microVM execution are not implemented.
+
+## Launch readiness
+
+Current next-batch scope: not yet proven. The 2026-07-28 local proof passes the
+native offline checks, definition validation, quality gate, and formatting
+check, but Docker image build and Workcell receipt proof are blocked in this
+environment by Docker Hub DNS/metadata fetch failure for the pinned Alpine base
+image. See [`docs/launch-checklist.md`](docs/launch-checklist.md) before making
+release-candidate claims from this checkout.

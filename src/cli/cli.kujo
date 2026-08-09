@@ -170,7 +170,7 @@ func help_value() {
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         ],
-        "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "Docker or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
+        "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "backend or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
     }
 }
@@ -181,7 +181,7 @@ func print_help(json_mode) {
         return
     }
 print_lines([
-"Workcell v" + VERSION + " — Kujo-native disposable Docker execution",
+"Workcell v" + VERSION + " — Kujo-native disposable Docker/Podman execution",
 "",
 "Usage:",
 "  workcell --help",
@@ -195,7 +195,7 @@ print_lines([
 "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
 "",
 "Run options:",
-"  --dry-run       Resolve and record the policy without starting Docker",
+"  --dry-run       Resolve and record the policy without starting a container",
 "  --keep-failed   Preserve a failed disposable workspace",
 "  --no-pull       Do not pull a missing image",
 "  --rebuild       Rebuild a configured build context",
@@ -203,8 +203,8 @@ print_lines([
 "  --schema        Emit the versioned Workcell definition schema (validate only)",
 "",
 "Security defaults:",
-"  Docker backend, non-root user, network none, no-new-privileges,",
-"  dropped capabilities, bounded CPU/memory/PIDs/time, and declared artifacts only.",
+"  Docker default or explicit Podman backend, non-root identity, network none,",
+"  no-new-privileges, dropped capabilities, bounded resources, and declared artifacts only.",
 "  Dirty source repositories and unsafe mounts are rejected by default."
 ])
 }
@@ -357,7 +357,7 @@ if status == "validated" {
     return 2
 }
 if status == "preparing" {
-    if get_or(result, "exit_code", 3) == 4||contains(get_or(result, "error", ""), "docker") == 1 {
+    if get_or(result, "exit_code", 3) == 4 {
         return 4
     }
 return 3

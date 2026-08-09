@@ -19,6 +19,13 @@ grep -Fq 'Workcell v' "$MISSING_OUTPUT/help.txt"
 "$KUJO" run "$ROOT/main.kujo" -- --version > "$MISSING_OUTPUT/version.txt"
 grep -Fq 'Workcell ' "$MISSING_OUTPUT/version.txt"
 
+ln -s /tmp "$MISSING_OUTPUT/docker-output-symlink"
+set +e
+"$KUJO" run "$ROOT/main.kujo" -- run --file "$ROOT/workcell.json" --repo "$ROOT" --output "$MISSING_OUTPUT/docker-output-symlink" >/dev/null 2>&1
+PREPARATION_CODE=$?
+set -e
+test "$PREPARATION_CODE" -eq 3
+
 set +e
 EXTRA_POSITIONAL="$($KUJO run "$ROOT/main.kujo" -- validate unexpected 2>&1)"
 EXTRA_POSITIONAL_CODE=$?

@@ -37,8 +37,9 @@ remove_test_container() {
   "$TIMEOUT_BIN" 30 "$BACKEND" rm -f "$name" >/dev/null 2>&1
 }
 
-TMP_REPO="$(mktemp -d)"
-OUT_ROOT="$(mktemp -d)"
+TEMP_BASE="${TMPDIR:-/tmp}"
+TMP_REPO="$(mktemp -d "$TEMP_BASE/workcell-docker-repo.XXXXXX")"
+OUT_ROOT="$(mktemp -d "$TEMP_BASE/workcell-docker-output.XXXXXX")"
 UNRELATED_NAME=""
 INTERNAL_NETWORK="workcell-internal-$$"
 ROOTLESS=false
@@ -168,7 +169,7 @@ jq '.runtime.image = "kujolang/workcell-runtime-build:integration" | .runtime.bu
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$OUT_ROOT/runtime-build.json" --repo "$TMP_REPO" --output "$OUT_ROOT/runtime-build" --no-pull --rebuild
 test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell"}}' kujolang/workcell-runtime-build:integration)" = "true"
 test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell.project"}}' kujolang/workcell-runtime-build:integration)" = "hello-workcell"
-test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "1"
+test "$($BACKEND image inspect --format '{{index .Config.Labels "dev.kujo.workcell.version"}}' kujolang/workcell-runtime-build:integration)" = "$(tr -d '[:space:]' < "$ROOT/VERSION")"
 
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$EXAMPLES_ROOT/hello/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/hello"
 HELLO_RECEIPT="$(find "$OUT_ROOT/hello" -name receipt.json -print -quit)"
@@ -178,7 +179,7 @@ HELLO_RUN_DIR="$(dirname "$HELLO_RECEIPT")"
 test -f "$HELLO_RUN_DIR/stdout.log"
 test -f "$HELLO_RUN_DIR/stderr.log"
 jq -e '.container_image_id | startswith("sha256:")' "$HELLO_RECEIPT" >/dev/null
-jq -e '.schema_version == "workcell-receipt/v1"' "$HELLO_RECEIPT" >/dev/null
+jq -e --arg version "$(tr -d '[:space:]' < "$ROOT/VERSION")" '.schema_version == "workcell-receipt/v1" and .workcell_version == $version and .definition_version == 1' "$HELLO_RECEIPT" >/dev/null
 jq -e '.container_image_platform != "" and (.container_image_digest_source == "image_id" or .container_image_digest_source == "repo_digest")' "$HELLO_RECEIPT" >/dev/null
 jq -e '.cancelled == false' "$HELLO_RECEIPT" >/dev/null
 jq -e '.manifest_path == "manifest.json" and .manifest_schema_version == "workcell-manifest/v1"' "$HELLO_RECEIPT" >/dev/null
@@ -235,7 +236,7 @@ SYMLINK_OUTPUT_CODE=$?
 set -e
 test "$SYMLINK_OUTPUT_CODE" -eq 3
 
-SYMLINK_REPO="$(mktemp -d)"
+SYMLINK_REPO="$(mktemp -d "$TEMP_BASE/workcell-docker-symlink.XXXXXX")"
 git -C "$SYMLINK_REPO" init -q
 git -C "$SYMLINK_REPO" config user.email workcell@example.invalid
 git -C "$SYMLINK_REPO" config user.name Workcell

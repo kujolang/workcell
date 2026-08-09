@@ -22,6 +22,8 @@ check_all() {
   bash -n "$ROOT/tests/verification_cleanup_contract.sh"
   bash -n "$ROOT/tests/runtime_cleanup_contract.sh"
   bash -n "$ROOT/tests/startup_failure_contract.sh"
+  bash -n "$ROOT/tests/markdown_links.sh"
+  bash -n "$ROOT/scripts/build_release_artifacts.sh"
 }
 
 if [ "${1:-}" = "--check-only" ]; then
@@ -47,4 +49,5 @@ KUJO="$KUJO" "$ROOT/tests/podman_security_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/verification_cleanup_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/runtime_cleanup_contract.sh"
 KUJO="$KUJO" "$ROOT/tests/startup_failure_contract.sh"
-"$ROOT/tests/version_consistency.sh"
+KUJO="$KUJO" "$ROOT/tests/version_consistency.sh"
+"$ROOT/tests/markdown_links.sh"

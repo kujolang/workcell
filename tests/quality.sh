@@ -15,7 +15,7 @@ done < <(cd "$ROOT" && find src -type f -name '*.kujo' -print0 | sort -z)
 
 while IFS= read -r -d '' file; do
   bash -n "$ROOT/$file"
-done < <(cd "$ROOT" && find tests bin docker -type f -name '*.sh' -print0 | sort -z)
+done < <(cd "$ROOT" && find tests bin docker scripts -type f -name '*.sh' -print0 | sort -z)
 
 git -C "$ROOT" diff --check
 echo "Quality gates passed"

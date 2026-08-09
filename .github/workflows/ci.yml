@@ -4,7 +4,8 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - '**'
+  workflow_call:
 
 permissions:
   contents: read
@@ -12,14 +13,16 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d8 # v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
 
       - name: Build pinned Kujo runtime
         shell: bash
@@ -30,40 +33,77 @@ jobs:
           git -C /tmp/kujo-runtime remote add origin https://github.com/kujolang/kujo.git
           git -C /tmp/kujo-runtime fetch --depth 1 origin "$KUJO_RUNTIME_REF"
           git -C /tmp/kujo-runtime checkout --detach "$KUJO_RUNTIME_REF"
+          test "$(git -C /tmp/kujo-runtime rev-parse HEAD)" = "$KUJO_RUNTIME_REF"
           cargo build --release --locked --manifest-path /tmp/kujo-runtime/Cargo.toml --bin kujo
           echo "KUJO_BIN=/tmp/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+
+      - name: Verify product and runtime version consistency
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/version_consistency.sh
+
+      - name: Run offline and CLI contract suite
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Run formatting and lint gates
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/quality.sh
+
+      - name: Audit local Markdown links
+        shell: bash
+        run: ./tests/markdown_links.sh
+
+      - name: Verify release report metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          KUJO="$KUJO_BIN" ./tests/release_report.sh | tee /tmp/workcell-release-report.json
+          jq -e --arg version "$(cat VERSION)" '.ok == true and .workcell_version == $version' /tmp/workcell-release-report.json >/dev/null
 
       - name: Verify Docker BuildKit support
         shell: bash
         run: docker buildx version
 
-      - name: Run offline and CLI contracts
+      - name: Build Workcell base image
         shell: bash
-        run: KUJO="$KUJO_BIN" ./tests/run.sh
+        run: docker build --tag kujolang/workcell-base:local docker/
 
-      - name: Run Kujo and shell quality gates
+      - name: Run Docker doctor
         shell: bash
-        run: KUJO="$KUJO_BIN" ./tests/quality.sh
+        run: KUJO="$KUJO_BIN" ./bin/workcell doctor --backend docker --json
 
       - name: Run Docker integration suite
         shell: bash
-        run: KUJO="$KUJO_BIN" ./tests/docker_integration.sh
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/docker_integration.sh docker
 
-      - name: Run Docker concurrent load evidence
+      - name: Run Docker concurrent-load evidence
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/load_integration.sh docker
 
       - name: Run Docker egress enforcement evidence
         shell: bash
-        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/egress_integration.sh
+        run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/egress_integration.sh docker
+
+      - name: Run Workcell self-proof and verify receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          KUJO="$KUJO_BIN" ./bin/workcell run --file workcell.json --repo . --no-pull --json > /tmp/workcell-self-proof.json
+          run_dir="$(dirname "$(jq -r '.receipt_path' /tmp/workcell-self-proof.json)")"
+          KUJO="$KUJO_BIN" ./bin/workcell verify --run "$run_dir" --json | jq -e '.ok == true' >/dev/null
 
       - name: Install Podman for OCI backend evidence
         shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes podman
 
-      - name: Run rootless-capable Podman OCI smoke
+      - name: Run Podman doctor
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./bin/workcell doctor --backend podman --json
+
+      - name: Run Podman OCI smoke
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/oci_smoke.sh podman
 
@@ -71,7 +111,7 @@ jobs:
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/docker_integration.sh podman
 
-      - name: Run Podman concurrent load evidence
+      - name: Run Podman concurrent-load evidence
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/load_integration.sh podman
 
@@ -79,10 +119,20 @@ jobs:
         shell: bash
         run: REQUIRE_BACKEND=true KUJO="$KUJO_BIN" ./tests/egress_integration.sh podman
 
-      - name: Run Workcell doctor
+      - name: Run ShipCheck release gate
         shell: bash
-        run: KUJO="$KUJO_BIN" ./bin/workcell doctor --json
+        env:
+          SHIPCHECK_REF: 2768e3040e766b0befd354db4427afc4c7a81899
+        run: |
+          set -euo pipefail
+          git init /tmp/shipcheck
+          git -C /tmp/shipcheck remote add origin https://github.com/kujolang/shipcheck.git
+          git -C /tmp/shipcheck fetch --depth 1 origin "$SHIPCHECK_REF"
+          git -C /tmp/shipcheck checkout --detach "$SHIPCHECK_REF"
+          cd /tmp/shipcheck
+          "$KUJO_BIN" run shipcheck.kujo gate --dir "$GITHUB_WORKSPACE" --format json | tee /tmp/workcell-shipcheck.json
+          jq -e '.summary.gate_passed == 1 and .summary.failed_errors == 0 and .summary.warnings == 0' /tmp/workcell-shipcheck.json >/dev/null
 
-      - name: Check formatting
+      - name: Check whitespace
         shell: bash
         run: git diff --check

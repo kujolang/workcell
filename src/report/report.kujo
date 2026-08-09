@@ -1,6 +1,6 @@
 # Kujo-native release report renderer. Shell scripts only collect suite evidence.
 
-from src.util import read_text
+from src.util import project_version, read_text
 
 func flag_value(argv, name, fallback) {
     mut i := 0
@@ -77,13 +77,13 @@ export func render_report(report_dir) {
         if suite["ok"] == false {ok = false}
         i = i + 1
     }
-return {"schema_version": "workcell-report/v1", "ok": ok, "suites": suites, "totals": {"passed": total_passed, "failed": total_failed, "elapsed_ms": total_elapsed}, "deployment_gates": {"docker_integration": "skipped", "podman_matrix": "skipped", "ecosystem_tools": "skipped"}}
+return {"schema_version": "workcell-report/v1", "workcell_version": project_version(), "ok": ok, "suites": suites, "totals": {"passed": total_passed, "failed": total_failed, "elapsed_ms": total_elapsed}, "deployment_gates": {"docker_integration": "skipped", "podman_matrix": "skipped", "ecosystem_tools": "skipped"}}
 }
 
 argv := args()
 report_dir := flag_value(argv, "--dir", "")
 if report_dir == ""||path_is_dir(report_dir) == false {
-    print(to_json_pretty({"schema_version": "workcell-report/v1", "ok": false, "error": "report directory does not exist"}))
+    print(to_json_pretty({"schema_version": "workcell-report/v1", "workcell_version": project_version(), "ok": false, "error": "report directory does not exist"}))
     exit(10)
 }
 print(to_json_pretty(render_report(report_dir)))

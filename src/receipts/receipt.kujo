@@ -1,6 +1,6 @@
 # Structured Workcell execution receipts.
 
-from src.util import get_or, redact_with_env, save_json
+from src.util import get_or, project_version, redact_with_env, save_json
 from src.domain.definition import validate_definition
 
 func redacted_command(command, secret_names) {
@@ -46,7 +46,8 @@ return {
     "schema_version": "workcell-receipt/v1",
     "run_id": run_identifier,
     "workcell_name": definition["name"],
-    "workcell_version": definition["version"],
+    "workcell_version": project_version(),
+    "definition_version": definition["version"],
     "workcell_definition_path": definition_path,
     "workcell_definition_hash": definition_hash,
     "source_repository": source["source_root"],

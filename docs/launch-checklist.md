@@ -1,35 +1,40 @@
-# Launch Checklist
+# Workcell 1.0 Launch Checklist
 
-Current launch scope: `locally verified technical preview`. Native offline checks and Workcell self-proof passed locally for the exact batch commit. Release-candidate scope still requires clean-machine setup proof and the broader Docker/Podman integration gate set.
+Workcell 1.0 is stable for the documented local and CI Docker/Podman execution contract. This checklist does not claim universal sandboxing, hosted multi-tenant readiness, operator egress or image governance, signing-key custody, retention compliance, or enterprise certification.
 
-## Local Gates
+## Preparation acceptance
 
-- [x] CLI help/version checked with `./bin/workcell --help` and `./bin/workcell --version`.
-- [x] Definition validation checked with `./bin/workcell validate --file workcell.json`.
-- [x] Native offline suite checked with `./tests/run.sh`.
-- [x] Kujo/shell quality gate checked with `./tests/quality.sh`.
-- [x] Formatting checked with `git diff --check`.
-- [x] Docker image build checked with `DOCKER_BUILDKIT=0 docker build --tag kujolang/workcell-base:local docker/`.
-- [x] Workcell run checked with `./bin/workcell run --file workcell.json --repo . --no-pull`.
-- [x] Workcell receipt verification checked with `./bin/workcell verify --run <run-dir> --json`.
+- [ ] Product version surfaces and release artifact names agree on `1.0.0`.
+- [ ] Released Kujo 1.0.0 commit `2b3e07d398016e92008d8399e79c441e012dce38` is pinned and used for every gate.
+- [ ] Offline, CLI, format, lint, version, release-report, Markdown-link, and whitespace gates pass.
+- [ ] Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup pass.
+- [ ] Podman doctor, OCI smoke, integration, concurrent-load, egress, and cleanup pass on supported Linux.
+- [ ] ShipCheck passes with zero errors and no contradictory warnings.
+- [ ] Hosted CI passes for the exact approved commit.
+- [ ] Release artifacts reproduce, checksum verification passes, and provenance names the exact approved commit and runtime.
+- [ ] Human approval names the exact commit to tag.
 
-## Workcell Proof Notes
+The commands, expected artifacts, rollback plan, tag procedure, and GitHub Release procedure are canonical in [the release process](release-process.md).
 
-The initial Workcell proof was blocked by Docker Desktop credential-helper and BuildKit IPv6/DNS behavior. The successful local proof used a credential-free temporary Docker config, the Colima Workcell Docker host, `DOCKER_BUILDKIT=0`, and `TMPDIR` under `/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp` so the mounted worktree was visible inside the Colima VM.
+## Local preparation evidence — 2026-08-08
 
-Reproduction command:
+The released Kujo 1.0.0 commit was built in a detached worktree and verified as `kujo 1.0.0`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck all passed locally. ShipCheck reported 16 of 16 checks passed, zero errors, and zero warnings. Docker 29.5.2 ran through the local Colima profile with seccomp and AppArmor; its rootful state remained an explicit doctor warning rather than evidence of rootless isolation.
+
+Podman gates are externally blocked on this host because the `podman` executable and engine are absent. `workcell doctor --backend podman --json` exited `3` with three blocked checks: CLI unavailable, engine unreachable, and security inspection unavailable. The safe resume action is to install and start rootless Podman on a supported Linux host, then run the Podman doctor, OCI smoke, integration, concurrent-load, and egress commands in [the release process](release-process.md). No Docker result is treated as Podman evidence.
+
+## Hosted CI blocker record
+
+The latest main-branch runs inspected during v1 preparation were [CI run 30376854891](https://github.com/kujolang/workcell/actions/runs/30376854891) and [artifact-guard run 30376854914](https://github.com/kujolang/workcell/actions/runs/30376854914). Both jobs completed as failures before a runner was assigned: `runner_name` was empty and the GitHub API returned an empty `steps` array. No repository command or workflow step started.
+
+The account's hosted Actions billing or spending-limit state is the known external prerequisite. A repository or organization administrator must restore hosted runner allocation, then safely resume the baseline CI receipt with:
 
 ```bash
-export KUJO=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo
-export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
-export DOCKER_CONFIG=/tmp/kujo-next-batch-docker-config
-export DOCKER_BUILDKIT=0
-export TMPDIR=/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp
-docker build --tag kujolang/workcell-base:local docker/
-./bin/workcell run --file workcell.json --repo . --no-pull
-./bin/workcell verify --run .workcell/runs/<run-id> --json
+gh run rerun 30376854891 --repo kujolang/workcell
+gh run rerun 30376854914 --repo kujolang/workcell
 ```
 
-## Forbidden Launch Actions
+For the preparation branch or final approved commit, rerun its newer workflow IDs instead. The closest local evidence is the pinned-runtime gate set above and the dated [rootless Docker/Podman evidence](compatibility/rootless-docker-colima-2026-07-13.md). Local passes do not satisfy the hosted CI checkbox.
 
-Publishing images, creating releases, pushing final tags, deploying hosted runners, live credential proof, signing/notarizing, branch-protection changes, force-pushes, and production/enterprise claims without target-environment proof remain out of scope.
+## Prohibited before approval
+
+Do not create or push `v1.0.0`, create the GitHub Release, publish images or packages, deploy hosted runners, modify branch protection or repository policy, use live credentials, or force-push during preparation.

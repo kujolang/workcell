@@ -23,8 +23,9 @@ if ! "$BACKEND" info >/dev/null 2>&1; then
   exit 0
 fi
 
-TMP_REPO="$(mktemp -d)"
-OUT_ROOT="$(mktemp -d)"
+TEMP_BASE="${TMPDIR:-/tmp}"
+TMP_REPO="$(mktemp -d "$TEMP_BASE/workcell-oci-repo.XXXXXX")"
+OUT_ROOT="$(mktemp -d "$TEMP_BASE/workcell-oci-output.XXXXXX")"
 IMAGE="kujolang/workcell-oci-$BACKEND:local"
 hash_file() {
   if command -v sha256sum >/dev/null 2>&1; then

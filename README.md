@@ -1,100 +1,79 @@
 # Workcell
 
-Workcell is a Kujo-native, local Docker-backed execution sandbox for AI agents and Kujo workflows. It creates a disposable Git worktree, runs a declared command inside a bounded container, exports only declared artifacts, records a structured receipt, and cleans up the environment.
+![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
+[![CI](https://github.com/kujolang/workcell/actions/workflows/ci.yml/badge.svg)](https://github.com/kujolang/workcell/actions/workflows/ci.yml)
 
-> The sandbox defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
+Workcell 1.0 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
 
-Workcell complements Kujo trust and policy controls; it does not replace them. The current release is a release-gated local Docker MVP, not a universally isolated enterprise sandbox, hosted service, or custom container runtime. It is suitable for production-oriented local and CI workflows when the operator supplies the required host boundary, but enterprise deployments still need an appropriately trusted Docker host, rootless/VM boundary, egress controls, image governance, and retention policy.
+> The container boundary defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
 
-Workcell is intentionally honest about that boundary: the repository is production-oriented and heavily tested, but “production ready” does not mean “universally safe on every host.” See [docs/enterprise-deployment.md](docs/enterprise-deployment.md) for the deployment controls that remain outside the Kujo program.
+The v1 guarantee is deliberately narrow. It covers the local Docker/Podman CLI, definition, receipt, verification, artifact, cleanup, and recovery contracts documented in this repository. It does not protect against a compromised daemon or host kernel, provide microVM isolation or hosted multi-tenant execution, provision organization-specific egress infrastructure, govern operator images or signing keys, set retention policy, or confer compliance or enterprise certification.
 
-## Why use Workcell?
+## Supported contract
 
-- Give an agent a disposable Git workspace instead of the real repository.
-- Run commands with explicit CPU, memory, PID, timeout, network, filesystem, and secret policy.
-- Export only declared artifacts, patches, logs, and structured evidence.
-- Keep Docker-specific behavior behind a runtime boundary that can support stronger backends later.
-- Use a practical Kujo example for structured process execution, validation, lifecycle modeling, and safety-oriented testing.
+Workcell 1.0 supports:
 
-## Requirements
+- disposable Git worktrees and isolated-clone workspaces from clean repositories;
+- strict, versioned JSON definitions with safe defaults and unknown-field rejection;
+- Docker and Podman execution with bounded CPU, memory, PIDs, time, output, mounts, and writable paths;
+- explicit `none`, `default`, or pre-created `custom` network selection plus a recorded egress declaration;
+- declared artifact export, structured receipts, SHA-256 integrity manifests, and offline verification;
+- label-scoped container cleanup, ownership-marked workspace cleanup, timeout recovery, and explicit failed-workspace preservation.
 
-- Kujo 1.0 or a compatible current runtime.
-- Git.
-- `jq` for the shell-based contract and integration suites.
-- Docker for `run` and Docker integration tests.
-- Podman is optional and supported through `runtime.backend`; it is not required for the Docker-first path.
-- A clean Git source repository for execution. Workcell rejects dirty sources by default to avoid silently omitting user changes.
+Supported host classes are Linux with Docker Engine or rootless Docker/Podman, and macOS with Docker Desktop or Colima. Windows and unsupported Unix hosts are outside v1. Run `workcell doctor` on every target host; host file sharing, user namespaces, seccomp/AppArmor, DNS, proxy, and firewall behavior remain deployment-specific. See [platform compatibility](docs/compatibility.md).
 
-Build and run from this checkout:
+## Requirements and installation
+
+- Kujo 1.0.0 at commit `2b3e07d398016e92008d8399e79c441e012dce38` (the exact pin is in `RUNTIME_VERSION`).
+- Git and `jq`.
+- Docker for the default backend, or Podman on a supported Linux host.
+- A clean Git source repository for execution. Workcell refuses dirty sources by default so it cannot silently omit user changes.
+
+Workcell is distributed as a source archive and can also run directly from a checkout:
 
 ```bash
-export KUJO=/path/to/kujo/target/release/kujo
-$KUJO check main.kujo
-docker build --tag kujolang/workcell-base:local docker/
-./tests/run.sh
-./tests/release_report.sh
-./bin/workcell doctor --backend docker
+git clone https://github.com/kujolang/workcell.git
+cd workcell
+git checkout v1.0.0
+export KUJO=/path/to/kujo-1.0.0/kujo
+./bin/workcell --version
 ```
 
-## Usage
+Before the tag exists, release-preparation checkouts use the exact approved commit instead of `git checkout v1.0.0`. The launcher reads `KUJO` and does not download or replace the runtime.
 
-### Quick start
+## Quick Start
 
 ```bash
+export KUJO=/path/to/kujo-1.0.0/kujo
+docker build --tag kujolang/workcell-base:local docker/
 ./bin/workcell init
 ./bin/workcell validate --file workcell.json
 ./bin/workcell inspect --file workcell.json --json
-./bin/workcell run --file workcell.json --repo .
+./bin/workcell run --file workcell.json --repo . --no-pull
+./bin/workcell verify --run .workcell/runs/<run-id> --json
 ```
 
-`workcell init` creates a restrictive JSON definition. `workcell validate --schema` emits the versioned machine-readable definition contract, and `workcell help --json` emits the CLI/exit-code contract. `workcell inspect` shows the resolved policy without starting a container. `workcell run` uses a temporary Git worktree and writes output under `.workcell/runs/<run-id>/`. Build `docker/` before running the local examples; build `docker/kujo/Dockerfile.local` from a Kujo checkout at the exact commit in `RUNTIME_VERSION` for the Kujo project-check example. Podman is available through `runtime.backend`; opt-in ecosystem evidence adapters write under each run's `integrations/` directory.
+`workcell init` creates a restrictive starter definition. `inspect` resolves policy without starting a container. `run` creates a temporary Git workspace and writes evidence under `.workcell/runs/<run-id>/`. For Podman, set `runtime.backend` to `podman` and follow the identity guidance in [platform compatibility](docs/compatibility.md).
 
-`workcell verify --run <run-directory> --json` verifies the run's versioned integrity manifest and detects tampering in immutable evidence files without exposing secret values.
+## Stable CLI surface
 
-`tests/release_report.sh` runs the Kujo-native offline suites and emits one `workcell-report/v1` JSON summary with assertion counts, elapsed time, and explicitly skipped deployment gates.
-
-For operator-owned egress validation, `tests/egress_deployment_contract.sh` accepts a pre-created custom or default network plus one allowed and one denied URL. It never creates or mutates network infrastructure and emits `workcell-egress-deployment-evidence/v1` with receipt and manifest hashes.
-
-For bounded concurrent-run evidence, `tests/load_integration.sh docker|podman` runs four isolated Workcell runs concurrently and verifies unique receipts, artifacts, manifests, source immutability, and runtime cleanup. It emits `workcell-load-evidence/v1` and accepts `WORKCELL_LOAD_RUNS=2..16`.
-
-`tests/quality.sh` runs the shared Kujo format/lint and shell syntax gates used by the default suite and CI.
-
-The launcher supports `workcell --help` and `workcell --version`; command-specific options and unexpected positional arguments are rejected with usage exit code `2`.
-
-Explicit absolute `--output` paths are accepted only under the host `TMPDIR` or the repository's `.workcell` directory; this prevents a run from writing arbitrary host paths.
-
-After a run, inspect the evidence directly:
-
-```bash
-jq . .workcell/runs/<run-id>/receipt.json
-less .workcell/runs/<run-id>/changes.patch
-cat .workcell/runs/<run-id>/stdout.log
-cat .workcell/runs/<run-id>/stderr.log
-```
-
-## CLI
-
-| Command | Purpose |
+| Command | Contract |
 | --- | --- |
-| `doctor` | Check Kujo, Git, the selected Docker/Podman CLI and engine, repository, temp directory, and dangerous environment signals. |
-| `init` | Create a starter `workcell.json`; refuses overwrite unless `--force` is supplied. |
-| `validate` | Parse and semantically validate a definition without running Docker; `--schema` emits the versioned contract. |
-| `inspect` | Display resolved config, mounts, resources, secrets by name, runtime backend, and security arguments. |
-| `run` | Execute the complete validate/prepare/launch/collect/verify/export/record/clean lifecycle. |
-| `verify` | Verify a run directory's versioned SHA-256 integrity manifest offline. |
-| `clean` | Remove only Workcell-owned containers and temporary workspaces; `--dry-run` inventories resources, and `--prune-images` explicitly removes labeled images. |
+| `doctor` | Check Kujo, Git, selected backend, engine security signals, repository, temp directory, and dangerous environment overrides. |
+| `init` | Create a starter `workcell.json`; refuse overwrite unless `--force` is explicit. |
+| `validate` | Parse and validate a definition; `--schema` emits `workcell-definition/v1`. |
+| `inspect` | Render resolved mounts, resources, environment names, backend, and security arguments without execution. |
+| `run` | Execute validate, prepare, launch, collect, verify, export, record, and clean. |
+| `verify` | Verify a run directory's `workcell-manifest/v1` hashes offline. |
+| `clean` | Inventory or remove only Workcell-owned containers and workspaces; images require `--prune-images`. |
 
-Run options include `--file`, `--repo`, `--output`, `--dry-run`, `--keep-failed`, `--no-pull`, `--rebuild`, and `--json`. `doctor` and `clean` accept `--backend docker|podman`; Docker remains the default. Verification commands run in separate labeled containers with the same policy and appear under `receipt.json.verification.checks`.
+Global `--help` and `--version` are stable. Command-specific options and unexpected positional arguments fail with usage code `2`. The machine-readable CLI and exit-code contract is available from `workcell help --json`.
 
-## Security defaults
+## Output and exit codes
 
-The default `contained-standard` profile uses Docker with network `none`, a non-root host-mapped UID/GID, a read-only root filesystem, bounded CPU/memory/PIDs/time/output, `no-new-privileges`, all Linux capabilities dropped, no devices, no host namespaces, no Docker socket, explicit environment passing, and a single disposable workspace mount. Only declared artifact paths leave the workspace. Secret names are audited; values are injected at runtime and redacted incrementally in stream logs and captured output. Cancellation is recorded explicitly and triggers labeled cleanup. Artifact limits, extension policies, and reject/redact secret hooks are opt-in. Host-control environment names include Docker/Podman selectors, cloud credential selectors, Kubernetes connection variables, Git configuration overrides, and package/CI credential variables. Rootless Docker and Podman deployments set `workspace.run_as` to `rootless`; Workcell verifies the engine mode and maps the container identity through the rootless user namespace.
-
-Containers are not perfect isolation. Workcell trusts the local Docker daemon and host kernel, and does not provide a hardened microVM boundary. For release deployments, set `runtime.require_digest`, `runtime.require_signature`, and `runtime.registry_allowlist` alongside reviewed `runtime.image_digest` and `runtime.signature_key` values. When network access is required, declare `network.egress` and enforce its profile outside Workcell; receipts preserve the selected network policy. See [docs/security-model.md](docs/security-model.md) and [docs/enterprise-deployment.md](docs/enterprise-deployment.md).
-
-## Output
-
-Each run produces, when the lifecycle reaches the relevant stage:
+Each completed lifecycle writes the applicable evidence:
 
 ```text
 .workcell/runs/<run-id>/
@@ -108,62 +87,74 @@ Each run produces, when the lifecycle reaches the relevant stage:
 └── artifacts/
 ```
 
-The receipt separates execution, verification, artifact export, and cleanup outcomes. It never stores secret values.
+The receipt separates Workcell product version, definition version, execution, verification, artifact export, and cleanup results. It records secret names but never intentionally stores secret values. `workcell verify` detects changes to immutable evidence.
 
-## Repository layout
-
-The root files are intentional and are not duplicate application implementations:
-
-| Path | Role |
+| Exit | Meaning |
 | --- | --- |
-| `main.kujo` | Thin Kujo entrypoint; dispatches into `src/`. |
-| `src/` | All Workcell application logic, grouped by domain. |
-| `workcell.json` | Safe starter definition used by `workcell init` and local inspection. |
-| `bin/workcell` | Thin launcher that locates the project and pinned-compatible Kujo runtime. |
-| `docker/` | OCI image definitions and the pinned Kujo example-image builder. |
-| `tests/` | Kujo contracts plus thin shell orchestration for Docker and CLI integration. |
-| `docs/` | Architecture, security, compatibility, operations, and release-readiness records. |
-| `fence.toml`, `kennel.toml`, `kujo.toml` | Repository boundary, package, and Kujo project metadata. |
+| `0` | Completed successfully. |
+| `2` | Usage or definition validation failure. |
+| `3` | Git/source dependency or workspace preparation failure. |
+| `4` | Backend or image preparation failure. |
+| `5` | Container startup failure. |
+| `6` | Timeout. |
+| `7` | Workload command failure. |
+| `8` | Verification or artifact export failure. |
+| `9` | Cleanup failure. |
+| `10` | Internal Workcell failure. |
 
-Moving `main.kujo`, `workcell.json`, or the project metadata into `src/` would break the established Kujo repository and CLI conventions; they remain at the root by design.
+The workload's own exit code remains in `receipt.json`; the Workcell exit code identifies the lifecycle category.
 
-## Development
+## Security posture
+
+The default `contained-standard` profile uses network `none`, a non-root or rootless-mapped identity, a read-only root filesystem, bounded resources, `no-new-privileges`, dropped Linux capabilities, private IPC, no devices or host namespaces, no daemon socket, explicit environment passing, and one disposable workspace mount. Only declared artifacts leave the workspace.
+
+Network access must be explicit. Workcell records the egress declaration but does not install firewalls, control DNS, or force arbitrary child processes through a proxy. For release deployments, use reviewed image digests, signature keys, registry allowlists, and host-enforced egress where required.
+
+Containers are not universal isolation. Workcell trusts the selected engine and host kernel. Higher-risk or multi-tenant workloads need an operator-provided VM, gVisor/Kata class runtime, microVM service, or equivalent stronger boundary. Read the [security model](docs/security-model.md), [enterprise deployment boundary](docs/enterprise-deployment.md), and [known limitations](docs/known-limitations.md) before deployment.
+
+## Compatibility and upgrades
+
+Workcell follows semantic versioning for the product. The `workcell-definition/v1`, `workcell-cli/v1`, `workcell-receipt/v1`, `workcell-manifest/v1`, and other evidence identifiers are independent contract versions; product 1.0.0 does not rename them. Additive fields may appear within a v1 contract. Removing or repurposing a field or exit code requires a new contract identifier and migration notes.
+
+Patch releases contain compatible fixes. Minor releases may add optional CLI or schema surface with safe defaults. A future product major may change supported contracts only with changelog and migration guidance. Pin both the Workcell release and Kujo runtime commit for reproducible automation. See the [API compatibility policy](docs/api-compatibility.md).
+
+## Verification
+
+Run the offline release gates with the pinned runtime:
 
 ```bash
-export KUJO=/path/to/kujo/target/release/kujo
-./tests/run.sh
-./tests/run.sh --check-only
-KUJO="$KUJO" ./tests/docker_integration.sh
-REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh
+export KUJO=/path/to/kujo-1.0.0/kujo
+./bin/workcell --help
+./bin/workcell --version
+./bin/workcell validate --file workcell.json
+KUJO="$KUJO" ./tests/version_consistency.sh
+KUJO="$KUJO" ./tests/run.sh
+KUJO="$KUJO" ./tests/quality.sh
+KUJO="$KUJO" ./tests/release_report.sh
+./tests/markdown_links.sh
 git diff --check
 ```
 
-Docker and Podman integration tests are opt-in because an engine may not be available. `tests/egress_integration.sh docker|podman` emits `workcell-egress-evidence/v1` after proving an allowed internal destination and blocked external DNS on a temporary backend-specific internal network; it does not replace host firewall or proxy validation. On supported Linux/CI hosts, `tests/oci_smoke.sh podman` adds explicit OCI backend evidence. See [docs/development.md](docs/development.md) and [docs/runtime-lifecycle.md](docs/runtime-lifecycle.md).
+Docker and Podman integration, concurrent-load, egress, doctor, cleanup, self-proof, receipt verification, and ShipCheck commands are documented in [development](docs/development.md) and the [release process](docs/release-process.md).
 
-## Architecture and roadmap
+## Release and support boundary
+
+GitHub source archives and the versioned source archive, checksums, provenance record, and release report produced by the tag workflow are the supported v1 release artifacts. The workflow publishes no container image, hosted runner, package registry entry, or hosted execution service. Target-host hardening, image governance, key custody, evidence retention, egress infrastructure, and organization-specific compliance remain operator responsibilities.
+
+Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducible defects in the supported v1 contract. Security reports follow the private process in [the security model](docs/security-model.md). The exact pre-tag and rollback procedures are in [the release process](docs/release-process.md).
+
+## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Security model](docs/security-model.md)
-- [Enterprise deployment boundary](docs/enterprise-deployment.md)
-- [Definition reference](docs/workcell-definition.md)
+- [Workcell definition](docs/workcell-definition.md)
+- [Runtime lifecycle](docs/runtime-lifecycle.md)
 - [Platform compatibility](docs/compatibility.md)
-- [Hosted CI status](docs/ci-status.md)
-- [API compatibility](docs/api-compatibility.md)
-- [Lifecycle](docs/runtime-lifecycle.md)
+- [Security model](docs/security-model.md)
+- [Security review](docs/security-review.md)
+- [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Development](docs/development.md)
-- [Roadmap](docs/roadmap.md)
-- [Next hardening backlog](docs/next-hardening-backlog.md)
-- [Next review backlog](docs/next-review-backlog.md)
-- [Repository conventions](docs/repository-conventions.md)
+- [Release process](docs/release-process.md)
+- [Launch checklist](docs/launch-checklist.md)
+- [Examples](examples/README.md)
 
-The runtime boundary leaves room for gVisor-compatible Docker runtimes, remote execution, and microVMs later. Docker is the default implementation and Podman is available through the explicit OCI backend contract; remote and microVM execution are not implemented.
-
-## Launch readiness
-
-Current next-batch scope: locally verified technical preview. The 2026-07-28
-local proof passes the native offline checks, definition validation, quality
-gate, formatting check, Workcell self-run, and Workcell receipt verification.
-Release-candidate scope still requires clean-machine setup proof and the
-broader Docker/Podman integration gate set. See
-[`docs/launch-checklist.md`](docs/launch-checklist.md) before making stronger
-readiness claims from this checkout.
+Workcell is licensed under the [MIT License](LICENSE).

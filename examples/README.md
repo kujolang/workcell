@@ -4,6 +4,8 @@ The JSON definitions below are intended to be copied into a clean Git fixture or
 
 For a real run, the repository passed to `--repo` must be clean. The default offline test suite does not require Docker; integration commands are documented in `docs/development.md`.
 
+Use Kujo 1.0.0 at the exact commit in `../RUNTIME_VERSION`. Docker examples run on supported Linux or macOS Docker hosts; Podman-compatible rows require supported Linux Podman and the backend/identity settings documented in [platform compatibility](../docs/compatibility.md).
+
 Build the two local images used by the examples:
 
 ```bash

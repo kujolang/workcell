@@ -1,6 +1,6 @@
 # Enterprise deployment boundary
 
-Workcell's local MVP is now release-gated, digest/signature-aware, and bounded by Docker policy. The following controls remain deployment concerns because they depend on the Docker host, network, and operator trust model.
+Workcell 1.0 provides a stable, release-gated local Docker/Podman execution contract with digest/signature-aware image policy. It is not a universal enterprise-readiness or compliance claim. The following controls remain deployment concerns because they depend on the host, network, organization, and operator trust model.
 
 ## Isolation
 
@@ -32,3 +32,7 @@ Workcell's local MVP is now release-gated, digest/signature-aware, and bounded b
 - Prefer short-lived secret values and avoid exporting secret-bearing artifacts.
 - Workcell redacts exact captured values and common base64 encodings incrementally while the process streams, before logs and receipts are persisted. Hashed or otherwise transformed secret output still requires workload-level controls.
 - Retain receipts, logs, patches, and failure workspaces according to the organization's evidence-retention policy.
+
+## Operator acceptance
+
+Before an organization calls a deployment production-accepted, it must separately approve daemon and kernel hardening, tenant isolation, egress enforcement, image provenance and vulnerability policy, signing-key custody, retention and deletion, incident response, and applicable compliance controls. Workcell receipts can support that review but do not replace it or provide certification.

@@ -68,8 +68,9 @@ if [ "$NETWORK_MODE" = "custom" ]; then
   fi
 fi
 
-TMP_REPO="$(mktemp -d)"
-OUT_ROOT="$(mktemp -d)"
+TEMP_BASE="${TMPDIR:-/tmp}"
+TMP_REPO="$(mktemp -d "$TEMP_BASE/workcell-egress-deployment-repo.XXXXXX")"
+OUT_ROOT="$(mktemp -d "$TEMP_BASE/workcell-egress-deployment-output.XXXXXX")"
 ROOTLESS=false
 if [ "$BACKEND" = "podman" ]; then
   if [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null || printf 'false')" = "true" ]; then ROOTLESS=true; fi

@@ -11,7 +11,7 @@ from src.cli.cli import main
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt
 from src.runtime.docker import build_image, doctor_runtime, ensure_image, run_container, verify_daemon_security
 from src.runtime.docker import clean_owned_resources_with_options, container_logs, image_exists, image_metadata, owned_resource_inventory, pull_image, remove_container, stop_container
-from src.util import base_of, contains_text, ensure_dir, env_secret_stream_values, env_secret_values, first_line, get_or, join_path_safe, lines_of, load_json, normalized_relative, parent_of, path_has_symlink, path_within, process_error, process_ok, read_text, redact, run_argv, run_id, safe_mount_path, save_json
+from src.util import base_of, contains_text, ensure_dir, env_secret_stream_values, env_secret_values, first_line, get_or, join_path_safe, lines_of, load_json, normalized_relative, parent_of, path_has_symlink, path_within, process_error, process_ok, project_version, read_text, redact, run_argv, run_id, safe_mount_path, save_json
 from src.verification.verification import run_verification_checks
 from src.integrations.integrations import dry_run_integrations, run_integrations
 
@@ -460,6 +460,7 @@ expect("policy drops capabilities", contains(to_string(args), "ALL") == 1)
 expect("policy never enables privileged", contains(to_string(args), "--privileged") == 0)
 expect("policy never mounts Docker socket", contains(to_string(args), "docker.sock") == 0)
 expect("policy labels ownership", contains(to_string(args), "dev.kujo.workcell=true") == 1)
+expect("policy labels product version", labels_for(definition, "test-version-label")["dev.kujo.workcell.version"] == project_version())
 expect("policy enables init and private namespaces", contains(to_string(args), "--init") == 1&&contains(to_string(args), "private") == 1)
 profile_policy := build_policy(with_security_profiles(definition, "workcell-seccomp", "workcell-apparmor"), "test-security-profiles", "/tmp/workcell-test-workspace")
 expect("policy attaches selected security profiles", contains(to_string(profile_policy["docker_args"]), "seccomp=workcell-seccomp") == 1&&contains(to_string(profile_policy["docker_args"]), "apparmor=workcell-apparmor") == 1)
@@ -475,7 +476,7 @@ run_argv(["chmod", "600", unreadable_definition], 10000)
 expect("unreadable receipt definition fails without runtime crash", unreadable_receipt["ok"] == false)
 run_argv(["rm", "-f", unreadable_definition], 10000)
 podman_receipt := new_receipt(with_backend(definition, "podman", ""), "workcell.json", "test-podman-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, podman_policy, "/tmp/workcell-output")
-expect("receipt records version and selected runtime backend", podman_receipt["schema_version"] == "workcell-receipt/v1"&&podman_receipt["runtime_backend"] == "podman")
+expect("receipt separates product and definition versions", podman_receipt["schema_version"] == "workcell-receipt/v1"&&podman_receipt["workcell_version"] == project_version()&&podman_receipt["definition_version"] == 1&&podman_receipt["runtime_backend"] == "podman")
 managed_receipt := new_receipt(managed_egress_definition, "workcell.json", "test-managed-egress-receipt", {"source_root": "/tmp/workcell-source", "source_commit": "abc"}, {"strategy": "git-worktree", "workspace_path": "/tmp/workcell-test-workspace"}, managed_policy, "/tmp/workcell-output")
 expect("receipt records egress policy and enforcement profile", managed_receipt["network_policy"]["enforcement_profile"] == "corp-egress-v1"&&managed_receipt["network_policy"]["egress"]["policy"] == "deny-by-default")
 empty_verification := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-test-workspace"}, "wc-0123456789abcdef0123456789abcdef", [], true)

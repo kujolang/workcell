@@ -47,11 +47,11 @@ Tests use the ecosystem's hand-rolled Kujo harness style. Docker-independent tes
 
 ### Documentation and operational evidence
 
-The README is the onboarding surface. Architecture, security, definition format, lifecycle, development, roadmap, ADRs, build/tooling/security reports, known limitations, and Kujo improvement opportunities are maintained in `docs/`. Generated `.workcell/` output is ignored. RunLedger, ChangeBucket, ShipCheck, Fence, and CaseFile are used as external ecosystem validation/evidence tools where their current interfaces fit.
+The README is the onboarding surface. Architecture, security, definition format, lifecycle, development, release procedure, ADRs, compatibility evidence, security review, and known limitations are maintained in `docs/`. Generated `.workcell/` and release output is ignored. RunLedger, ChangeBucket, ShipCheck, Fence, and CaseFile are used as external ecosystem validation/evidence tools where their current interfaces fit.
 
 ## Important runtime findings
 
-- The current Kujo runtime provides `spawn_process(argv, options)` with structured arguments, an optional working directory, timeout, output limits, environment allow/deny controls, explicit environment injection, bounded stream channels/file sinks, incremental redaction, and cancellation metadata.
+- The released Kujo 1.0.0 runtime provides `spawn_process(argv, options)` with structured arguments, timeout, output limits, environment allow/deny controls, explicit environment injection, bounded stream channels/file sinks, incremental redaction, and cancellation metadata.
 - The process API does not currently expose a working-directory option, so Workcell uses `git -C <path>` for Git and Docker's explicit `-w /workspace` for container commands.
 - The current runtime provides `sha256_file`, JSON parsing/serialization, file/directory APIs, path helpers, and environment reads.
 - The repository conventions favor `while` loops in check-clean code where the current Kujo checker has stricter loop-scope rules.
@@ -59,4 +59,4 @@ The README is the onboarding surface. Architecture, security, definition format,
 
 ## Naming and release metadata
 
-The package and CLI are named `workcell`, the product is presented as Workcell, the initial version is `0.1.0`, and the license is MIT, matching the dominant sibling CLI conventions.
+The package and CLI are named `workcell`, the product is presented as Workcell, the stable product version is read from `VERSION`, and the license is MIT. `kujo.toml` and `kennel.toml` mirror the product version; definition, receipt, manifest, report, and evidence identifiers remain independently versioned.

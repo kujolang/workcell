@@ -23,9 +23,10 @@ if ! "$BACKEND" info >/dev/null 2>&1; then
   exit 0
 fi
 
-TMP_REPO="$(mktemp -d)"
-OUT_ROOT="$(mktemp -d)"
-SERVER_ROOT="$(mktemp -d)"
+TEMP_BASE="${TMPDIR:-/tmp}"
+TMP_REPO="$(mktemp -d "$TEMP_BASE/workcell-egress-repo.XXXXXX")"
+OUT_ROOT="$(mktemp -d "$TEMP_BASE/workcell-egress-output.XXXXXX")"
+SERVER_ROOT="$(mktemp -d "$TEMP_BASE/workcell-egress-server.XXXXXX")"
 NETWORK="workcell-egress-$$"
 SERVICE="workcell-egress-fixture-$$"
 ROOTLESS=false

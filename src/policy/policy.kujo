@@ -1,6 +1,6 @@
 # Convert a validated definition into an explicit Docker security policy.
 
-from src.util import get_or, join_path_safe, resolve_run_as, runtime_env_deny_names
+from src.util import get_or, join_path_safe, project_version, resolve_run_as, runtime_env_deny_names
 from src.domain.definition import validate_definition
 
 func add_flag(args, flag) {
@@ -80,7 +80,7 @@ return {
     "dev.kujo.workcell": "true",
     "dev.kujo.workcell.run_id": run_identifier,
     "dev.kujo.workcell.project": definition["name"],
-    "dev.kujo.workcell.version": to_string(definition["version"])
+    "dev.kujo.workcell.version": project_version()
 }
 }
 

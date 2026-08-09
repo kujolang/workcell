@@ -1,6 +1,6 @@
 [package]
 name = "workcell"
-version = "0.1.0"
+version = "1.0.0"
 description = "Kujo-native Docker-backed disposable execution sandbox for AI agents and workflows."
 license = "MIT"
 repository = "https://github.com/kujolang/workcell"
@@ -9,13 +9,13 @@ categories = ["developer-tools"]
 readme = "README.md"
 
 [package.status]
-stage = "experimental"
-stability = "early"
-public_api = false
-notes = "Local Docker MVP with bounded execution, receipts, declared artifacts, and release-gated integration tests."
+stage = "production"
+stability = "stable"
+public_api = true
+notes = "Stable local Docker/Podman CLI, definition, receipt, verification, and declared-artifact contracts; host, daemon, egress infrastructure, image governance, and compliance remain operator-owned."
 
 [kujo]
-minimum_version = "0.1.0"
+minimum_version = "1.0.0"
 entry = "main.kujo"
 sources = ["src", "."]
 includes = ["README.md", "docs", "tests", "examples", "docker", "LICENSE"]

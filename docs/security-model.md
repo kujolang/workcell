@@ -2,7 +2,7 @@
 
 ## Threat model
 
-Workcell assumes an agent workload may be buggy, over-broad, or actively attempting to access host data. The MVP protects the source repository and host filesystem by exposing only a disposable Git workspace and by constraining Docker execution arguments. It does not protect against a malicious or compromised Docker daemon, a compromised host kernel, Docker implementation vulnerabilities, or a user who intentionally grants a broader policy.
+Workcell assumes an agent workload may be buggy, over-broad, or actively attempting to access host data. The stable v1 contract protects the source repository and limits host filesystem exposure by using a disposable Git workspace and constrained Docker/Podman execution arguments. It does not protect against a malicious or compromised container daemon, a compromised host kernel, engine vulnerabilities, or an operator who intentionally grants a broader policy.
 
 ## Enforced defaults
 
@@ -36,7 +36,11 @@ Secrets are named environment variables. Values are read immediately before exec
 
 Only `none`, `default`, and explicitly pre-created `custom` networks are supported. Domain allowlists are rejected rather than silently downgraded. Egress policy is a host-enforcement contract, not a Workcell firewall: supported deployment profiles must prove allowed/denied destinations externally. Docker itself is a privileged host service; access to its socket would be equivalent to broad host control and is prohibited. Workcell is therefore a bounded Docker workflow, not a perfect security boundary.
 
-## Residual risks
+## Outside the v1 guarantee
 
-The MVP does not provide a hardened microVM, a controlled network proxy, or a scheduler. Kujo process streams are bounded and redacted incrementally, and parent cancellation produces explicit receipt metadata, but transformed-secret detection remains impossible at this layer. Named seccomp/AppArmor profiles may be selected when already installed on the Docker host, but Workcell does not install or audit them. Image digest pinning, local image-ID provenance fallback, and optional cosign public-key verification are implemented; key lifecycle and transparency policy remain deployment responsibilities. Future runtime adapters must preserve the policy interface and document stronger/weaker guarantees explicitly.
+Workcell v1 does not protect a compromised daemon or host kernel, provide a hardened microVM, controlled network proxy, hosted scheduler, or multi-tenant service, or certify a deployment. Kujo process streams are bounded and redacted incrementally, and parent cancellation produces explicit receipt metadata, but transformed-secret detection remains impossible at this layer. Named seccomp/AppArmor profiles may be selected when already installed on the host, but Workcell does not install or audit them. Image digest pinning, local image-ID provenance fallback, and optional cosign public-key verification are implemented; image governance, key custody, transparency policy, evidence retention, and compliance remain operator responsibilities. Future runtime adapters must preserve the policy interface and document stronger or weaker guarantees explicitly.
 Optional ecosystem integrations run after the primary receipt boundary with explicit argv, bounded timeout/output, and environment-secret redaction. Their failures are recorded as integration warnings and never turn a successful sandbox execution into a failed primary run.
+
+## Reporting security issues
+
+Do not open a public issue for a suspected vulnerability. Use the repository's private [GitHub Security Advisory reporting flow](https://github.com/kujolang/workcell/security/advisories/new) and include the affected Workcell version, backend and host class, definition, reproduction steps, and redacted receipt evidence.

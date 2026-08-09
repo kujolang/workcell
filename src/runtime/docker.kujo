@@ -1,6 +1,6 @@
 # Docker runtime adapter. All host commands use structured argv.
 
-from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, run_argv, run_argv_options
+from src.util import get_or, lines_of, path_has_symlink, process_error, process_ok, project_version, run_argv, run_argv_options
 from src.policy.policy import spawn_options
 from src.domain.definition import validate_definition
 
@@ -219,7 +219,7 @@ if definition_check["ok"] == false {
     return definition_check
 }
 project_label := "dev.kujo.workcell.project=" + definition["name"]
-version_label := "dev.kujo.workcell.version=" + to_string(definition["version"])
+version_label := "dev.kujo.workcell.version=" + project_version()
 backend := definition["runtime"]["backend"]
 mut args := runtime_argv(backend, ["build", "--tag", image, "--label", "dev.kujo.workcell=true", "--label", "dev.kujo.workcell.run_id=" + run_identifier, "--label", project_label, "--label", version_label, context_path])
 buildx := {"success": false, "timed_out": false, "stdout": "", "stderr": ""}

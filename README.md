@@ -1,8 +1,8 @@
 # Workcell
 
-![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue)
-[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
+[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/workcell)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 [![CI](https://github.com/kujolang/workcell/actions/workflows/ci.yml/badge.svg)](https://github.com/kujolang/workcell/actions/workflows/ci.yml)
 
 Workcell 1.0 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.

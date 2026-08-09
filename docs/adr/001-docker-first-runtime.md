@@ -10,11 +10,11 @@ Implement Docker as the default runtime adapter and keep OCI engine-specific ope
 
 ## Alternatives
 
-Podman, Firecracker, gVisor, Kubernetes, and a custom OCI engine were deferred because they add operational scope beyond a credible local MVP.
+At the original pre-1.0 decision, Podman, Firecracker, gVisor, Kubernetes, and a custom OCI engine were deferred because they added operational scope beyond a credible local MVP. Podman was subsequently implemented for the stable v1 OCI contract; the other alternatives remain outside the v1 guarantee.
 
 ## Consequences
 
-The MVP depends on a trusted Docker daemon and does not claim microVM isolation. Additional backends can reuse the domain/policy/lifecycle contracts.
+The original MVP depended on a trusted Docker daemon and did not claim microVM isolation. Stable v1 supports Docker and Podman while retaining daemon and host-kernel trust and no microVM claim. Additional backends can reuse the domain, policy, and lifecycle contracts only if they document their guarantees explicitly.
 
 ## Reconsider when
 

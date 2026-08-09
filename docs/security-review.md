@@ -1,41 +1,34 @@
 # Workcell Security Review
 
+## v1 review scope
+
+This review covers the stable local and CI Docker/Podman contract at Workcell 1.0.0. It reviews definition validation, disposable workspaces, backend policy construction, execution and timeout handling, declared artifact export, receipts and manifests, integrity verification, and ownership-scoped cleanup. It is not a review of a particular host kernel, daemon, network, image supply chain, signing-key system, retention program, hosted service, or compliance regime.
+
 ## Implemented protections
 
 - Clean-source enforcement prevents silent omission of dirty repository changes.
-- Git worktree/clone isolation prevents direct writable mounts of the source repository.
-- Structured argv prevents host-side command injection through image/path arguments.
-- Docker policy rejects host networking, privileged mode, Docker socket/root/home/credential mounts, host namespaces, devices, and unbounded resource values.
-- Containers receive non-root identity, read-only root by default, no-new-privileges, dropped capabilities, explicit network, resource, PID, and timeout limits.
-- Artifact paths are normalized and contained; only declared outputs are copied.
-- Secret names are explicit, values are runtime-only, and known values are redacted from captured logs and excluded from receipts.
-- Artifact secret policies fail closed when a declared secret cannot be inspected as text; binary artifacts are not silently exported under `reject` or `redact` policies.
-- Cleanup filters Docker resources by Workcell ownership labels.
-- Workcell-built images receive deterministic ownership, run ID, project, and version labels; the integration suite verifies the label set.
-- Source workspaces are scanned for symlinks, output roots reject symlink components, and temporary workspace deletion requires a Workcell ownership marker.
-- Resource values are bounded (CPU, memory, PIDs, and a 24-hour timeout maximum); duration parsing rejects non-integer amounts.
-- Host-control environment denial covers Docker/Podman selectors, cloud credential selectors, Kubernetes connection variables, Git configuration overrides, and package/CI credential variables.
-- Human-readable and JSON `inspect` failures return non-success exit codes instead of rendering incomplete policy fields; verification-container startup failures attempt labeled stop/remove cleanup before returning.
-- Ownership markers are never followed during direct or stale workspace cleanup; missing runtime containers are treated idempotently across normalized stop/remove error variants, null output requests fail closed, and startup failures retain the documented code-5 result instead of being misreported as internal failures.
+- Disposable Git worktrees or isolated clones prevent a writable mount of the source checkout.
+- Structured argv prevents host-side command injection through image, path, and runtime arguments.
+- Policy rejects host networking, privileged mode, daemon sockets, sensitive host mounts, host namespaces, devices, unbounded resource values, and unsafe security profiles.
+- Containers receive a non-root or rootless-mapped identity, read-only root by default, `no-new-privileges`, dropped capabilities, private IPC, explicit network mode, and bounded CPU, memory, PIDs, time, and output.
+- Host-control environment denial covers Docker/Podman selectors, cloud and package credential selectors, Kubernetes connection variables, Git overrides, and inherited proxy controls.
+- Artifact and output paths are normalized and contained; symlink escapes are rejected and only declared outputs are exported.
+- Secret names are explicit. Known exact and base64-encoded values are incrementally redacted from captured text; secret-aware artifact policy can reject or redact exports.
+- Receipts separate product version, definition version, execution, verification, export, cleanup, and integrations. Integrity manifests hash immutable evidence and `workcell verify` detects tampering.
+- Workcell resources use ownership, run ID, project, and product-version labels. Cleanup targets labels and ownership markers, preserves active resources, and treats missing containers idempotently.
+- Image digest, registry allowlist, and optional cosign public-key checks can fail image preparation closed.
+- Docker and Podman `doctor` paths inspect backend availability, rootless state, and required security signals without claiming stronger host evidence than the engine reports.
 
-## Adversarial review
+## Verification coverage
 
-Iteration 063 adds fail-closed coverage for unsupported workspace strategies, malformed workspace run identifiers, invalid cleanup strategies, and non-string CLI tokens. The totals at that iteration were 191 Workcell, 27 workspace, and 7 stress assertions.
+The offline suite exercises definition and API type boundaries, unknown fields, traversal and absolute paths, symlink and ownership-marker attacks, unsafe mounts and environment selectors, resource overflow, malformed network and artifact policy, digest/signature configuration, runtime-class injection, CLI option boundaries, receipt mutation, manifest omission and tampering, redaction, cancellation and timeout classification, startup and verification cleanup, idempotent recovery, backend-neutral output, and incomplete exported-function inputs.
 
-Iteration 064 adds fail-closed coverage for non-string CLI value tokens; current totals are 192 Workcell, 27 workspace, and 7 stress assertions.
+The adversarial CLI suite rejects privileged, socket, host-mount, traversal, image/runtime injection, secret, resource, and build-context requests before runtime. Effective-policy inspection confirms network `none`, read-only root, init, private IPC, all capabilities dropped, `no-new-privileges`, bounded resources, Workcell labels, explicit identity, and only the disposable workspace mount.
 
-Iteration 065 adds fail-closed coverage for null secret sections and non-boolean image ensure options; current totals are 194 Workcell, 27 workspace, and 7 stress assertions.
+Docker and Podman integration gates cover successful and failed execution, timeout, exit-code classification, provenance failures, custom/internal networks, secrets, artifact policy, verification containers, receipts, manifests, tamper detection, image builds, inventory, and cleanup. Concurrent-load evidence checks run separation, source immutability, artifact and manifest integrity, and cleanup. Egress evidence checks an allowed internal destination and blocked external DNS on a temporary internal network.
 
-- Offline tests (190 assertions plus 23 workspace and 7 stress assertions) reject host network, parent traversal, absolute artifact paths, unsafe tmpfs targets and mount targets, symlink artifact sources, image shell metacharacters, unknown fields, invalid timeouts including integer overflow, overflowed identities and memory values, partial numeric resource and scan sections without runtime crashes, observed workspace depth mismatches and file-depth limit bypasses, exported policy, summary, daemon-security, verification, integration, image-build/ensure, receipt, container-policy, workspace-operation, utility, artifact-export/log, manifest, Docker-runtime, repository-inspection, symlink-scan, workspace-creation, doctor, policy-construction/inspection, coordinator-output, CLI-argument, integration/image-source, and verification-execution API calls with incomplete inputs without runtime crashes, receipt mutation/path input failures without crashes, duplicate secret/artifact inputs, overlapping artifact declarations, duplicate verification names, undeclared secret assignments, invalid environment names/values, unbounded resources, bounded artifact policies, invalid verification plans, invalid workspace scan/run-as policies, malformed network section types, privileged argument presence, Docker socket references, host-control/proxy/cloud/runtime-control environment exposure, arbitrary absolute output destinations, digest/signature-key errors, registry allowlist errors, custom-network, managed/unmanaged egress, and security-profile validation errors, namespace regressions, null process output, exact/base64-derived secret leakage regressions, secret literals in receipts/errors/verification plans, spoofed and symlinked ownership markers, active-workspace cleanup races, empty-orphan recovery, normalized stop/remove cleanup variants, stable startup-failure exit handling, disappearing-workspace handling, optional integration defaults/bounds/redaction, explicit dry-run integration skips, runtime-class injection, backend-neutral CLI output, inspect failure exit codes, global help/version positional rejection, verification-start cleanup, RunLedger finish-state reporting, manifest duplicate/omission/coverage and tamper detection, Podman policy selection, rootless workspace identity, partial-default regressions, and binary artifact secret inspection failures. The dedicated adversarial CLI suite also rejects host-network, sensitive-mount/privileged-field, traversal, image/runtime injection, resource, secret, and build-context attacks, then verifies the restrictive inspect policy and missing-Podman doctor diagnostics. `inspect --json` was inspected to confirm the effective policy contains `--network none`, `--read-only`, `--init`, private IPC, `--cap-drop ALL`, `no-new-privileges`, host-mapped non-root identity, labels, bounded resources, and only the workspace mount. Fence reports zero boundary violations.
+## Residual risk and required interpretation
 
-Docker integration now covers timeout termination, Docker exit-125 workload classification, arbitrary output-path rejection, and label-scoped cleanup on the local daemon. The rootless OCI smoke runs the selected backend's doctor preflight; Podman security inspection now requires an enabled seccomp profile and has a fake-CLI regression contract proving disabled seccomp fails closed. The adversarial CLI suite covers privileged/socket/root-mount request rejection before runtime; the suite does not claim to exercise a real privileged container because the policy must reject it first.
+Workcell cannot protect against a compromised daemon or host kernel. It does not provide a hardened microVM, hosted multi-tenant scheduler, controlled organization-wide proxy, image-governance program, key-custody system, evidence-retention policy, or compliance certification. Exact-value redaction cannot detect arbitrarily transformed secrets. An operator-selected seccomp/AppArmor profile is passed through but not installed or audited by Workcell. Local and CI test evidence must not be generalized beyond the host and backend actually tested.
 
-The concurrent load contract runs four Workcell executions against one clean source repository and shared output root. It passed on rootful Docker and rootless Docker/Podman in the Colima Linux VM, proving run-ID separation, unchanged source, verified manifests/artifacts, and cleanup of successful run workspaces and containers.
-
-CLI parsing is fail-closed for command boundaries: global help/version are explicit, unsupported command options and extra positionals return usage code 2, and the machine-readable CLI contract exposes the global options.
-
-The continuation review also closes two lifecycle boundaries: policy-inspection failures now preserve their error contract and exit status in both text and JSON modes, and verification startup failures attempt cleanup even when the runtime rejects a container before a normal result is returned.
-
-## Residual risk
-
-Docker daemon and host kernel trust, transformed secret leakage, external cosign key lifecycle/transparency policy, no hardened microVM, and no controlled proxy remain explicit limitations.
+The stable v1 statement therefore means the documented local Docker/Podman execution and evidence contracts are maintained compatibly. It does not mean every deployment is safe or enterprise-approved.

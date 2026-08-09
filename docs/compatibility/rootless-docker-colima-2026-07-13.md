@@ -1,6 +1,6 @@
 # Rootless OCI evidence: Colima VM
 
-Observed on 2026-07-13 using the pinned Kujo runtime revision from `workcell.json`.
+Observed on 2026-07-13 using the then-pinned Kujo runtime revision. Current release verification always reads the exact runtime commit from `RUNTIME_VERSION`.
 
 | Check | Result |
 | --- | --- |

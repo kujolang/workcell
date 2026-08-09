@@ -1,6 +1,6 @@
 # Workcell Agent Instructions
 
-Workcell is the local Docker/Podman proof harness for bounded Kujo and agent workflow execution. Treat Docker/Podman as the physical isolation boundary and Kujo/Workcell receipts as the evidence boundary.
+Workcell 1.x is the stable local and CI Docker/Podman harness for bounded Kujo and agent workflow execution. Treat Docker/Podman as the physical isolation boundary and Kujo/Workcell receipts as the evidence boundary. Do not extend the stable claim beyond the documented v1 contract.
 
 ## Required Reading
 
@@ -19,8 +19,11 @@ Use the exact Kujo runtime under `KUJO` or `KUJO_BIN`.
 ./bin/workcell --help
 ./bin/workcell --version
 ./bin/workcell validate --file workcell.json
+./tests/version_consistency.sh
 ./tests/run.sh
 ./tests/quality.sh
+./tests/release_report.sh
+./tests/markdown_links.sh
 git diff --check
 ```
 
@@ -29,14 +32,14 @@ Run Docker/Podman integration gates only when the engine and required local imag
 ```bash
 docker build --tag kujolang/workcell-base:local docker/
 ./bin/workcell doctor --backend docker --json
-./bin/workcell run --file workcell.json --repo .
+./bin/workcell run --file workcell.json --repo . --no-pull
 ```
 
 ## Evidence Rules
 
-- Preserve `.workcell/runs/<run-id>/receipt.json`, `manifest.json`, stdout/stderr logs, and `workcell verify` output for launch proof.
+- Preserve `.workcell/runs/<run-id>/receipt.json`, `manifest.json`, stdout/stderr logs, and `workcell verify` output outside Git when release evidence is required.
 - If Docker image pull/build is blocked by local daemon, credential helper, or network/DNS state, write a blocker receipt with the failed command, reason, closest passing local proof, and safe resume command.
-- Do not call Workcell production-ready or enterprise-ready without target Docker/Podman host hardening, egress, image-governance, retention, and clean-machine proof.
+- Workcell v1 is stable only for the documented local and CI Docker/Podman contract. Do not claim universal sandboxing, hosted-service readiness, enterprise certification, or target-environment acceptance without the operator-owned host, egress, image-governance, retention, key-custody, and compliance evidence.
 
 ## Prohibited Without Approval
 

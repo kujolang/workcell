@@ -2,6 +2,8 @@
 
 Workcell definitions are JSON documents with `version: 1`. JSON is declarative, deterministic, supported by Kujo's runtime, and does not execute arbitrary configuration code.
 
+Definition version `1` is the stable Workcell v1 input contract, not the Workcell product version. Workcell 1.0.x may add optional fields only with safe defaults; incompatible definition changes require a new definition version and migration guidance.
+
 ```json
 {
   "version": 1,

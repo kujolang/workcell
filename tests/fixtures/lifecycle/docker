@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  info)
+    printf '["name=seccomp,profile=builtin","name=apparmor"]\n'
+    ;;
+  image)
+    if [ "${2:-}" = "inspect" ] && [ "${3:-}" = "--format" ]; then
+      case "${4:-}" in
+        *Id*) printf 'sha256:%064d\n' 1 ;;
+        *RepoDigests*) printf '<no value>\n' ;;
+        *Os*Architecture*) printf 'linux/amd64\n' ;;
+        *Config.Labels*) printf '{}\n' ;;
+      esac
+    fi
+    ;;
+  run)
+    container_name=""
+    workspace=""
+    shift
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --name)
+          container_name="${2:-}"
+          shift 2
+          ;;
+        --volume)
+          workspace="${2%%:*}"
+          shift 2
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    if [[ "$container_name" == *-verify-* ]]; then
+      touch "${WORKCELL_LIFECYCLE_MARKER:?}.verify"
+    else
+      touch "${WORKCELL_LIFECYCLE_MARKER:?}.workload"
+      ln -s /tmp "$workspace/unsafe-link"
+    fi
+    ;;
+  logs)
+    ;;
+  stop|rm)
+    ;;
+  *)
+    exit 0
+    ;;
+esac

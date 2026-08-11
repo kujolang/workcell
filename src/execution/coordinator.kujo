@@ -330,7 +330,7 @@ receipt = add_error(receipt, "running", "container exited with code " + to_strin
 }
 verification := receipt["verification"]
 verification["verification_succeeded"] := execution_success&&workspace_safe&&logs_ok&&patch["ok"]&&change_report["ok"]
-verification_run := run_verification_checks(definition, workspace, run_identifier, definition["secrets"], execution_success)
+verification_run := run_verification_checks(definition, workspace, run_identifier, definition["secrets"], execution_success&&workspace_safe)
 verification["checks"] := verification_run["checks"]
 verification["verification_succeeded"] := verification["verification_succeeded"]&&verification_run["ok"]
 receipt["verification"] := verification
@@ -349,7 +349,7 @@ receipt = add_error(receipt, "exporting", artifacts["error"])
 receipt = add_state(receipt, "exporting")
 if artifacts["ok"] == false {
     receipt = add_state(receipt, "failed")
-} else if execution_success {
+} else if execution_success&&workspace_safe&&logs_ok&&patch["ok"]&&change_report["ok"]&&verification_run["ok"] {
 receipt = add_state(receipt, "completed")
 } else {
 receipt = add_state(receipt, "failed")
@@ -366,7 +366,8 @@ container_cleanup := remove_container(container["container_name"], definition["r
 if container_cleanup["ok"] == false {
     receipt = add_error(receipt, "cleaning", container_cleanup["message"])
 }
-cleanup := cleanup_workspace(workspace, preserve_failed&&execution_success == false)
+preserve_workspace := execution_success == false||workspace_safe == false||logs_ok == false||patch["ok"] == false||change_report["ok"] == false||verification_run["ok"] == false||artifacts["ok"] == false
+cleanup := cleanup_workspace(workspace, preserve_failed&&preserve_workspace)
 cleanup_status := "failed"
 if cleanup["ok"] {
     if get_or(cleanup, "preserved", false) {

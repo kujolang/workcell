@@ -269,6 +269,7 @@ expect("managed egress cannot inherit DNS", validate_definition(with_egress(with
 expect("unmanaged egress is explicit", validate_definition(with_egress(with_custom_network(default_definition(), "workcell-egress"), "unmanaged", "inherited", "none", "none"))["ok"])
 expect("artifact traversal rejected", validate_definition(with_artifact(definition, "../escape"))["ok"] == false)
 expect("absolute artifact rejected", validate_definition(with_artifact(definition, "/tmp/escape"))["ok"] == false)
+expect("non-normalized artifact declaration rejected during validation", validate_definition(with_artifact(definition, "build/./output.txt"))["ok"] == false)
 expect("image shell metacharacter rejected", validate_definition(with_image(definition, "alpine;touch"))["ok"] == false)
 expect("podman backend accepted", validate_definition(with_backend(definition, "podman", ""))["ok"])
 expect("valid image digest accepted", validate_definition(with_image_digest(definition, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))["ok"])
@@ -300,6 +301,10 @@ expect("artifact extension policy is validated", validate_definition(with_artifa
 expect("artifact secret action is validated", validate_definition(with_artifact_policy(definition, "secret_action", "leak"))["ok"] == false)
 expect("verification command is accepted", validate_definition(with_verification(definition, [{"name": "smoke", "command": ["sh", "-lc", "true"]}]))["ok"])
 expect("verification command must be non-empty", validate_definition(with_verification(definition, [{"name": "empty", "command": []}]))["ok"] == false)
+empty_argument_definition := default_definition()
+empty_argument_definition["command"] := ["printf", ""]
+empty_argument_verification := with_verification(default_definition(), [{"name": "empty-argument", "command": ["printf", ""]}])
+expect("argv validation permits empty non-executable arguments", validate_definition(empty_argument_definition)["ok"]&&validate_definition(empty_argument_verification)["ok"])
 duplicate_verification_definition := with_verification(default_definition(), [{"name": "smoke", "command": ["true"]}, {"name": "smoke", "command": ["false"]}])
 duplicate_verification := validate_definition(duplicate_verification_definition)
 expect("verification command names must be unique", duplicate_verification["ok"] == false)
@@ -426,6 +431,7 @@ save_json(occupied_save_parent, {"occupied": true})
 expect("occupied JSON parent input is handled without runtime crash", save_json(occupied_save_parent + "/child.json", {"value": true}) == false)
 run_argv(["rm", "-f", occupied_save_parent], 10000)
 expect("invalid CLI argument input is handled without runtime crash", main(null) == 2)
+expect("global CLI modes reject unsupported or conflicting options", main(["--version", "--json"]) == 2&&main(["--help", "--force"]) == 2&&main(["--help", "--version"]) == 2)
 expect("non-string CLI argument input is handled without runtime crash", main([null]) == 2)
 expect("non-string CLI value input is handled without runtime crash", main(["--file", null]) == 2)
 invalid_integration_definition := default_definition()
@@ -590,6 +596,7 @@ redact_policy := {"export": ["nested/result.txt"], "limits": {}, "max_bytes": 0,
 redact_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/redact", redact_policy, ["AUDIT_SECRET"])
 redacted_artifact := read_text(policy_fixture + "/redact/nested/result.txt")
 expect("artifact secret redaction hook changes exported content", redact_export["ok"]&&redacted_artifact["text"] == "[REDACTED]\n")
+expect("artifact export reports post-redaction byte counts", redact_export["ok"]&&redact_export["bytes"] == file_size(policy_fixture + "/redact/nested/result.txt"))
 overlap_export := export_declared_with_policy(policy_fixture + "/workspace", policy_fixture + "/overlap", {"export": ["nested/result.txt", "nested"], "limits": {}, "max_bytes": 0, "max_files": 0, "max_depth": 32, "allowed_extensions": [], "secret_action": "redact"}, ["AUDIT_SECRET"])
 expect("artifact exporter rejects overlapping declarations", overlap_export["ok"] == false&&contains(overlap_export["error"], "overlap") == 1)
 run_argv(["sh", "-c", "printf 'artifact-secret\\000\\377' > " + policy_fixture + "/workspace/binary.bin"], 30000)
@@ -615,6 +622,16 @@ manifest_value := load_json(manifest_fixture + "/manifest.json")
 manifest_verify := verify_manifest(manifest_fixture)
 manifest_files := get_or(manifest_value["value"], "files", [])
 expect("integrity manifest records versioned hashes and includes receipt", manifest_result["ok"]&&manifest_verify["ok"]&&manifest_value["value"]["schema_version"] == "workcell-manifest/v1"&&len(manifest_files) == 3&&contains(to_json(manifest_files), "receipt.json") == 1)
+non_normalized_manifest_value := manifest_value["value"]
+non_normalized_manifest_files := non_normalized_manifest_value["files"]
+non_normalized_entry := non_normalized_manifest_files[0]
+non_normalized_entry["path"] := "./" + non_normalized_entry["path"]
+non_normalized_manifest_files[0] := non_normalized_entry
+non_normalized_manifest_value["files"] := non_normalized_manifest_files
+save_json(manifest_fixture + "/manifest.json", non_normalized_manifest_value)
+non_normalized_manifest := verify_manifest(manifest_fixture)
+expect("integrity manifest rejects non-normalized file entries", non_normalized_manifest["ok"] == false&&contains(non_normalized_manifest["error"], "non-normalized") == 1)
+write_manifest(manifest_fixture, "manifest-run")
 write_file_atomic(manifest_fixture + "/stdout.log", "tampered output\n", true)
 tampered_manifest := verify_manifest(manifest_fixture)
 expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "mismatch") == 1)

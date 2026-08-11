@@ -450,6 +450,21 @@ i = i + 1
 return {"ok": true}
 }
 
+func validate_argv(value, label) {
+    if type(value) != "array" {
+        return {"ok": false, "error": label + " must be an array"}
+    }
+mut i := 0
+while i < len(value) {
+    item := value[i]
+    if type(item) != "string"||contains(item, "\n") == 1||contains(item, "\r") == 1||(i == 0&&trim(item) == "") {
+        return {"ok": false, "error": label + " must contain a non-empty executable and safe string arguments"}
+    }
+i = i + 1
+}
+return {"ok": true}
+}
+
 func validate_unique_strings(value, label) {
     mut seen := {}
     mut i := 0
@@ -551,7 +566,7 @@ if name_check["ok"] == false {
     return name_check
 }
 verification_name_list = push(verification_name_list, get_or(check, "name", ""))
-command_check := validate_string_array(get_or(check, "command", []), "verification.commands[" + to_string(i) + "].command")
+command_check := validate_argv(get_or(check, "command", []), "verification.commands[" + to_string(i) + "].command")
 if command_check["ok"] == false||len(get_or(check, "command", [])) == 0 {
     if command_check["ok"] == false {
         return command_check
@@ -575,7 +590,7 @@ return {"ok": true}
 }
 
 func validate_integration_command(value, label) {
-    result := validate_string_array(value, label)
+    result := validate_argv(value, label)
     if result["ok"] == false {
         return result
     }
@@ -760,7 +775,7 @@ if scan_check["ok"] == false {
     return scan_check
 }
 
-command_check := validate_string_array(get_or(raw, "command", []), "command")
+command_check := validate_argv(get_or(raw, "command", []), "command")
 if command_check["ok"] == false||len(get_or(raw, "command", [])) == 0 {
     if command_check["ok"] == false {
         return command_check
@@ -978,6 +993,9 @@ while artifact_i < len(get_or(artifacts, "export", [])) {
     if path_check["ok"] == false {
         return {"ok": false, "error": "artifacts.export: " + path_check["error"]}
     }
+if path_check["path"] != artifacts["export"][artifact_i] {
+    return {"ok": false, "error": "artifacts.export paths must be normalized: " + artifacts["export"][artifact_i]}
+}
 artifact_i = artifact_i + 1
 }
 

@@ -252,19 +252,9 @@ if path_within(workspace_path, source) == false||path_within(output_dir, destina
     return {"ok": false, "error": "artifact escapes its allowed boundary: " + relative}
 }
 limit := artifact_limit(policy, relative)
-stats := scan_artifact(source, relative, 0, policy, limit, secret_values)
-if stats["ok"] == false {
-    return stats
-}
-total_bytes = total_bytes + stats["bytes"]
-total_files = total_files + stats["files"]
-global_max_bytes := get_or(policy, "max_bytes", 0)
-global_max_files := get_or(policy, "max_files", 0)
-if global_max_bytes > 0&&total_bytes > global_max_bytes {
-    return {"ok": false, "error": "exported artifacts exceed max bytes " + to_string(global_max_bytes)}
-}
-if global_max_files > 0&&total_files > global_max_files {
-    return {"ok": false, "error": "exported artifacts exceed max files " + to_string(global_max_files)}
+source_stats := scan_artifact(source, relative, 0, policy, limit, secret_values)
+if source_stats["ok"] == false {
+    return source_stats
 }
 parent := destination
 mut slash := len(parent) - 1
@@ -293,6 +283,20 @@ if get_or(policy, "secret_action", "allow") == "redact"&&len(secret_values) > 0 
     if redaction["ok"] == false {
         return {"ok": false, "error": "could not redact exported artifact: " + relative}
     }
+}
+stats := scan_artifact(destination, relative, 0, policy, limit, [])
+if stats["ok"] == false {
+    return stats
+}
+total_bytes = total_bytes + stats["bytes"]
+total_files = total_files + stats["files"]
+global_max_bytes := get_or(policy, "max_bytes", 0)
+global_max_files := get_or(policy, "max_files", 0)
+if global_max_bytes > 0&&total_bytes > global_max_bytes {
+    return {"ok": false, "error": "exported artifacts exceed max bytes " + to_string(global_max_bytes)}
+}
+if global_max_files > 0&&total_files > global_max_files {
+    return {"ok": false, "error": "exported artifacts exceed max files " + to_string(global_max_files)}
 }
 exported = push(exported, relative)
 i = i + 1

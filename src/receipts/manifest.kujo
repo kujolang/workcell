@@ -133,6 +133,9 @@ relative_check := normalized_relative(get_or(entry, "path", ""))
 if relative_check["ok"] == false||relative_check["path"] == "manifest.json" {
     return {"ok": false, "error": "integrity manifest contains an invalid excluded or relative path"}
 }
+if relative_check["path"] != get_or(entry, "path", "") {
+    return {"ok": false, "error": "integrity manifest contains a non-normalized path"}
+}
 relative := relative_check["path"]
 if has_key_safe(seen_paths, relative) {
     return {"ok": false, "error": "integrity manifest contains duplicate file entry: " + relative}

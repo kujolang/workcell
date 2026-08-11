@@ -133,9 +133,6 @@ if (command == "help"||command == "version")&&(has_flag(parsed, "help")||has_fla
 if command != "help"&&command != "version"&&len(positionals) > 1 {
     return {"ok": false, "error": "unexpected positional argument for " + command + ": " + to_string(positionals[1])}
 }
-if command == "help"||command == "version" {
-    return {"ok": true}
-}
 allowed := options_for(command)
 names := keys(parsed["flags"])
 mut i := 0
@@ -461,7 +458,10 @@ if result["ok"] {return 0}
 return 9
 }
 docker := clean_owned_resources_with_options(prune_images, backend)
-temp := clean_stale_workspaces(get_or(docker, "active_run_ids", []))
+mut temp := {"ok": false, "removed": [], "skipped": ["runtime inventory failed; temporary workspaces were preserved"]}
+if docker["ok"] {
+    temp = clean_stale_workspaces(get_or(docker, "active_run_ids", []))
+}
 clean_ok := docker["ok"]&&temp["ok"]
 result := {"schema_version": "workcell-clean/v1", "ok": clean_ok, "runtime_backend": backend, "runtime": docker, "docker": docker, "temporary_workspaces": temp}
 if has_flag(parsed, "json") {

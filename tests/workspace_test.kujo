@@ -83,8 +83,26 @@ if workspace["ok"] {
     expect("structured change report generated", report["ok"])
     report_json := load_json(report_path)
     expect("change report summarizes patch", report_json["ok"]&&report_json["value"]["summary"]["total_files"] == 1&&report_json["value"]["summary"]["binary_files"] == 1&&report_json["value"]["files"][0]["binary"] == true&&report_json["value"]["patch_bytes"] > 0)
-    cleanup := cleanup_workspace(workspace, false)
-    expect("worktree cleanup succeeded", cleanup["ok"])
+    tab_name := "tab\tname.txt"
+    newline_name := "line\nbreak.txt"
+    write_file_atomic(workspace["workspace_path"] + "/" + tab_name, "tabbed\n", true)
+    write_file_atomic(workspace["workspace_path"] + "/" + newline_name, "newlined\n", true)
+    unusual_details := change_details(workspace)
+    unusual_paths := []
+    mut saw_tab_name := false
+    mut saw_newline_name := false
+    if unusual_details["ok"] {
+        mut unusual_i := 0
+        while unusual_i < len(unusual_details["files"]) {
+            unusual_paths = push(unusual_paths, unusual_details["files"][unusual_i]["path"])
+            if unusual_details["files"][unusual_i]["path"] == tab_name {saw_tab_name = true}
+            if unusual_details["files"][unusual_i]["path"] == newline_name {saw_newline_name = true}
+            unusual_i = unusual_i + 1
+        }
+}
+expect("change report preserves tabs and newlines in Git paths", unusual_details["ok"]&&saw_tab_name&&saw_newline_name)
+cleanup := cleanup_workspace(workspace, false)
+expect("worktree cleanup succeeded", cleanup["ok"])
 }
 run_argv(["rm", "-rf", repo], 30000)
 

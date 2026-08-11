@@ -21,6 +21,14 @@ func git_result(args, timeout_ms) {
     return run_argv(args, timeout_ms)
 }
 
+func nul_separator() {
+    try {
+        return parse_json("\"\\u0000\"")
+    } except err {
+    return ""
+}
+}
+
 export func inspect_repository(repo_path) {
     if type(repo_path) != "string"||repo_path == "" {
         return {"ok": false, "error": "repository path must be a non-empty string"}
@@ -321,32 +329,38 @@ export func change_details(workspace) {
     if workspace_check["ok"] == false {
         return workspace_check
     }
-status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", workspace["source_commit"]], 30000)
+status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", "-z", workspace["source_commit"]], 30000)
 if process_ok(status_result) == false {
     return {"ok": false, "error": process_error(status_result, "collect changed files")}
 }
-lines := lines_of(trim(status_result.stdout))
+nul := nul_separator()
+records := split(status_result.stdout, nul)
 mut files := []
 mut known_paths := {}
 mut i := 0
-while i < len(lines) {
-    line := trim(lines[i])
-    if line != "" {
-        columns := split(line, "\t")
-        letter := substring(columns[0], 0, 1)
-        path := columns[len(columns) - 1]
-        files = push(files, {"path": path, "status": status_name(letter), "binary": false})
-        known_paths[path] := true
-    }
+while i < len(records) {
+    status := records[i]
+    if status != ""&&i + 1 < len(records) {
+        letter := substring(status, 0, 1)
+        path := records[i + 1]
+        i = i + 2
+        if (letter == "R"||letter == "C")&&i < len(records) {
+            path = records[i]
+            i = i + 1
+        }
+    files = push(files, {"path": path, "status": status_name(letter), "binary": false})
+    known_paths[path] := true
+} else {
 i = i + 1
 }
-untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
+}
+untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard", "-z"], 30000)
 if process_ok(untracked_result) {
-    untracked := lines_of(trim(untracked_result.stdout))
+    untracked := split(untracked_result.stdout, nul)
     mut untracked_paths := []
     mut j := 0
     while j < len(untracked) {
-        item := trim(untracked[j])
+        item := untracked[j]
         if item != "" {
             if has_key_safe(known_paths, item) == false {
                 untracked_paths = push(untracked_paths, item)
@@ -367,19 +381,28 @@ while untracked_file_i < len(files) {
 untracked_file_i = untracked_file_i + 1
 }
 }
-numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", workspace["source_commit"]], 30000)
+numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "-z", workspace["source_commit"]], 30000)
 if process_ok(numstat_result) {
-    numstat_lines := lines_of(trim(numstat_result.stdout))
+    numstat_records := split(numstat_result.stdout, nul)
     binary_paths := {}
     mut numstat_i := 0
-    while numstat_i < len(numstat_lines) {
-        numstat_columns := split(trim(numstat_lines[numstat_i]), "\t")
+    while numstat_i < len(numstat_records) {
+        numstat_columns := split(numstat_records[numstat_i], "\t")
         if len(numstat_columns) >= 3 {
-            numstat_path := numstat_columns[len(numstat_columns) - 1]
-            if numstat_columns[0] == "-"&&numstat_columns[1] == "-" {
-                binary_paths[numstat_path] := true
+            mut numstat_path := numstat_columns[2]
+            mut column_i := 3
+            while column_i < len(numstat_columns) {
+                numstat_path = numstat_path + "\t" + numstat_columns[column_i]
+                column_i = column_i + 1
             }
+        if numstat_path == ""&&numstat_i + 2 < len(numstat_records) {
+            numstat_path = numstat_records[numstat_i + 2]
+            numstat_i = numstat_i + 2
+        }
+    if numstat_columns[0] == "-"&&numstat_columns[1] == "-" {
+        binary_paths[numstat_path] := true
     }
+}
 numstat_i = numstat_i + 1
 }
 mut file_i := 0
@@ -458,15 +481,16 @@ if process_ok(result) == false {
     return {"ok": false, "error": process_error(result, "generate Git patch")}
 }
 mut patch_text := result.stdout
-untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard"], 30000)
+untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard", "-z"], 30000)
 if process_ok(untracked_result) == false {
     return {"ok": false, "error": process_error(untracked_result, "collect untracked files for Git patch")}
 }
-untracked := lines_of(trim(untracked_result.stdout))
+nul := nul_separator()
+untracked := split(untracked_result.stdout, nul)
 mut untracked_paths := []
 mut i := 0
 while i < len(untracked) {
-    relative := trim(untracked[i])
+    relative := untracked[i]
     if relative != "" {
         untracked_paths = push(untracked_paths, relative)
     }

@@ -14,7 +14,7 @@ partial_details := changed_files_from_details({})
 expect("partial changed details input is rejected without runtime crash", partial_details["ok"] == false)
 partial_report := write_change_report_from_details({}, "/tmp/workcell-partial-report.json", 0, {})
 expect("partial change report input is rejected without runtime crash", partial_report["ok"] == false)
-partial_patch := make_patch({}, "/tmp/workcell-partial.patch")
+partial_patch := make_patch({}, "/tmp/workcell-partial.patch", [], "allow")
 expect("partial patch workspace is rejected without runtime crash", partial_patch["ok"] == false)
 partial_cleanup := cleanup_workspace({}, false)
 expect("partial cleanup workspace is rejected without runtime crash", partial_cleanup["ok"] == false)
@@ -74,7 +74,7 @@ if workspace["ok"] {
     binary_path := workspace["workspace_path"] + "/added.bin"
     run_argv(["dd", "if=/dev/zero", "of=" + binary_path, "bs=1", "count=1"], 30000)
     patch_path := repo + "/changes.patch"
-    patch := make_patch(workspace, patch_path)
+    patch := make_patch(workspace, patch_path, [], "allow")
     expect("patch generated", patch["ok"])
     patch_text := read_text(patch_path)
     expect("untracked file appears in patch", patch_text["ok"]&&contains(patch_text["text"], "added.bin") == 1)

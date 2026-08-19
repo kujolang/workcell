@@ -416,7 +416,7 @@ expect("invalid symlink scan input is handled without runtime crash", find_symli
 expect("invalid workspace creation input is handled without runtime crash", create_workspace(null, null, null)["ok"] == false)
 expect("malformed change details input is handled without runtime crash", changed_files_from_details({"ok": true, "files": [null], "summary": {}})["ok"] == false)
 expect("invalid change report output input is handled without runtime crash", write_change_report_from_details({"workspace_path": "/tmp", "source_commit": "HEAD"}, null, null, {"ok": true, "files": [], "summary": {}})["ok"] == false)
-expect("invalid patch output input is handled without runtime crash", make_patch({"workspace_path": ".", "source_commit": "HEAD"}, null)["ok"] == false)
+expect("invalid patch output input is handled without runtime crash", make_patch({"workspace_path": ".", "source_commit": "HEAD"}, null, [], "allow")["ok"] == false)
 expect("invalid doctor input is handled without runtime crash", report(null, null)["ok"] == false)
 expect("invalid doctor backend is rejected before runtime invocation", report(".", "invalid-runtime")["ok"] == false)
 expect("invalid policy construction input is handled without runtime crash", build_policy(default_definition(), null, null)["ok"] == false&&inspect_policy(default_definition(), null, null, null)["ok"] == false)

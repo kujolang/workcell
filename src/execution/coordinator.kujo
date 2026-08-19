@@ -306,10 +306,15 @@ if files["ok"] {
 receipt = add_error(receipt, "collecting", files["error"])
 }
 patch_path := output_dir + "/changes.patch"
-patch := make_patch(workspace, patch_path)
+patch := make_patch(workspace, patch_path, definition["secrets"], get_or(definition["artifacts"], "secret_action", "allow"))
 if patch["ok"] == false {
     receipt = add_error(receipt, "collecting", patch["error"])
     patch_path = null
+}
+if get_or(patch, "redacted", false) {
+    warnings := receipt["warnings"]
+    warnings = push(warnings, "declared secret values were redacted from the persisted Git patch")
+    receipt["warnings"] := warnings
 }
 receipt["patch_bytes"] := get_or(patch, "bytes", 0)
 change_report_path := output_dir + "/changes.json"

@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import base_of, ensure_dir, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, read_text, resolve_run_as, run_argv, save_json, valid_run_id
+from src.util import base_of, ensure_dir, env_secret_values, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, read_text, redact, resolve_run_as, run_argv, save_json, valid_run_id
 
 export func temp_root() {
     candidate := env("TMPDIR")
@@ -468,13 +468,19 @@ return {"ok": false, "error": "could not write change report: " + to_string(err)
 return {"ok": true, "path": output_path, "files": details["files"]}
 }
 
-export func make_patch(workspace, patch_path) {
+export func make_patch(workspace, patch_path, secrets, secret_action) {
     workspace_check := workspace_input_check(workspace, true)
     if workspace_check["ok"] == false {
         return workspace_check
     }
 if type(patch_path) != "string"||patch_path == "" {
     return {"ok": false, "error": "patch output path must be a non-empty string"}
+}
+if type(secrets) != "array" {
+    return {"ok": false, "error": "patch secret names must be an array"}
+}
+if type(secret_action) != "string"||(secret_action != "allow"&&secret_action != "reject"&&secret_action != "redact") {
+    return {"ok": false, "error": "patch secret action is invalid"}
 }
 result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
 if process_ok(result) == false {
@@ -513,15 +519,22 @@ if process_ok(patch_result) == false {
 }
 patch_text = patch_result.stdout
 }
+patch_secret_values := env_secret_values(secrets)
+patch_redacted := redact(patch_text, patch_secret_values)
+patch_holds_secret := patch_redacted != patch_text
+patch_text = patch_redacted
 if file_exists(patch_path) {
     delete_file(patch_path)
+}
+if patch_holds_secret&&secret_action == "reject" {
+    return {"ok": false, "error": "Git patch contains a declared secret", "redacted": true}
 }
 try {
     write_file(patch_path, patch_text)
 } except err {
 return {"ok": false, "error": "could not write Git patch: " + to_string(err)}
 }
-return {"ok": true, "path": patch_path, "bytes": len(patch_text)}
+return {"ok": true, "path": patch_path, "bytes": len(patch_text), "redacted": patch_holds_secret}
 }
 
 export func cleanup_workspace(workspace, preserve) {

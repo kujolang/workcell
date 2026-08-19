@@ -26,11 +26,12 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Optional seccomp/AppArmor profile names are validated and attached to the container; `unconfined` is rejected.
 - Declarative verification commands run in separate labeled containers with the same environment, identity, mounts, resources, and network policy as the workload; verification output is redacted before it reaches the receipt.
 - Artifact exports can enforce byte/file/depth limits, extension policies, and secret allow/reject/redact behavior before or during export.
+- `artifacts.secret_action: reject` also rejects a run whose Git patch held a declared secret, and the patch is not persisted in that case.
 - Network definitions carry an explicit egress declaration. `network.mode: none` is normalized to deny-by-default with blocked DNS and no proxy; default/custom networks may declare a host-managed deny-by-default or operator-managed profile. The declaration is recorded and unmanaged network access emits a receipt warning; Workcell does not install firewalls, control DNS, or force arbitrary child processes to honor a proxy.
 
 ## Secrets
 
-Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr are redacted incrementally before stream log files, channel events, receipts, and artifacts are persisted; known current values and common base64 encodings are replaced with `[REDACTED]`. Redaction cannot guarantee protection when a workload hashes or otherwise transforms a secret, or writes it to a declared artifact, so secret-aware workloads remain the caller's responsibility.
+Secrets are named environment variables. Values are read immediately before execution and passed through the process environment; their names appear in inspection and receipts, but values do not. Captured stdout/stderr are redacted incrementally before stream log files, channel events, receipts, and artifacts are persisted; known current values and common base64 encodings are replaced with `[REDACTED]`. The generated `changes.patch` is persisted run evidence and is redacted on the same unconditional terms as the run logs, so a workload that writes a secret into the workspace cannot seal that value into the integrity manifest. Redaction cannot guarantee protection when a workload hashes or otherwise transforms a secret, or writes it to a declared artifact, so secret-aware workloads remain the caller's responsibility.
 
 ## Network and daemon trust
 

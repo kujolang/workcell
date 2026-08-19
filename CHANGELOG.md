@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-_No changes yet._
+- Fixed a secret leak in persisted run evidence: `changes.patch` recorded declared secret values verbatim and sealed them into `manifest.json`. Declared secret values and their common base64 encodings are now redacted from the patch before it is written, on the same unconditional terms as `stdout.log` and `stderr.log`.
+- Escalated `artifacts.secret_action: reject` to the Git patch: a run whose patch held a declared secret now fails and the patch is not persisted. Receipts warn when patch redaction changed the persisted evidence.
 
 ## 1.0.0 - 2026-08-08
 

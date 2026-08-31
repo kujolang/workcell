@@ -10,6 +10,8 @@ Workcell defaults to Docker and also exposes a Podman-compatible OCI backend. `w
 | macOS, Docker Desktop/Colima | Host-mapped UID/GID is passed through Docker Desktop/Colima's VM file sharing. Fixed UID/GID may require host-specific file-sharing support. | AppArmor is a Linux-host concept; doctor reports the daemon's actual security options. Use the VM boundary and keep `network: none` by default. | BuildKit/buildx is recommended; local image IDs are used when RepoDigests are absent. | Supported with local daemon validation. |
 | Windows or unsupported Unix | Path, permission, and Docker security semantics are outside the v1 contract. | Do not infer Linux isolation or AppArmor behavior. | Image/build behavior is unverified. | Unsupported; run on Linux or macOS with Docker, or supported Linux with Podman. |
 
+On macOS, the temporary workspace root must be shared with the selected Docker Desktop or Colima VM. Some installations do not share the system `TMPDIR` under `/var/folders`, in which case the bind mount appears empty inside the container even though the host clone is populated. Set `TMPDIR` to an owner-controlled directory under a shared path (for example, a project-local ignored `.workcell/tmp` under `/Users`) before running Workcell, and retain the receipt as host-specific evidence. Workcell canonicalizes existing bind-mount paths but does not mutate Docker Desktop file-sharing configuration.
+
 ## Required preflight
 
 ```bash

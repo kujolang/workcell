@@ -9,7 +9,7 @@ created → validated → preparing → prepared → starting → running
 ```
 
 1. **Validate**: load JSON, apply safe defaults, reject unknown fields, unsafe paths/options, symlinks, and unbounded resource values.
-2. **Prepare**: inspect Git, reject dirty sources, create a detached worktree or isolated clone, and resolve the selected Docker/Podman image by build, reuse, or pull.
+2. **Prepare**: inspect Git, reject dirty sources, create a detached worktree or isolated clone, canonicalize the existing host workspace path before bind mounting (including macOS `/private` aliases), and resolve the selected Docker/Podman image by build, reuse, or pull.
 3. **Launch**: build explicit backend argv and start the labeled container with the configured timeout and bounded output capture.
 4. **Collect**: capture stdout/stderr, exit status, timing, changed files, and a Git patch.
 5. **Verify**: reject post-run workspace symlinks, run the versioned declarative checks in separate labeled containers when the workload succeeds, validate patch/artifact boundaries, and record execution versus verification separately.

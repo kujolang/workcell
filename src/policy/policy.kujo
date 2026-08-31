@@ -92,6 +92,14 @@ export func build_policy(definition, run_identifier, host_workspace) {
 if type(run_identifier) != "string"||type(host_workspace) != "string"||run_identifier == ""||host_workspace == "" {
     return {"ok": false, "error": "policy run identifier and host workspace must be non-empty strings"}
 }
+mut mount_workspace := host_workspace
+if path_exists(host_workspace) {
+    let resolved_workspace := path_absolute(host_workspace)
+    if type(resolved_workspace) == "error" {
+        return {"ok": false, "error": "policy host workspace could not be canonicalized"}
+    }
+    mount_workspace = resolved_workspace
+}
 identity := resolve_run_as(definition["workspace"]["run_as"])
 if identity["ok"] == false {
     return identity
@@ -140,7 +148,7 @@ while tmp_i < len(tmpfs) {
     docker = add_pair(docker, "--tmpfs", tmpfs[tmp_i] + ":rw,noexec,nosuid,nodev")
     tmp_i = tmp_i + 1
 }
-docker = add_pair(docker, "--volume", host_workspace + ":" + mount_path + ":rw")
+docker = add_pair(docker, "--volume", mount_workspace + ":" + mount_path + ":rw")
 docker = add_pair(docker, "--workdir", mount_path)
 docker = environment_args(docker, definition)
 docker = push(docker, definition["runtime"]["image"])
@@ -154,7 +162,7 @@ return {
     "docker_args": docker,
     "container_name": "kujo-workcell-" + run_identifier,
     "labels": labels,
-    "mounts": [host_workspace + ":" + mount_path + ":rw"],
+    "mounts": [mount_workspace + ":" + mount_path + ":rw"],
     "network_mode": network_mode,
     "runtime_backend": backend,
     "runtime_engine": engine,

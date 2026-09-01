@@ -18,11 +18,17 @@ if [ "$mode" = "noise" ]; then
     exit 0
 fi
 
+if [ "$mode" = "hang" ]; then
+    sleep 5
+    exit 0
+fi
+
 if [ "$mode" = "duplicate-result" ]; then
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{}}'
 fi
 
 if [ "$operation" = "inventory" ]; then
+    nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce // .profile.nonce // "nonce-1"')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
     exit 0
 fi
@@ -30,6 +36,44 @@ fi
 if [ "$operation" = "destroy" ]; then
     resource_id="$(printf '%s' "$request" | jq -r '.payload.handle.resource_ids[0].id')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg resource_id "$resource_id" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{items:[{kind:"fixture",id:$resource_id,status:"removed"}],remaining:[]}}'
+    exit 0
+fi
+
+if [ "$operation" = "describe" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{adapter:{id:"external-fixture",version:"1.0.0",build:"offline"},contract_versions:["workcell-backend/v1alpha1"],profile_schema:"workcell-external-fixture-profile/v1",credential_refs:[],static_capability_hints:["lifecycle.provision"]}}'
+    exit 0
+fi
+
+if [ "$operation" = "resolve" ]; then
+    printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{identity:{adapter:"external-fixture",adapter_version:"1.0.0",provider:"workcell-fixture",provider_api:"fixture/v1",substrate:"process"},capabilities:(.payload.requirements | map({id:.id,support:"supported",requested:(.requested // true),acceptance:"accepted",resolved:(.value // true),enforcement:{status:"workcell-enforced",authority:"fixture",evidence:"offline fixture"},observation:{status:"observed",method:"fixture",result:"configured"},limitations:[]})),resolved_plan:.payload.intent,volatile_fields:[]}}'
+    exit 0
+fi
+
+if [ "$operation" = "provision" ]; then
+    nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce')"
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:{backend:"external-fixture",adapter_version:"1.0.0",provider:"workcell-fixture",profile_fingerprint:"sha256:fixture-profile",resource_ids:[{kind:"fixture",id:("fixture-"+$run_id)}],ownership:{run_id:$run_id,nonce:$nonce},provider_state:{state:"provisioned"}},resource_inventory:[{kind:"fixture",id:("fixture-"+$run_id),state:"provisioned",ownership:{run_id:$run_id,nonce:$nonce}}],actual_resolution:{}}}'
+    exit 0
+fi
+
+if [ "$operation" = "prepare" ]; then
+    digest="$(printf '%s' "$request" | jq -r '.payload.workspace_package.sha256')"
+    printf '%s' "$request" | jq -c --arg digest "$digest" '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,workspace_root:"/workspace",observed_package_digest:$digest}}'
+    exit 0
+fi
+
+if [ "$operation" = "execute" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"event",event:"log",sequence:0,stream:"stdout",bytes_base64:"Zml4dHVyZQo=",provider_timestamp:null,ordering:"per-stream"}'
+    printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-command",terminal:{status:"exited",exit_code:7,signal:null,reason:"fixture-exit",timed_out:false,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:8,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'
+    exit 0
+fi
+
+if [ "$operation" = "collect" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{terminal:{status:"exited",exit_code:7,signal:null,reason:"fixture-exit",timed_out:false,cancelled:false,certainty:"terminal"},logs:{complete:true,ordering:"per-stream"},workspace_delta:{files:[],complete:true},metrics:{},attempt_inventory:[]}}'
+    exit 0
+fi
+
+if [ "$operation" = "export" ]; then
+    printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{archive:{path:"artifacts.tar",sha256:"sha256:fixture",bytes:0},manifest:{declared:.payload.declarations,files:[]},failures:[],cleanup_resources:[]}}'
     exit 0
 fi
 

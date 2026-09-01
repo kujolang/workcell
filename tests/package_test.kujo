@@ -1,0 +1,57 @@
+from src.workspace.package import create_workspace_package, materialize_workspace_package, workspace_package_schema_version
+from src.workspace.workspace import temp_root
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+    failed = failed + 1
+    print("FAIL " + label)
+}
+}
+
+root := temp_root() + "/workcell-package-test-" + replace(uuid_v4(), "-", "")
+repo := root + "/repo"
+output := root + "/package"
+target := root + "/target"
+spawn_process(["mkdir", "-p", repo])
+spawn_process(["git", "-C", repo, "init", "--initial-branch=main"])
+spawn_process(["git", "-C", repo, "config", "user.email", "fixture@example.invalid"])
+spawn_process(["git", "-C", repo, "config", "user.name", "Workcell Fixture"])
+write_file_atomic(repo + "/README.md", "portable workspace\n", true)
+spawn_process(["git", "-C", repo, "add", "README.md"])
+spawn_process(["git", "-C", repo, "commit", "-m", "fixture"])
+
+run_identifier := "wc-abcdefabcdefabcdefabcdefabcdefab"
+limits := {"max_files": 10000, "max_bytes": 10000000, "max_depth": 64}
+package := create_workspace_package(repo, output, run_identifier, limits)
+expect("clean repository creates portable package", package["ok"])
+expect("portable package has versioned schema", package["schema_version"] == workspace_package_schema_version())
+expect("portable package records exact source commit", package["source_commit"] != ""&&package["manifest"]["history_commits"] == 1)
+expect("portable package archive and manifest exist", file_exists(package["archive_path"])&&file_exists(package["manifest_path"]))
+
+materialized := materialize_workspace_package(package, target, limits)
+expect("portable package materializes and verifies", materialized["ok"])
+expect("materialized workspace preserves commit", materialized["source_commit"] == package["source_commit"])
+expect("materialized workspace omits provider remote", trim(spawn_process(["git", "-C", materialized["workspace_root"], "remote"]).stdout) == "")
+expect("materialized workspace remains clean", trim(spawn_process(["git", "-C", materialized["workspace_root"], "status", "--porcelain=v1"]).stdout) == "")
+
+mut tampered := package
+tampered_archive := root + "/tampered.tar"
+write_file_atomic(tampered_archive, "not an archive", true)
+tampered["archive_path"] := tampered_archive
+tamper_target := root + "/tamper-target"
+expect("workspace archive digest mismatch fails before extraction", materialize_workspace_package(tampered, tamper_target, limits)["ok"] == false)
+
+write_file_atomic(repo + "/dirty.txt", "uncommitted\n", true)
+dirty := create_workspace_package(repo, root + "/dirty-package", "wc-11111111111111111111111111111111", limits)
+expect("portable package refuses dirty source", dirty["ok"] == false)
+
+spawn_process(["rm", "-rf", root])
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

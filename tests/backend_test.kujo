@@ -1,6 +1,10 @@
 from src.backend.fixture import fixture_dispatch
+from src.backend.oci.docker import docker_identity
+from src.backend.oci.driver import builtin_backend_identity, builtin_backend_valid
+from src.backend.oci.podman import podman_identity
 from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
 from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_terminal_result
+from src.domain.definition import default_definition
 
 mut passed := 0
 mut failed := 0
@@ -19,6 +23,19 @@ run_identifier := "wc-0123456789abcdef0123456789abcdef"
 identity := backend_identity("fixture", "1.0.0", "fixture", "fixture/v1", "process")
 expect("backend identity validates", validate_backend_identity(identity)["ok"])
 expect("backend identity rejects missing provider", validate_backend_identity({"adapter": "fixture"})["ok"] == false)
+
+mut docker_definition := default_definition()
+mut podman_definition := default_definition()
+mut podman_runtime := podman_definition["runtime"]
+podman_runtime["backend"] := "podman"
+podman_runtime["engine_runtime"] := "crun"
+podman_definition["runtime"] := podman_runtime
+expect("docker is a built-in backend", builtin_backend_valid("docker"))
+expect("podman is a built-in backend", builtin_backend_valid("podman"))
+expect("unknown backend is not built in", builtin_backend_valid("e2b") == false)
+expect("docker adapter identity separates provider and substrate", docker_identity(docker_definition)["provider"] == "docker-engine"&&docker_identity(docker_definition)["substrate"] == "oci/runc")
+expect("podman adapter identity records selected substrate", podman_identity(podman_definition)["provider"] == "podman-engine"&&podman_identity(podman_definition)["substrate"] == "oci/crun")
+expect("built-in identity dispatches by backend", builtin_backend_identity(podman_definition)["adapter"] == "podman")
 
 state := capability_state("network.none", "supported", true, "accepted", {"mode": "deny-all"}, {"status": "provider-claimed", "authority": "fixture", "evidence": "deny"}, {"status": "observed", "method": "probe", "result": "blocked"}, [])
 expect("capability state validates", validate_capability_state(state)["ok"])

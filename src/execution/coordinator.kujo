@@ -4,7 +4,7 @@ from src.artifacts.exporter import export_declared_with_policy, write_execution_
 from src.domain.definition import load_definition
 from src.receipts.receipt import add_error, add_state, finish_receipt, new_receipt, write_receipt
 from src.receipts.manifest import write_manifest
-from src.runtime.docker import container_logs, ensure_image, remove_container, run_container, stop_container
+from src.backend.oci.driver import backend_destroy, backend_ensure_image, backend_execute, backend_logs, backend_stop
 from src.util import ensure_dir, env_secret_stream_values, get_or, path_has_symlink, path_within, redact_with_env, run_id
 from src.workspace.workspace import changed_files_from_details, change_details, cleanup_workspace, create_workspace_for_user, find_symlink_with_limits, inspect_repository, make_patch, temp_root, write_change_report_from_details
 from src.verification.verification import run_verification_checks
@@ -169,7 +169,7 @@ if dry_manifest["ok"] == false {
 return final_result(run_identifier, receipt_path, output_dir, receipt, true, "completed", "", 0, false, false, dry_cleanup_status)
 }
 
-image := ensure_image(definition, workspace["source_root"], run_identifier, is_true(option(flags, "no_pull", false)), is_true(option(flags, "rebuild", false)))
+image := backend_ensure_image(definition, workspace["source_root"], run_identifier, is_true(option(flags, "no_pull", false)), is_true(option(flags, "rebuild", false)))
 if image["ok"] == false {
     receipt = add_error(receipt, "preparing", image["error"])
     receipt = add_state(receipt, "failed")
@@ -212,7 +212,7 @@ stream_options := {
     "stream_stderr_path": output_dir + "/stderr.log",
     "redact_values": env_secret_stream_values(definition["secrets"])
 }
-container := run_container(definition, policy, stream_options)
+container := backend_execute(definition, policy, stream_options)
 if container["ok"] == false {
     receipt = add_error(receipt, "starting", container["error"])
     receipt = add_state(receipt, "failed")
@@ -221,11 +221,11 @@ if container["ok"] == false {
         receipt = add_error(receipt, "recording", logs["error"])
     }
 receipt = add_state(receipt, "cleaning")
-start_stop := stop_container(policy["container_name"], definition["runtime"]["backend"])
+start_stop := backend_stop(policy["container_name"], definition["runtime"]["backend"])
 if start_stop["ok"] == false {
     receipt = add_error(receipt, "cleaning", start_stop["message"])
 }
-container_cleanup := remove_container(policy["container_name"], definition["runtime"]["backend"])
+container_cleanup := backend_destroy(policy["container_name"], definition["runtime"]["backend"])
 if container_cleanup["ok"] == false {
     receipt = add_error(receipt, "cleaning", container_cleanup["message"])
 }
@@ -279,7 +279,7 @@ if container["stdout_truncated"]||container["stderr_truncated"] {
 mut captured_stdout := container["stdout"]
 mut captured_stderr := container["stderr"]
 if container["timed_out"] {
-    timeout_logs := container_logs(container["container_name"], definition["runtime"]["backend"])
+    timeout_logs := backend_logs(container["container_name"], definition["runtime"]["backend"])
     if timeout_logs["ok"] {
         captured_stdout = timeout_logs["stdout"]
         captured_stderr = timeout_logs["stderr"]
@@ -362,12 +362,12 @@ receipt = add_state(receipt, "failed")
 receipt = add_state(receipt, "cleaning")
 mut stop_result := {"ok": true, "message": "not required"}
 if container["timed_out"]||get_or(container, "cancelled", false) {
-    stop_result = stop_container(container["container_name"], definition["runtime"]["backend"])
+    stop_result = backend_stop(container["container_name"], definition["runtime"]["backend"])
     if stop_result["ok"] == false {
         receipt = add_error(receipt, "cleaning", stop_result["message"])
     }
 }
-container_cleanup := remove_container(container["container_name"], definition["runtime"]["backend"])
+container_cleanup := backend_destroy(container["container_name"], definition["runtime"]["backend"])
 if container_cleanup["ok"] == false {
     receipt = add_error(receipt, "cleaning", container_cleanup["message"])
 }

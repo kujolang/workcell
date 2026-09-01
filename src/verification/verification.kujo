@@ -1,6 +1,6 @@
 # Declarative post-run checks executed inside the same disposable workspace policy.
 
-from src.runtime.docker import container_logs, remove_container, run_container, stop_container
+from src.backend.oci.driver import backend_destroy, backend_execute, backend_logs, backend_stop
 from src.policy.policy import build_policy
 from src.domain.definition import validate_definition
 from src.util import get_or, redact_with_env
@@ -57,8 +57,8 @@ return contains(message, "no such container") == 1
 }
 
 func cleanup_verification_container(container_name, backend) {
-    stop_result := stop_container(container_name, backend)
-    remove_result := remove_container(container_name, backend)
+    stop_result := backend_stop(container_name, backend)
+    remove_result := backend_destroy(container_name, backend)
     cleanup_status := "complete"
     if cleanup_result_ok(stop_result) == false||cleanup_result_ok(remove_result) == false {
         cleanup_status = "failed"
@@ -94,7 +94,7 @@ while i < len(checks) {
         results = push(results, {"name": check["name"], "command": safe_command(check["command"], secrets), "status": "blocked", "exit_code": null, "stdout": "", "stderr": redact_with_env(policy["error"], secrets), "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": "not-started"})
         return {"ok": false, "checks": results, "error": "could not build verification policy for " + check["name"]}
     }
-container := run_container(check_definition, policy, {})
+container := backend_execute(check_definition, policy, {})
 if container["ok"] == false {
     cleanup := cleanup_verification_container(policy["container_name"], definition["runtime"]["backend"])
     results = push(results, {"name": check["name"], "command": safe_command(check["command"], secrets), "status": "blocked", "exit_code": null, "stdout": "", "stderr": redact_with_env(container["error"], secrets), "stdout_truncated": false, "stderr_truncated": false, "cleanup_status": cleanup["status"]})
@@ -103,7 +103,7 @@ if container["ok"] == false {
 mut stdout := redact_with_env(get_or(container, "stdout", ""), secrets)
 mut stderr := redact_with_env(get_or(container, "stderr", ""), secrets)
 if get_or(container, "timed_out", false) {
-    logs := container_logs(policy["container_name"], definition["runtime"]["backend"])
+    logs := backend_logs(policy["container_name"], definition["runtime"]["backend"])
     if logs["ok"] {
         stdout = redact_with_env(logs["stdout"], secrets)
         stderr = redact_with_env(logs["stderr"], secrets)
@@ -111,9 +111,9 @@ if get_or(container, "timed_out", false) {
 }
 mut stop_result := {"ok": true}
 if get_or(container, "timed_out", false) {
-    stop_result = stop_container(policy["container_name"], definition["runtime"]["backend"])
+    stop_result = backend_stop(policy["container_name"], definition["runtime"]["backend"])
 }
-cleanup := remove_container(policy["container_name"], definition["runtime"]["backend"])
+cleanup := backend_destroy(policy["container_name"], definition["runtime"]["backend"])
 mut cleanup_status := "complete"
 if stop_result["ok"] == false||cleanup["ok"] == false {
     cleanup_status = "failed"

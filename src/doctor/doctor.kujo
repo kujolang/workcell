@@ -1,6 +1,7 @@
 # Environment diagnostics for Workcell.
 
-from src.runtime.docker import doctor_runtime, podman_security_status
+from src.backend.oci.driver import backend_doctor
+from src.runtime.docker import podman_security_status
 from src.util import get_or, parent_of, process_error, process_ok, run_argv, run_id
 from src.workspace.workspace import inspect_repository, temp_root
 
@@ -103,7 +104,7 @@ checks = push(checks, command_check("git", ["--version"], "Git CLI"))
 runtime_label := "Docker"
 if backend == "podman" {runtime_label = "Podman"}
 checks = push(checks, command_check(backend, ["--version"], runtime_label + " CLI"))
-checks = push(checks, doctor_runtime(backend))
+checks = push(checks, backend_doctor(backend))
 checks = push(checks, runtime_security_check(backend))
 repo := inspect_repository(repo_path)
 if repo["ok"] {

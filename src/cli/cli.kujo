@@ -4,7 +4,7 @@ from src.domain.definition import default_definition, definition_schema, definit
 from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
 from src.policy.policy import inspect_policy
-from src.runtime.docker import clean_owned_resources_with_options, owned_resource_inventory
+from src.backend.oci.driver import backend_clean, backend_inventory
 from src.receipts.manifest import verify_manifest
 from src.util import get_or, project_version, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
@@ -434,7 +434,7 @@ func clean_command(parsed) {
         return 2
     }
 if has_flag(parsed, "dry-run") {
-    docker := owned_resource_inventory(backend)
+    docker := backend_inventory(backend)
     temp := workspace_inventory()
     mut image_action := "preserve"
     if prune_images {
@@ -457,7 +457,7 @@ print("Temporary workspaces: " + to_string(get_or(temp, "workspaces", [])))
 if result["ok"] {return 0}
 return 9
 }
-docker := clean_owned_resources_with_options(prune_images, backend)
+docker := backend_clean(prune_images, backend)
 mut temp := {"ok": false, "removed": [], "skipped": ["runtime inventory failed; temporary workspaces were preserved"]}
 if docker["ok"] {
     temp = clean_stale_workspaces(get_or(docker, "active_run_ids", []))

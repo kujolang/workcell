@@ -1,0 +1,98 @@
+from src.backend.fixture import fixture_dispatch
+from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
+from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_terminal_result
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+    failed = failed + 1
+    print("FAIL " + label)
+}
+}
+
+run_identifier := "wc-0123456789abcdef0123456789abcdef"
+identity := backend_identity("fixture", "1.0.0", "fixture", "fixture/v1", "process")
+expect("backend identity validates", validate_backend_identity(identity)["ok"])
+expect("backend identity rejects missing provider", validate_backend_identity({"adapter": "fixture"})["ok"] == false)
+
+state := capability_state("network.none", "supported", true, "accepted", {"mode": "deny-all"}, {"status": "provider-claimed", "authority": "fixture", "evidence": "deny"}, {"status": "observed", "method": "probe", "result": "blocked"}, [])
+expect("capability state validates", validate_capability_state(state)["ok"])
+expect("capability state rejects invalid enforcement", validate_capability_state(capability_state("network.none", "supported", true, "accepted", {}, {"status": "enforced"}, {"status": "observed"}, []))["ok"] == false)
+
+handle := backend_handle("fixture", "1.0.0", "fixture", "sha256:fixture", [{"kind": "fixture", "id": "fixture-1"}], run_identifier, "nonce-1", {})
+expect("backend handle validates ownership", validate_backend_handle(handle, run_identifier)["ok"])
+expect("backend handle rejects run mismatch", validate_backend_handle(handle, "wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")["ok"] == false)
+
+terminal := terminal_result("exited", 0, null, "complete", false, false, "terminal")
+expect("terminal result validates", validate_terminal_result(terminal)["ok"])
+expect("unknown status cannot claim terminal certainty", validate_terminal_result(terminal_result("unknown", null, null, "disconnect", false, false, "terminal"))["ok"] == false)
+
+enforcement := {"status": "provider-claimed", "authority": "fixture", "evidence": "configured"}
+observation := {"status": "not-observed", "method": "", "result": ""}
+capabilities := {
+    "network.none": {"support": "supported", "resolved": {"mode": "deny-all"}, "enforcement": enforcement, "observation": observation, "limitations": []},
+    "compute.pid_limit": {"support": "unknown", "enforcement": {"status": "unknown"}, "observation": observation, "limitations": ["provider does not report PID controls"]},
+    "metrics.cpu": {"support": "unsupported", "enforcement": {"status": "unsupported"}, "observation": observation, "limitations": []}
+}
+strict := resolve_capabilities([{"id": "network.none", "requested": true, "required": true, "value": {"mode": "none"}}], capabilities)
+expect("supported strict capability resolves", strict["ok"]&&capability_state_by_id(strict["states"], "network.none")["acceptance"] == "accepted")
+unknown := resolve_capabilities([{"id": "compute.pid_limit", "requested": true, "required": true, "value": 64}], capabilities)
+expect("unknown required capability fails closed", unknown["ok"] == false&&unknown["rejected"][0] == "compute.pid_limit")
+degraded := resolve_capabilities([{"id": "metrics.cpu", "requested": true, "required": false, "allow_degradation": true}], capabilities)
+expect("explicit metrics degradation is visible", degraded["ok"]&&degraded["degraded"][0] == "metrics.cpu")
+security_degrade := resolve_capabilities([{"id": "network.none", "requested": true, "required": false, "allow_degradation": true}], {"network.none": {"support": "unsupported"}})
+expect("security control cannot use evidence degradation", security_degrade["ok"] == false)
+expect("pause requires resume", validate_capability_implications({"lifecycle.pause": {"support": "supported"}})["ok"] == false)
+
+request := {
+    "contract": backend_contract_id(),
+    "request_id": "request-1",
+    "run_id": run_identifier,
+    "operation": "describe",
+    "deadline_ms": 1000,
+    "profile": {},
+    "payload": {}
+}
+expect("protocol request validates", validate_protocol_request(request)["ok"])
+describe := fixture_dispatch(request)
+expect("fixture describe succeeds offline", describe["ok"]&&describe["data"]["adapter"]["id"] == "fixture")
+
+request["operation"] := "resolve"
+request["payload"] := {"requirements": [{"id": "network.none", "requested": true, "required": true}], "intent": {"command": ["true"]}}
+resolved := fixture_dispatch(request)
+expect("fixture resolves required capability", resolved["ok"]&&resolved["data"]["capabilities"][0]["acceptance"] == "accepted")
+
+request["operation"] := "provision"
+request["payload"] := {"ownership": {"nonce": "nonce-1"}, "resolved_plan": resolved["data"]["resolved_plan"]}
+provisioned := fixture_dispatch(request)
+expect("fixture provisions owned handle", provisioned["ok"]&&validate_backend_handle(provisioned["data"]["handle"], run_identifier)["ok"])
+
+request["operation"] := "prepare"
+request["payload"] := {"handle": provisioned["data"]["handle"], "workspace_package": {"sha256": "sha256:fixture"}}
+prepared := fixture_dispatch(request)
+expect("fixture verifies workspace package digest", prepared["ok"]&&prepared["data"]["observed_package_digest"] == "sha256:fixture")
+
+request["operation"] := "execute"
+request["profile"] := {"execution": {"exit_code": 7, "stdout": "hello", "stderr": "warning"}}
+request["payload"] := {"handle": provisioned["data"]["handle"], "argv": ["false"]}
+executed := fixture_dispatch(request)
+expect("fixture preserves workload non-zero exit as protocol success", executed["ok"]&&executed["data"]["terminal"]["exit_code"] == 7)
+
+request["operation"] := "export"
+request["payload"] := {"handle": provisioned["data"]["handle"], "declarations": ["out.txt"]}
+exported := fixture_dispatch(request)
+expect("fixture exports only declarations", exported["ok"]&&exported["data"]["manifest"]["declared"][0] == "out.txt")
+
+request["operation"] := "destroy"
+request["payload"] := {"handle": provisioned["data"]["handle"]}
+destroyed := fixture_dispatch(request)
+expect("fixture destroy is itemized", destroyed["ok"]&&destroyed["data"]["items"][0]["status"] == "removed")
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

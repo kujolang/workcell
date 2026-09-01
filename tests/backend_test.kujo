@@ -135,7 +135,7 @@ external_request := {
     "payload": {}
 }
 external := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
-expect("external JSONL adapter executes through bounded client", external["ok"]&&len(external["events"]) == 1&&external["result"]["data"]["adapter"] == "external-fixture")
+expect("external JSONL adapter executes through bounded client", external["ok"]&&len(external["events"]) == 0&&external["result"]["data"]["adapter"]["id"] == "external-fixture")
 
 external_request["profile"] := {"mode": "noise"}
 noise := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})

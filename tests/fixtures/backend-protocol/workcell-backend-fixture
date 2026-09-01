@@ -62,8 +62,9 @@ if [ "$operation" = "prepare" ]; then
 fi
 
 if [ "$operation" = "execute" ]; then
+    exit_code="$(printf '%s' "$request" | jq -r '.profile.exit_code // 7')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"event",event:"log",sequence:0,stream:"stdout",bytes_base64:"Zml4dHVyZQo=",provider_timestamp:null,ordering:"per-stream"}'
-    printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-command",terminal:{status:"exited",exit_code:7,signal:null,reason:"fixture-exit",timed_out:false,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:8,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'
+    printf '%s' "$request" | jq -c --argjson exit_code "$exit_code" '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-command",terminal:{status:"exited",exit_code:$exit_code,signal:null,reason:"fixture-exit",timed_out:false,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:8,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'
     exit 0
 fi
 

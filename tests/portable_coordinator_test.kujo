@@ -1,0 +1,40 @@
+from src.execution.portable_coordinator import run_portable_workcell
+from src.receipts.manifest import verify_manifest
+from src.receipts.v2 import verify_receipt_file
+from src.util import process_ok, run_argv
+from src.workspace.workspace import temp_root
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {passed = passed + 1; print("PASS " + label)} else {failed = failed + 1; print("FAIL " + label)}
+}
+
+nonce := replace(uuid_v4(), "-", "")
+repo := "/tmp/workcell-portable-coordinator-repo-" + nonce
+output := temp_root() + "/workcell-portable-coordinator-output-" + nonce
+run_argv(["mkdir", "-p", repo], 5000)
+run_argv(["git", "-C", repo, "init", "-q"], 5000)
+write_file_atomic(repo + "/README.md", "fixture\n", true)
+run_argv(["git", "-C", repo, "add", "README.md"], 5000)
+commit := run_argv(["git", "-C", repo, "-c", "user.name=Workcell", "-c", "user.email=workcell@example.invalid", "commit", "-qm", "fixture"], 5000)
+expect("fixture repository commits", process_ok(commit))
+
+result := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {})
+expect("portable lifecycle succeeds", result["ok"])
+if result["ok"] == false {run_argv(["rm", "-rf", repo], 30000); run_argv(["rm", "-rf", output], 30000); exit(1)}
+expect("portable lifecycle uses receipt v2", result["receipt"]["schema_version"] == "workcell-receipt/v2alpha1")
+expect("portable lifecycle records complete cleanup", result["cleanup_status"] == "complete")
+expect("portable receipt verifies offline", verify_receipt_file(result["receipt_path"])["ok"])
+expect("portable manifest verifies offline", verify_manifest(result["output_dir"])["ok"])
+
+dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"dry_run": true})
+expect("portable dry run resolves without provisioning", dry["ok"]&&dry["receipt"]["cleanup"]["status"] == "not-provisioned")
+
+run_argv(["rm", "-rf", repo], 30000)
+run_argv(["rm", "-rf", output], 30000)
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

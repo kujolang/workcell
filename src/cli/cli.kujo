@@ -1,8 +1,10 @@
 # Workcell command-line surface. This is the only printing/exit-code layer.
 
 from src.domain.definition import default_definition, definition_schema, definition_summary, load_definition
+from src.domain.portable_definition import load_workcell_definition
 from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
+from src.execution.portable_coordinator import run_portable_workcell
 from src.policy.policy import inspect_policy
 from src.backend.oci.driver import backend_clean, backend_inventory
 from src.backend.registry import load_backend_registry
@@ -38,7 +40,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
 bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile"]
+value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles"]
 mut positionals := []
 mut flags := {}
 mut i := 0
@@ -116,8 +118,8 @@ func options_for(command) {
     if command == "doctor" {return ["repo", "backend", "json"]}
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
-    if command == "inspect" {return ["file", "repo", "output", "json"]}
-    if command == "run" {return ["file", "repo", "output", "dry-run", "keep-failed", "no-pull", "rebuild", "json"]}
+    if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json"]}
+    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "dry-run", "keep-failed", "no-pull", "rebuild", "json"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
     if command == "backends" {return ["json", "manifest"]}
@@ -167,8 +169,8 @@ func help_value() {
         {"name": "doctor", "options": ["--repo", "--backend", "--json"]},
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
-        {"name": "inspect", "options": ["--file", "--repo", "--output", "--json"]},
-        {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
+        {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
@@ -205,6 +207,10 @@ print_lines([
 "  --keep-failed   Preserve a failed disposable workspace",
 "  --no-pull       Do not pull a missing image",
 "  --rebuild       Rebuild a configured build context",
+"  --manifest      Explicit external backend manifest (v2)",
+"  --profiles      Explicit host profiles file (v2)",
+"  --profile       Host profile ID (v2)",
+"  --backend       Optional assertion matching the selected profile (v2)",
 "  --json          Emit one machine-readable JSON object",
 "  --schema        Emit the versioned Workcell definition schema (validate only)",
 "",
@@ -259,10 +265,14 @@ func validate_command(parsed) {
         return 0
     }
 path := definition_path(parsed)
-loaded := load_definition(path)
+loaded := load_workcell_definition(path)
 result := {"ok": loaded["ok"], "definition_path": path}
 if loaded["ok"] {
-    result["definition"] := definition_summary(loaded["definition"])
+    if get_or(loaded, "version", 1) == 2 {
+        result["definition"] := {"schema": loaded["definition"]["schema"], "name": loaded["definition"]["name"], "workload_kind": loaded["definition"]["workload"]["kind"], "network": loaded["definition"]["requirements"]["network"]["mode"]}
+    } else {
+        result["definition"] := definition_summary(loaded["definition"])
+    }
 } else {
 result["error"] := loaded["error"]
 }
@@ -271,7 +281,11 @@ if has_flag(parsed, "json") {
     print(to_json_pretty(result))
 } else if loaded["ok"] {
 print("Valid Workcell definition: " + path)
-print("Name: " + loaded["definition"]["name"] + "  Backend: " + loaded["definition"]["runtime"]["backend"] + "  Network: " + loaded["definition"]["network"]["mode"])
+if get_or(loaded, "version", 1) == 2 {
+    print("Name: " + loaded["definition"]["name"] + "  Backend: host profile  Network: " + loaded["definition"]["requirements"]["network"]["mode"])
+} else {
+    print("Name: " + loaded["definition"]["name"] + "  Backend: " + loaded["definition"]["runtime"]["backend"] + "  Network: " + loaded["definition"]["network"]["mode"])
+}
 } else {
 print("Validation failed: " + loaded["error"])
 }
@@ -419,9 +433,15 @@ print("Output:        " + display_value(get_or(result, "output_dir", "-"), "-"))
 print("Cleanup:       " + display_value(get_or(result, "cleanup_status", "unknown"), "unknown"))
 if has_key(result, "receipt") {
     receipt := result["receipt"]
-    print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
-    print("Changed files:  " + to_string(len(receipt["changed_files"])))
-    print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
+    if get_or(receipt, "schema_version", "") == "workcell-receipt/v2alpha1" {
+        print("Verification:   " + to_string(get_or(receipt["verification"], "status", "unknown")))
+        print("Changed files:  " + to_string(len(get_or(receipt["changes"], "files", []))))
+        print("Artifacts:      " + to_string(len(get_or(receipt["artifacts"], "declared", []))))
+    } else {
+        print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
+        print("Changed files:  " + to_string(len(receipt["changed_files"])))
+        print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
+    }
 }
 }
 
@@ -435,7 +455,17 @@ if has_flag(parsed, "keep-failed") {
     run_flags["keep_failed"] := true
 }
 
-result := run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
+loaded := load_workcell_definition(definition_path(parsed))
+mut result := null
+if loaded["ok"]&&get_or(loaded, "version", 1) == 2 {
+    result = run_portable_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), flag(parsed, "manifest", ""), flag(parsed, "profiles", ""), flag(parsed, "profile", ""), flag(parsed, "backend", ""), run_flags)
+} else {
+    if has_flag(parsed, "manifest")||has_flag(parsed, "profiles")||has_flag(parsed, "profile")||has_flag(parsed, "backend") {
+        result = {"ok": false, "run_id": "", "stage": "validated", "error": "portable backend flags require a v2 definition", "exit_code": 2}
+    } else {
+        result = run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
+    }
+}
 print_run_result(result, has_flag(parsed, "json"))
 return run_exit_code(result)
 }

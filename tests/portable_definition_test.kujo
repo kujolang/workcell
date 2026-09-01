@@ -1,0 +1,41 @@
+from src.domain.portable_definition import host_profiles_schema_version, load_host_profile, portable_definition_schema_version, resolve_portable_definition, validate_portable_definition
+from src.evidence.controls import requirements_from_definition
+from src.util import run_argv
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {passed = passed + 1; print("PASS " + label)} else {failed = failed + 1; print("FAIL " + label)}
+}
+
+definition := {
+    "schema": portable_definition_schema_version(), "name": "portable-fixture",
+    "workload": {"kind": "linux-process", "image": {"reference": "alpine:3.20", "digest": "", "signature_key": ""}, "command": ["sh", "-lc", "printf fixture"], "working_directory": "/workspace"},
+    "workspace": {"source": "clean-git-commit", "materialization": "portable-clone", "mount_path": "/workspace"},
+    "environment": {"allow": [], "set": {}}, "secrets": [],
+    "requirements": {"compute": {"cpus": 1, "memory": "512m", "pids": 64}, "execution": {"timeout_ms": 10000, "max_output_bytes": 65536}, "network": {"mode": "none"}, "filesystem": {"read_only_root": true, "writable": ["/workspace"], "tmpfs": ["/tmp"]}},
+    "artifacts": {"export": ["result.txt"]}, "verification": {"version": 1, "commands": []}, "cleanup": {"keep_failed": false}, "receipt": {"path": ".workcell/runs"}
+}
+
+expect("portable definition validates", validate_portable_definition(definition)["ok"])
+resolved := resolve_portable_definition(definition)
+expect("portable defaults resolve", resolved["ok"]&&resolved["definition"]["workspace"]["scan"]["max_files"] == 100000)
+requirements := requirements_from_definition(resolved["definition"])
+expect("portable requirements become semantic capabilities", requirements["ok"]&&len(requirements["requirements"]) >= 20)
+
+bad := definition
+bad["e2b"] := {}
+expect("provider blocks are rejected", validate_portable_definition(bad)["ok"] == false)
+
+profile_path := "/tmp/workcell-portable-profile-" + replace(uuid_v4(), "-", "") + ".json"
+profiles := {"schema": host_profiles_schema_version(), "profiles": {"fixture": {"backend": "external-fixture", "credential_ref": "", "adapter_options": {"external-fixture": {"mode": "success"}}, "policy": {}}}}
+write_file_atomic(profile_path, to_json(profiles), true)
+profile := load_host_profile(profile_path, "fixture", "")
+expect("explicit host profile loads", profile["ok"]&&profile["backend"] == "external-fixture"&&len(profile["fingerprint"]) == 64)
+expect("backend override conflict fails", load_host_profile(profile_path, "fixture", "e2b")["ok"] == false)
+run_argv(["rm", "-f", profile_path], 5000)
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

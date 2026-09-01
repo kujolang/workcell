@@ -1,0 +1,13 @@
+{
+  "schema_version": "workcell-backend-manifest/v1",
+  "id": "external-fixture",
+  "adapter_version": "1.0.0",
+  "contract_versions": ["workcell-backend/v1alpha1"],
+  "executable": "tests/fixtures/backend-protocol/workcell-backend-fixture",
+  "profile_schema": "workcell-external-fixture-profile/v1",
+  "credential_refs": [],
+  "static_capability_hints": ["lifecycle.provision"],
+  "platforms": ["darwin", "linux"],
+  "minimum_workcell_version": "1.0.0",
+  "digest": ""
+}

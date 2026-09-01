@@ -1,0 +1,163 @@
+# Bounded executable JSONL adapter client.
+
+from src.backend.types import backend_contract_id, backend_error, protocol_result, validate_protocol_request
+from src.util import get_or, lines_of, path_has_symlink, process_ok, redact, run_argv
+
+func request_temp_path() {
+    root := env("TMPDIR")
+    if type(root) != "string"||trim(root) == "" {
+        root = "/tmp"
+    }
+while len(root) > 1&&ends_with(root, "/") {
+    root = substring(root, 0, len(root) - 1)
+}
+return root + "/workcell-backend-request-" + replace(uuid_v4(), "-", "") + ".jsonl"
+}
+
+func cleanup_request_file(path) {
+    if type(path) != "string"||path == ""||file_exists(path) == false {
+        return
+    }
+try {
+    remove_file(path)
+} except err {
+return
+}
+}
+
+func client_failure(request, code, message, retryable) {
+    return {"ok": false, "events": [], "result": protocol_result(request, false, "failed", retryable, {}, backend_error(code, message, retryable, ""))}
+}
+
+func executable_check(path) {
+    if type(path) != "string"||trim(path) == ""||contains(path, "\n") == 1||contains(path, "\r") == 1 {
+        return {"ok": false, "error": "adapter executable path is invalid"}
+    }
+if contains(path, "/") == 1 {
+    if file_exists(path) == false||path_has_symlink(path) {
+        return {"ok": false, "error": "adapter executable is missing or contains a symlink"}
+    }
+}
+return {"ok": true}
+}
+
+func validate_echo(request, frame) {
+    if get_or(frame, "contract", "") != backend_contract_id() {
+        return "adapter frame contract mismatch"
+    }
+for field in ["request_id", "run_id", "operation"] {
+    if get_or(frame, field, "") != request[field] {
+        return "adapter frame " + field + " mismatch"
+    }
+}
+return ""
+}
+
+export func parse_backend_frames(request, output, bounds) {
+    if type(output) != "string" {
+        return client_failure(request, "PROTOCOL_VIOLATION", "adapter output must be UTF-8 text", false)
+    }
+max_line_bytes := get_or(bounds, "line_bytes", 1048576)
+max_events := get_or(bounds, "event_count", 100000)
+raw_lines := lines_of(output)
+mut events := []
+mut result := null
+mut i := 0
+while i < len(raw_lines) {
+    line := trim(raw_lines[i])
+    if line == "" {
+        i = i + 1
+        continue
+    }
+if len(line) > max_line_bytes {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter protocol line exceeded bound", false)
+}
+mut frame := null
+try {
+    frame = parse_json(line)
+} except err {
+return client_failure(request, "PROTOCOL_VIOLATION", "adapter stdout contained non-JSON protocol data", false)
+}
+if type(frame) != "dict" {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter frame must be an object", false)
+}
+echo_error := validate_echo(request, frame)
+if echo_error != "" {
+    return client_failure(request, "PROTOCOL_VIOLATION", echo_error, false)
+}
+frame_type := get_or(frame, "type", "")
+if frame_type == "event" {
+    if type(result) != "null" {
+        return client_failure(request, "PROTOCOL_VIOLATION", "adapter emitted an event after its result", false)
+    }
+if len(events) >= max_events {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter event count exceeded bound", false)
+}
+if type(get_or(frame, "sequence", null)) != "int"||frame["sequence"] != len(events) {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter event sequence is invalid", false)
+}
+events = push(events, frame)
+} else if frame_type == "result" {
+if type(result) != "null" {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter emitted multiple results", false)
+}
+if type(get_or(frame, "ok", null)) != "bool"||type(get_or(frame, "retryable", null)) != "bool"||type(get_or(frame, "data", null)) != "dict" {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter result fields are invalid", false)
+}
+result = frame
+} else {
+return client_failure(request, "PROTOCOL_VIOLATION", "adapter frame type is invalid", false)
+}
+i = i + 1
+}
+if type(result) == "null" {
+    return client_failure(request, "PROTOCOL_VIOLATION", "adapter did not emit a result", false)
+}
+return {"ok": result["ok"], "events": events, "result": result}
+}
+
+export func invoke_backend(executable, request, options) {
+    checked := validate_protocol_request(request)
+    if checked["ok"] == false {
+        return client_failure(request, "PROTOCOL_VIOLATION", checked["error"], false)
+    }
+executable_state := executable_check(executable)
+if executable_state["ok"] == false {
+    return client_failure(request, "ADAPTER_UNAVAILABLE", executable_state["error"], false)
+}
+encoded := to_json(request) + "\n"
+request_limit := get_or(options, "request_bytes", 1048576)
+if len(encoded) > request_limit {
+    return client_failure(request, "PROTOCOL_VIOLATION", "backend request exceeded bound", false)
+}
+request_path := request_temp_path()
+mut written := false
+try {
+    written = write_file_atomic(request_path, encoded, true)
+} except err {
+written = false
+}
+if written != true {
+    return client_failure(request, "ADAPTER_INTERNAL", "could not create bounded backend request", false)
+}
+chmod := run_argv(["chmod", "600", request_path], 5000)
+if process_ok(chmod) == false {
+    cleanup_request_file(request_path)
+    return client_failure(request, "ADAPTER_INTERNAL", "could not restrict backend request permissions", false)
+}
+timeout_ms := get_or(options, "timeout_ms", request["deadline_ms"])
+output_limit := get_or(options, "max_output_bytes", 4194304)
+mut output := ""
+mut invocation_error := ""
+try {
+    output = pipe_commands([["cat", request_path], [executable, "protocol"]], {"timeout_ms": timeout_ms, "max_output_bytes": output_limit, "inherit_env": get_or(options, "inherit_env", false), "env_allow": get_or(options, "env_allow", []), "env": get_or(options, "env", {})})
+} except err {
+invocation_error = to_string(err)
+}
+cleanup_request_file(request_path)
+if invocation_error != "" {
+    secrets := get_or(options, "redact_values", [])
+    return client_failure(request, "ADAPTER_UNAVAILABLE", redact(invocation_error, secrets), false)
+}
+return parse_backend_frames(request, output, options)
+}

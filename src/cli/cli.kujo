@@ -5,6 +5,7 @@ from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
 from src.policy.policy import inspect_policy
 from src.backend.oci.driver import backend_clean, backend_inventory
+from src.backend.registry import load_backend_registry
 from src.receipts.manifest import verify_manifest
 from src.util import get_or, project_version, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
@@ -35,7 +36,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
 bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-value_flags := ["file", "repo", "output", "backend", "run"]
+value_flags := ["file", "repo", "output", "backend", "run", "manifest"]
 mut positionals := []
 mut flags := {}
 mut i := 0
@@ -117,6 +118,7 @@ func options_for(command) {
     if command == "run" {return ["file", "repo", "output", "dry-run", "keep-failed", "no-pull", "rebuild", "json"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
+    if command == "backends" {return ["json", "manifest"]}
     if command == "help" {return ["json", "help"]}
     if command == "version" {return ["version"]}
     return []
@@ -166,6 +168,7 @@ func help_value() {
         {"name": "run", "options": ["--file", "--repo", "--output", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
+        , {"name": "backends", "options": ["--json", "--manifest"]}
         ],
         "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "backend or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
@@ -190,6 +193,7 @@ print_lines([
 "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
 "  workcell verify --run <dir> [--json]",
 "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
+"  workcell backends [--manifest <path>] [--json]",
 "",
 "Run options:",
 "  --dry-run       Resolve and record the policy without starting a container",
@@ -426,6 +430,45 @@ print_run_result(result, has_flag(parsed, "json"))
 return run_exit_code(result)
 }
 
+func backends_command(parsed) {
+    paths := []
+    if has_flag(parsed, "manifest") {
+        paths = push(paths, flag(parsed, "manifest", ""))
+    }
+registry := load_backend_registry(paths)
+if registry["ok"] == false {
+    if has_flag(parsed, "json") {
+        print(to_json_pretty({"schema_version": "workcell-backends/v1", "ok": false, "error": registry["error"]}))
+    } else {
+    print("error: " + registry["error"])
+}
+return 2
+}
+mut adapters := [
+{"id": "docker", "kind": "builtin", "contract": "workcell-backend/v1alpha1"},
+{"id": "podman", "kind": "builtin", "contract": "workcell-backend/v1alpha1"}
+]
+mut i := 0
+while i < len(registry["ids"]) {
+    id := registry["ids"][i]
+    manifest := registry["adapters"][id]
+    adapters = push(adapters, {"id": id, "kind": "external", "adapter_version": manifest["adapter_version"], "contract_versions": manifest["contract_versions"], "manifest_path": manifest["manifest_path"]})
+    i = i + 1
+}
+result := {"schema_version": "workcell-backends/v1", "ok": true, "adapters": adapters}
+if has_flag(parsed, "json") {
+    print(to_json_pretty(result))
+} else {
+print("Workcell backends")
+mut adapter_i := 0
+while adapter_i < len(adapters) {
+    print(adapters[adapter_i]["id"] + " (" + adapters[adapter_i]["kind"] + ")")
+    adapter_i = adapter_i + 1
+}
+}
+return 0
+}
+
 func clean_command(parsed) {
     prune_images := has_flag(parsed, "prune-images")
     backend := flag(parsed, "backend", "docker")
@@ -532,6 +575,9 @@ if command == "verify" {
 }
 if command == "clean" {
     return clean_command(parsed)
+}
+if command == "backends" {
+    return backends_command(parsed)
 }
 print("error: unknown command " + command)
 print_help(has_flag(parsed, "json"))

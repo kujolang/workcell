@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${1:-}" != "protocol" ]; then
+    exit 64
+fi
+
+request="$(cat)"
+contract="$(printf '%s' "$request" | jq -r '.contract')"
+request_id="$(printf '%s' "$request" | jq -r '.request_id')"
+run_id="$(printf '%s' "$request" | jq -r '.run_id')"
+operation="$(printf '%s' "$request" | jq -r '.operation')"
+mode="$(printf '%s' "$request" | jq -r '.profile.mode // "success"')"
+
+if [ "$mode" = "noise" ]; then
+    printf 'sdk debug output\n'
+    exit 0
+fi
+
+if [ "$mode" = "duplicate-result" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{}}'
+fi
+
+jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"event",event:"state",sequence:0,state:"fixture"}'
+jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{adapter:"external-fixture"}}'

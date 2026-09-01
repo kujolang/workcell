@@ -1,0 +1,390 @@
+{
+  "schema_version": "workcell-backend-contract-proposal/v1",
+  "protocol": {
+    "id": "workcell-backend/v1alpha1",
+    "transport": "one request on stdin; JSON Lines events and exactly one result on stdout",
+    "invocation": [
+      "workcell-backend-<id>",
+      "protocol"
+    ],
+    "process_lifetime": "one operation",
+    "stderr": "bounded redacted diagnostics; never parsed",
+    "default_bounds": {
+      "request_bytes": 1048576,
+      "line_bytes": 1048576,
+      "event_count": 100000,
+      "diagnostic_bytes": 1048576
+    }
+  },
+  "request_envelope": {
+    "required": [
+      "contract",
+      "request_id",
+      "run_id",
+      "operation",
+      "deadline_ms",
+      "profile",
+      "payload"
+    ],
+    "additional_properties": false
+  },
+  "event_envelope": {
+    "required": [
+      "contract",
+      "request_id",
+      "run_id",
+      "operation",
+      "type",
+      "event",
+      "sequence"
+    ],
+    "type_const": "event",
+    "event_types": [
+      "log",
+      "state",
+      "progress"
+    ],
+    "log_fields": [
+      "stream",
+      "bytes_base64",
+      "provider_timestamp",
+      "ordering"
+    ]
+  },
+  "result_envelope": {
+    "required": [
+      "contract",
+      "request_id",
+      "run_id",
+      "operation",
+      "type",
+      "ok",
+      "status",
+      "retryable",
+      "data"
+    ],
+    "type_const": "result",
+    "status_enum": [
+      "ok",
+      "failed",
+      "unsupported",
+      "unknown"
+    ],
+    "error_required_when_ok_false": [
+      "code",
+      "message"
+    ]
+  },
+  "operations": [
+    {
+      "id": "describe",
+      "mandatory": true,
+      "mutates": false,
+      "input": [
+        "deadline_ms"
+      ],
+      "output": [
+        "adapter",
+        "contract_versions",
+        "profile_schema",
+        "credential_refs",
+        "static_capability_hints"
+      ]
+    },
+    {
+      "id": "resolve",
+      "mandatory": true,
+      "mutates": false,
+      "input": [
+        "profile",
+        "intent",
+        "requirements"
+      ],
+      "output": [
+        "identity",
+        "capabilities",
+        "resolved_plan",
+        "volatile_fields"
+      ]
+    },
+    {
+      "id": "provision",
+      "mandatory": true,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "profile",
+        "resolved_plan",
+        "ownership",
+        "idempotency_key"
+      ],
+      "output": [
+        "handle",
+        "resource_inventory",
+        "actual_resolution"
+      ]
+    },
+    {
+      "id": "prepare",
+      "mandatory": true,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle",
+        "workspace_package",
+        "execution_prerequisites",
+        "idempotency_key"
+      ],
+      "output": [
+        "handle",
+        "workspace_root",
+        "observed_package_digest"
+      ]
+    },
+    {
+      "id": "execute",
+      "mandatory": true,
+      "mutates": true,
+      "idempotent": "attempt_id prevents duplicate start",
+      "input": [
+        "handle",
+        "attempt_id",
+        "argv",
+        "workdir",
+        "environment",
+        "secret_channel",
+        "timeout_ms",
+        "max_output_bytes"
+      ],
+      "events": [
+        "log",
+        "state"
+      ],
+      "output": [
+        "handle",
+        "command_id",
+        "terminal",
+        "logs"
+      ]
+    },
+    {
+      "id": "cancel",
+      "mandatory": false,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle",
+        "command_id"
+      ],
+      "output": [
+        "cancel_result",
+        "terminal_certainty"
+      ]
+    },
+    {
+      "id": "collect",
+      "mandatory": true,
+      "mutates": false,
+      "input": [
+        "handle",
+        "attempt_id",
+        "stream_cursor"
+      ],
+      "events": [
+        "log"
+      ],
+      "output": [
+        "terminal",
+        "logs",
+        "workspace_delta",
+        "metrics",
+        "attempt_inventory"
+      ]
+    },
+    {
+      "id": "export",
+      "mandatory": true,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle",
+        "declarations",
+        "limits",
+        "exporter_version",
+        "destination",
+        "idempotency_key"
+      ],
+      "output": [
+        "archive",
+        "artifact_manifest",
+        "temporary_resources"
+      ]
+    },
+    {
+      "id": "destroy",
+      "mandatory": true,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle",
+        "expected_ownership",
+        "idempotency_key"
+      ],
+      "output": [
+        "items",
+        "remaining_resources"
+      ]
+    },
+    {
+      "id": "inventory",
+      "mandatory": true,
+      "mutates": false,
+      "input": [
+        "profile",
+        "ownership_filter"
+      ],
+      "output": [
+        "resources"
+      ]
+    },
+    {
+      "id": "pause",
+      "mandatory": false,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle"
+      ],
+      "output": [
+        "handle",
+        "pause_semantics"
+      ]
+    },
+    {
+      "id": "resume",
+      "mandatory": false,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle"
+      ],
+      "output": [
+        "handle",
+        "continuity"
+      ]
+    },
+    {
+      "id": "snapshot",
+      "mandatory": false,
+      "mutates": true,
+      "idempotent": true,
+      "input": [
+        "handle",
+        "ownership",
+        "expiration"
+      ],
+      "output": [
+        "handle",
+        "snapshot_resource",
+        "snapshot_semantics"
+      ]
+    },
+    {
+      "id": "metrics",
+      "mandatory": false,
+      "mutates": false,
+      "input": [
+        "handle",
+        "interval"
+      ],
+      "output": [
+        "measurements"
+      ]
+    }
+  ],
+  "handle_wrapper": {
+    "required": [
+      "backend",
+      "adapter_version",
+      "provider",
+      "profile_fingerprint",
+      "resource_ids",
+      "ownership",
+      "provider_state"
+    ],
+    "ownership_required": [
+      "run_id",
+      "nonce"
+    ],
+    "forbidden_content": [
+      "credential values",
+      "unexpired signed URLs",
+      "unbounded provider responses"
+    ]
+  },
+  "capability_state": {
+    "support": [
+      "supported",
+      "unsupported",
+      "conditional",
+      "unknown"
+    ],
+    "acceptance": [
+      "accepted",
+      "rejected",
+      "degraded",
+      "not-requested"
+    ],
+    "enforcement_status": [
+      "workcell-enforced",
+      "provider-claimed",
+      "operator-claimed",
+      "not-enforceable",
+      "unsupported",
+      "unknown"
+    ],
+    "observation_status": [
+      "observed",
+      "not-observed",
+      "contradicted",
+      "not-applicable"
+    ]
+  },
+  "error_codes": [
+    "ADAPTER_UNAVAILABLE",
+    "AUTH_REQUIRED",
+    "AUTH_DENIED",
+    "PROFILE_INVALID",
+    "CAPABILITY_UNSUPPORTED",
+    "CAPABILITY_DRIFT",
+    "QUOTA_EXCEEDED",
+    "RATE_LIMITED",
+    "REGION_UNAVAILABLE",
+    "PROVISION_FAILED",
+    "PREPARE_FAILED",
+    "START_FAILED",
+    "TRANSPORT_DISCONNECTED",
+    "PROVIDER_TIMEOUT",
+    "WORKLOAD_TERMINAL_UNKNOWN",
+    "COLLECT_FAILED",
+    "EXPORT_FAILED",
+    "OWNERSHIP_MISMATCH",
+    "DESTROY_FAILED",
+    "PROVIDER_UNAVAILABLE",
+    "PROTOCOL_VIOLATION",
+    "ADAPTER_INTERNAL"
+  ],
+  "invariants": [
+    "resolve creates no provider resources",
+    "provider non-zero workload exit is a successful protocol result carrying workload failure",
+    "mutating operations use idempotency keys",
+    "provisioned handle is durably stored by WorkCell before prepare",
+    "destroy never deletes when expected ownership conflicts",
+    "absence of an owned resource is idempotent success",
+    "retryable never authorizes WorkCell to rerun a workload",
+    "adapter stdout contains protocol JSON Lines only",
+    "credentials and signed URLs are not persisted",
+    "pause/resume capability means process-memory continuity; disk state uses snapshot",
+    "provider, adapter and runtime/substrate identities remain distinct"
+  ]
+}

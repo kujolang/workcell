@@ -1,0 +1,350 @@
+{
+  "schema_version": "workcell-capability-matrix/v1",
+  "contract_status": "proposal",
+  "capabilities": [
+    {
+      "capability_id": "lifecycle.provision",
+      "semantics": "Acquire a resource exclusively owned by the run or a local resource namespace.",
+      "required": "required",
+      "validation_behavior": "resolve must accept before mutation",
+      "receipt_behavior": "record provider IDs and ownership",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "lifecycle.terminate",
+      "semantics": "Provide an effective way to end a running workload, using destroy as fallback.",
+      "required": "required",
+      "validation_behavior": "reject when no bounded termination path exists",
+      "receipt_behavior": "record cancel/destroy authority and terminal certainty",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "lifecycle.destroy",
+      "semantics": "Idempotently remove all run-owned compute resources.",
+      "required": "required",
+      "validation_behavior": "ownership markers and destroy semantics required",
+      "receipt_behavior": "itemized removed/absent/failed/mismatch",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "lifecycle.inventory",
+      "semantics": "List run-owned resources for reconciliation.",
+      "required": "required",
+      "validation_behavior": "must return stable IDs and ownership evidence",
+      "receipt_behavior": "resource inventory and reconciliation status",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "lifecycle.cancel_process",
+      "semantics": "Gracefully or forcibly end only the active command.",
+      "required": "optional",
+      "validation_behavior": "run capability test when advertised",
+      "receipt_behavior": "cancel mechanism and result",
+      "degradation_rules": "may fall back to destroy, visibly"
+    },
+    {
+      "capability_id": "lifecycle.pause",
+      "semantics": "Preserve active process/memory state while releasing or pausing compute.",
+      "required": "optional",
+      "validation_behavior": "requires resume and process-continuity conformance",
+      "receipt_behavior": "pause authority/duration/state",
+      "degradation_rules": "omission allowed; never substitute disk snapshot"
+    },
+    {
+      "capability_id": "lifecycle.resume",
+      "semantics": "Resume a process-preserving pause.",
+      "required": "optional",
+      "validation_behavior": "invalid without lifecycle.pause",
+      "receipt_behavior": "resume result and continuity observation",
+      "degradation_rules": "omission allowed"
+    },
+    {
+      "capability_id": "lifecycle.snapshot",
+      "semantics": "Persist filesystem or machine state for later new resource creation.",
+      "required": "optional",
+      "validation_behavior": "must state filesystem vs memory and ownership/expiry",
+      "receipt_behavior": "snapshot ID/claim/cleanup",
+      "degradation_rules": "omission allowed; not pause"
+    },
+    {
+      "capability_id": "workspace.stage",
+      "semantics": "Materialize the WorkCell-approved clean workspace package.",
+      "required": "required",
+      "validation_behavior": "input digest and bounds required",
+      "receipt_behavior": "package and observed digest",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "workspace.collect_delta",
+      "semantics": "Return bounded changes against the approved baseline.",
+      "required": "required",
+      "validation_behavior": "must preserve path and secret rules",
+      "receipt_behavior": "change report/patch quality",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "workspace.provider_git_clone",
+      "semantics": "Clone an exact commit inside provider.",
+      "required": "optional",
+      "validation_behavior": "must prove immutable commit and credential isolation",
+      "receipt_behavior": "clone source/commit/observation",
+      "degradation_rules": "portable package remains default"
+    },
+    {
+      "capability_id": "workspace.persistent_volume",
+      "semantics": "Attach provider storage that outlives compute.",
+      "required": "optional",
+      "validation_behavior": "must enter ownership and cleanup/retention inventory",
+      "receipt_behavior": "volume ID/owner/retention",
+      "degradation_rules": "omission allowed; never implicit"
+    },
+    {
+      "capability_id": "process.argv",
+      "semantics": "Execute a command without unreviewed shell interpolation.",
+      "required": "required",
+      "validation_behavior": "adapter must preserve argv or use a reviewed encoder",
+      "receipt_behavior": "redacted argv and encoding mode",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "process.exit_status",
+      "semantics": "Return terminal status and exit code when available.",
+      "required": "required",
+      "validation_behavior": "terminal unknown is allowed only as failed evidence",
+      "receipt_behavior": "exit/signal/reason/certainty",
+      "degradation_rules": "never convert unknown to success"
+    },
+    {
+      "capability_id": "execution.timeout",
+      "semantics": "Bound workload lifetime with provider control and WorkCell watchdog.",
+      "required": "required",
+      "validation_behavior": "timeout must be positive and termination effective",
+      "receipt_behavior": "requested/resolved timeout and trigger",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "logs.bounded",
+      "semantics": "Keep captured output within WorkCell limit.",
+      "required": "required",
+      "validation_behavior": "core always enforces even if provider does not",
+      "receipt_behavior": "bytes/truncation/completeness",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "logs.streaming",
+      "semantics": "Deliver output incrementally.",
+      "required": "optional",
+      "validation_behavior": "fixture must prove pre-terminal delivery",
+      "receipt_behavior": "source/first-byte/discontinuities",
+      "degradation_rules": "buffered fallback allowed if not required"
+    },
+    {
+      "capability_id": "logs.stdout_stderr_separate",
+      "semantics": "Distinguish stdout and stderr.",
+      "required": "optional",
+      "validation_behavior": "advertised separation tested",
+      "receipt_behavior": "stream quality",
+      "degradation_rules": "may be combined and visible"
+    },
+    {
+      "capability_id": "logs.timestamps",
+      "semantics": "Supply provider or workload timestamps.",
+      "required": "optional",
+      "validation_behavior": "authority/clock must be stated",
+      "receipt_behavior": "timestamp source and gaps",
+      "degradation_rules": "may be absent"
+    },
+    {
+      "capability_id": "logs.global_order",
+      "semantics": "Provide one authoritative order across streams.",
+      "required": "optional",
+      "validation_behavior": "must prove single ordered source",
+      "receipt_behavior": "ordering=global",
+      "degradation_rules": "may be per-stream/host-arrival/unknown"
+    },
+    {
+      "capability_id": "artifact.selective_export",
+      "semantics": "Export only declared paths with bounds and safe types.",
+      "required": "required",
+      "validation_behavior": "adversarial archive/path suite",
+      "receipt_behavior": "per-artifact status/hashes/counts",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "environment.explicit",
+      "semantics": "Prevent ambient host environment inheritance.",
+      "required": "required",
+      "validation_behavior": "allowlist and host-control denial tests",
+      "receipt_behavior": "names only and transport mode",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "credentials.redacted_transport",
+      "semantics": "Keep credential values out of definitions, protocol persistence and evidence.",
+      "required": "required",
+      "validation_behavior": "canary scan across all artifacts",
+      "receipt_behavior": "credential names/source class only",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "compute.cpu_limit",
+      "semantics": "Apply requested CPU reservation/ceiling with semantics stated.",
+      "required": "conditional",
+      "validation_behavior": "required when definition requests CPU",
+      "receipt_behavior": "requested/resolved kind and authority",
+      "degradation_rules": "reject if required; evidence-only observation may be absent"
+    },
+    {
+      "capability_id": "compute.memory_limit",
+      "semantics": "Apply requested memory reservation/hard ceiling with semantics stated.",
+      "required": "conditional",
+      "validation_behavior": "required when definition requests memory",
+      "receipt_behavior": "requested/resolved kind and authority",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "compute.pid_limit",
+      "semantics": "Apply requested process-count ceiling.",
+      "required": "conditional",
+      "validation_behavior": "required when definition requests PIDs",
+      "receipt_behavior": "requested/resolved authority",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "compute.disk_limit",
+      "semantics": "Apply requested writable disk/storage ceiling.",
+      "required": "optional",
+      "validation_behavior": "required only when explicitly requested by v2",
+      "receipt_behavior": "requested/resolved authority",
+      "degradation_rules": "reject if requested; otherwise unknown allowed"
+    },
+    {
+      "capability_id": "network.none",
+      "semantics": "Remove intentional workload network reachability and disclose exceptions.",
+      "required": "conditional",
+      "validation_behavior": "required for default none workloads; plan/class aware probes",
+      "receipt_behavior": "DNS/loopback/metadata/proxy/exceptions and authority",
+      "degradation_rules": "reject if required; never provider-default fallback"
+    },
+    {
+      "capability_id": "network.allowlist.ip",
+      "semantics": "Permit only declared IP/CIDR destinations under stated protocol rules.",
+      "required": "optional",
+      "validation_behavior": "positive/negative/protocol tests",
+      "receipt_behavior": "resolved rules/exceptions/probes",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "network.allowlist.domain",
+      "semantics": "Permit only declared domains under stated DNS/TLS/wildcard rules.",
+      "required": "optional",
+      "validation_behavior": "redirect/DNS/non-TLS/provider-exception tests",
+      "receipt_behavior": "resolved rules/interception/limitations",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "network.private",
+      "semantics": "Attach only to an operator-approved private network.",
+      "required": "optional",
+      "validation_behavior": "named network alone is insufficient; attestation required",
+      "receipt_behavior": "network profile fingerprint/authority",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "filesystem.read_only_root",
+      "semantics": "Make base/root filesystem read-only outside declared writable paths.",
+      "required": "conditional",
+      "validation_behavior": "required when definition requests it",
+      "receipt_behavior": "resolved writable paths and authority",
+      "degradation_rules": "reject if required"
+    },
+    {
+      "capability_id": "filesystem.no_symlink_escape",
+      "semantics": "Prevent input/output path escape through links or unsafe archive types.",
+      "required": "required",
+      "validation_behavior": "core path/archive adversarial suite",
+      "receipt_behavior": "validation result",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "image.oci",
+      "semantics": "Resolve a portable OCI image reference.",
+      "required": "optional",
+      "validation_behavior": "record provider mapping and platform",
+      "receipt_behavior": "source/ref/resolved ID",
+      "degradation_rules": "provider template may satisfy image intent if declared"
+    },
+    {
+      "capability_id": "image.digest",
+      "semantics": "Bind execution image to requested digest or honest provider identity.",
+      "required": "optional",
+      "validation_behavior": "mismatch fails before execute",
+      "receipt_behavior": "requested/resolved digest and authority",
+      "degradation_rules": "reject when required"
+    },
+    {
+      "capability_id": "image.signature",
+      "semantics": "Verify image signature under operator policy.",
+      "required": "optional",
+      "validation_behavior": "missing verifier/key/failure fail when required",
+      "receipt_behavior": "key ID/policy/result without key material",
+      "degradation_rules": "reject when required"
+    },
+    {
+      "capability_id": "image.custom",
+      "semantics": "Use a user/operator custom image or template.",
+      "required": "optional",
+      "validation_behavior": "provider/profile validation",
+      "receipt_behavior": "resolved image/template ID",
+      "degradation_rules": "omission allowed"
+    },
+    {
+      "capability_id": "metrics.resource",
+      "semantics": "Return provider/observed resource use with units and interval.",
+      "required": "optional",
+      "validation_behavior": "schema/unit/completeness tests",
+      "receipt_behavior": "measurements with source/window",
+      "degradation_rules": "explicit degradation allowed"
+    },
+    {
+      "capability_id": "cost.provider_usage",
+      "semantics": "Return provider-reported billable dimensions.",
+      "required": "optional",
+      "validation_behavior": "must be provider reported, not inferred",
+      "receipt_behavior": "usage/unit/window/source",
+      "degradation_rules": "explicit degradation allowed"
+    },
+    {
+      "capability_id": "cost.provider_amount",
+      "semantics": "Return provider-reported monetary amount/currency.",
+      "required": "optional",
+      "validation_behavior": "must be provider reported exact window",
+      "receipt_behavior": "amount/currency/window/source",
+      "degradation_rules": "explicit degradation allowed; default unknown"
+    },
+    {
+      "capability_id": "placement.region",
+      "semantics": "Select and report a provider region.",
+      "required": "optional",
+      "validation_behavior": "profile must resolve supported region",
+      "receipt_behavior": "requested/resolved region",
+      "degradation_rules": "reject if residency requirement uses it"
+    },
+    {
+      "capability_id": "ownership.markers",
+      "semantics": "Attach and verify run ID, nonce and profile/account ownership.",
+      "required": "required",
+      "validation_behavior": "provision/inventory/destroy conformance",
+      "receipt_behavior": "marker evidence and mismatch status",
+      "degradation_rules": "never degrade"
+    },
+    {
+      "capability_id": "evidence.provider_identity",
+      "semantics": "Report adapter/provider/API/profile/resource/runtime identities.",
+      "required": "required",
+      "validation_behavior": "missing identity fails receipt finalization",
+      "receipt_behavior": "backend identity block",
+      "degradation_rules": "never degrade"
+    }
+  ]
+}

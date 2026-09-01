@@ -4,6 +4,7 @@
 .loop-engineering/evidence/
 .loop-engineering/iterations/
 target/
+node_modules/
 .DS_Store
 .loop-engineering/
 # Kujo ecosystem local artifact ignore block.

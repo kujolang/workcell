@@ -1,0 +1,13 @@
+{
+  "name": "@kujolang/workcell-official-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "dependencies": {
+    "@daytona/sdk": "0.207.1",
+    "@vercel/sandbox": "3.2.1",
+    "e2b": "2.46.1"
+  },
+  "scripts": {"test": "node --test test/*.test.mjs"}
+}

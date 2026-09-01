@@ -4,7 +4,7 @@ from src.domain.definition import default_definition, definition_schema, definit
 from src.domain.portable_definition import load_workcell_definition
 from src.doctor.doctor import report
 from src.execution.coordinator import run_workcell
-from src.execution.portable_coordinator import run_portable_workcell
+from src.execution.portable_coordinator import inspect_portable_workcell, run_portable_workcell
 from src.policy.policy import inspect_policy
 from src.backend.oci.driver import backend_clean, backend_inventory
 from src.backend.registry import load_backend_registry
@@ -322,7 +322,7 @@ return 8
 
 func inspect_command(parsed) {
     path := definition_path(parsed)
-    loaded := load_definition(path)
+    loaded := load_workcell_definition(path)
     if loaded["ok"] == false {
         value := {"ok": false, "error": loaded["error"], "definition_path": path}
         if has_flag(parsed, "json") {
@@ -331,6 +331,12 @@ func inspect_command(parsed) {
         print("Validation failed: " + loaded["error"])
     }
 return 2
+}
+if get_or(loaded, "version", 1) == 2 {
+    portable := inspect_portable_workcell(path, flag(parsed, "manifest", ""), flag(parsed, "profiles", ""), flag(parsed, "profile", ""), flag(parsed, "backend", ""))
+    if has_flag(parsed, "json") {print(to_json_pretty(portable))} else if portable["ok"] {print("Resolved portable Workcell policy"); print("Backend: " + portable["profile"]["backend"]); print("Controls: " + to_string(len(portable["controls"])))} else {print("Inspection failed: " + get_or(portable, "error", "capability resolution failed"))}
+    if portable["ok"] {return 0}
+    return 2
 }
 repo := inspect_repository(repo_path(parsed))
 if repo["ok"] == false {

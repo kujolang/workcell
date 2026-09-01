@@ -172,7 +172,22 @@ export func load_host_profile(path, profile_id, backend_override) {
     if nonempty(get_or(profile, "backend", null)) == false {return {"ok": false, "error": "host profile backend must be a non-empty string"}}
     if nonempty(backend_override)&&backend_override != profile["backend"] {return {"ok": false, "error": "--backend conflicts with selected host profile"}}
     credential_ref := get_or(profile, "credential_ref", "")
-    if credential_ref != ""&&(contains(credential_ref, "=") == 1||contains(to_lower(credential_ref), "token") == 1) {return {"ok": false, "error": "credential_ref must name a credential, never contain credential material"}}
+    if credential_ref != "" {
+        if contains(credential_ref, "=") == 1||contains(credential_ref, "\n") == 1||contains(credential_ref, "\r") == 1 {return {"ok": false, "error": "credential_ref must name a credential, never contain credential material"}}
+        if starts_with(credential_ref, "env:") {
+            name := substring(credential_ref, 4, len(credential_ref))
+            if nonempty(name) == false||len(name) > 128 {
+                return {"ok": false, "error": "environment credential reference is invalid"}
+            }
+            mut env_i := 0
+            while env_i < len(name) {
+                if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_", substring(name, env_i, env_i + 1)) == 0 {return {"ok": false, "error": "environment credential reference is invalid"}}
+                env_i = env_i + 1
+            }
+        } else if starts_with(credential_ref, "kujo-agent:") == false&&starts_with(credential_ref, "os-store:") == false {
+            return {"ok": false, "error": "credential_ref must use env:, kujo-agent:, or os-store:"}
+        }
+    }
     profile["adapter_options"] := get_or(profile, "adapter_options", {})
     profile["policy"] := get_or(profile, "policy", {})
     fingerprint := ""

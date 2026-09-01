@@ -1,0 +1,25 @@
+from src.backend.conformance import run_backend_conformance
+from src.backend.registry import load_backend_manifest
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {passed = passed + 1; print("PASS " + label)} else {failed = failed + 1; print("FAIL " + label)}
+}
+
+providers := ["e2b", "vercel-sandbox", "daytona"]
+mut i := 0
+while i < len(providers) {
+    provider := providers[i]
+    manifest_path := "adapters/official/" + provider + "/manifest.json"
+    manifest := load_backend_manifest(manifest_path)
+    expect(provider + " official manifest validates", manifest["ok"])
+    report := run_backend_conformance(manifest_path, {"fixture_mode": true, "fixture_exit_code": 7}, "wc-" + substring("11111111111111111111111111111111", 0, 31) + to_string(i + 1))
+    expect(provider + " passes offline conformance", report["ok"]&&len(report["checks"]) == 9)
+    i = i + 1
+}
+
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

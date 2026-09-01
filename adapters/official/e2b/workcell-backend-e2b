@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+exec node "$ROOT/runtime/adapter.mjs" e2b "${1:-}"

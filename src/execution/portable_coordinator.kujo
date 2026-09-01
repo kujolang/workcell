@@ -61,6 +61,28 @@ func provider_failure(call, fallback) {
     return get_or(get_or(get_or(call, "result", {}), "error", {}), "message", fallback)
 }
 
+export func inspect_portable_workcell(definition_path, manifest_path, profiles_path, profile_id, backend_override) {
+    loaded := load_workcell_definition(definition_path)
+    if loaded["ok"] == false||get_or(loaded, "version", 1) != 2 {return {"ok": false, "error": get_or(loaded, "error", "portable inspect requires a v2 definition")}}
+    definition := loaded["definition"]
+    profile_state := load_host_profile(profiles_path, profile_id, backend_override)
+    if profile_state["ok"] == false {return profile_state}
+    manifest_state := load_backend_manifest(manifest_path)
+    if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile")}}
+    executable_state := backend_executable(manifest_state["manifest"])
+    if executable_state["ok"] == false {return executable_state}
+    profile := profile_state["profile"]
+    adapter_options := get_or(profile["adapter_options"], profile_state["backend"], {})
+    adapter_options["credential_ref"] := get_or(profile, "credential_ref", "")
+    adapter_options["policy"] := profile["policy"]
+    requirements_state := requirements_from_definition(definition)
+    run_identifier := run_id()
+    resolved := invoke(executable_state["path"], run_identifier, "resolve", adapter_options, {"requirements": requirements_state["requirements"], "intent": {"workload": definition["workload"], "workspace": definition["workspace"], "requirements": definition["requirements"], "artifacts": definition["artifacts"]}}, definition)
+    if resolved["ok"] == false {return {"ok": false, "error": provider_failure(resolved, "backend capability resolution failed"), "run_id": run_identifier}}
+    ledger := controls_ledger(requirements_state["requirements"], get_or(resolved["result"]["data"], "capabilities", []))
+    return {"ok": ledger["ok"], "schema_version": "workcell-portable-inspect/v1", "run_id": run_identifier, "definition": {"schema": definition["schema"], "name": definition["name"]}, "profile": {"id": profile_id, "backend": profile_state["backend"], "fingerprint": profile_state["fingerprint"]}, "backend": get_or(resolved["result"]["data"], "identity", {}), "controls": get_or(ledger, "controls", []), "rejected": get_or(ledger, "rejected", []), "error": get_or(ledger, "error", "")}
+}
+
 func finalize_failure(executable, run_identifier, profile, definition, output_dir, receipt, journal_path, handle, stage, message, exit_code) {
     receipt = add_v2_error(receipt, stage, "BACKEND_FAILURE", message)
     cleanup := {"status": "not-provisioned", "journal_path": journal_path, "items": [], "remaining": []}
@@ -90,6 +112,9 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     profile := profile_state["profile"]
     adapter_options := get_or(profile["adapter_options"], profile_state["backend"], {})
     adapter_options["credential_ref"] := get_or(profile, "credential_ref", "")
+    if starts_with(adapter_options["credential_ref"], "env:") {
+        adapter_options["credential_env"] := substring(adapter_options["credential_ref"], 4, len(adapter_options["credential_ref"]))
+    }
     adapter_options["region"] := get_or(profile, "region", "")
     adapter_options["provider_project"] := get_or(profile, "provider_project", "")
     adapter_options["endpoint"] := get_or(profile, "endpoint", "")
@@ -107,7 +132,7 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     if ensure_dir(output_dir) == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "run output directory could not be created", "exit_code": 3}}
 
     requirements_state := requirements_from_definition(definition)
-    resolved := invoke(executable, run_identifier, "resolve", adapter_options, {"requirements": requirements_state["requirements"], "intent": {"workload": definition["workload"], "workspace": definition["workspace"]}}, definition)
+    resolved := invoke(executable, run_identifier, "resolve", adapter_options, {"requirements": requirements_state["requirements"], "intent": {"workload": definition["workload"], "workspace": definition["workspace"], "requirements": definition["requirements"], "artifacts": definition["artifacts"]}}, definition)
     if resolved["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": provider_failure(resolved, "backend capability resolution failed"), "output_dir": output_dir, "exit_code": 2}}
     identity := get_or(resolved["result"]["data"], "identity", null)
     if validate_backend_identity(identity)["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend returned invalid identity", "output_dir": output_dir, "exit_code": 2}}

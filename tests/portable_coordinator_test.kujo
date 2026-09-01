@@ -1,4 +1,4 @@
-from src.execution.portable_coordinator import run_portable_workcell
+from src.execution.portable_coordinator import inspect_portable_workcell, run_portable_workcell
 from src.receipts.manifest import verify_manifest
 from src.receipts.v2 import verify_receipt_file
 from src.util import process_ok, run_argv
@@ -20,6 +20,9 @@ write_file_atomic(repo + "/README.md", "fixture\n", true)
 run_argv(["git", "-C", repo, "add", "README.md"], 5000)
 commit := run_argv(["git", "-C", repo, "-c", "user.name=Workcell", "-c", "user.email=workcell@example.invalid", "commit", "-qm", "fixture"], 5000)
 expect("fixture repository commits", process_ok(commit))
+
+inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json", "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "")
+expect("portable inspect negotiates before execution", inspection["ok"]&&len(inspection["controls"]) >= 20)
 
 result := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {})
 expect("portable lifecycle succeeds", result["ok"])

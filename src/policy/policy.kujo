@@ -98,7 +98,7 @@ if path_exists(host_workspace) {
     if type(resolved_workspace) == "error" {
         return {"ok": false, "error": "policy host workspace could not be canonicalized"}
     }
-    mount_workspace = resolved_workspace
+mount_workspace = resolved_workspace
 }
 identity := resolve_run_as(definition["workspace"]["run_as"])
 if identity["ok"] == false {

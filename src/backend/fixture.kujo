@@ -32,6 +32,9 @@ ids := [
 "compute.memory_limit",
 "compute.pid_limit",
 "network.none",
+"filesystem.read_only_root",
+"filesystem.tmpfs",
+"image.oci",
 "logs.streaming",
 "logs.stdout_stderr_separate"
 ]

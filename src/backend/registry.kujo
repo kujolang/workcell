@@ -1,7 +1,7 @@
 # Explicit local backend adapter manifest registry. It never downloads adapters.
 
 from src.backend.types import backend_contract_id
-from src.util import get_or, load_json, normalized_relative, path_has_symlink
+from src.util import get_or, load_json, normalized_relative, parent_of, path_has_symlink, path_within
 
 export func backend_manifest_schema_version() {
     return "workcell-backend-manifest/v1"
@@ -127,4 +127,46 @@ export func registry_backend(registry, id) {
         return null
     }
 return get_or(registry["adapters"], id, null)
+}
+
+export func backend_executable(manifest) {
+    if type(manifest) != "dict" {
+        return {"ok": false, "error": "backend manifest must be an object"}
+    }
+mut manifest_contract := {}
+for field in ["schema_version", "id", "adapter_version", "contract_versions", "executable", "profile_schema", "credential_refs", "static_capability_hints", "platforms", "minimum_workcell_version", "digest"] {
+    if has_key(manifest, field) == 1 {
+        manifest_contract[field] := manifest[field]
+    }
+}
+checked := validate_backend_manifest(manifest_contract)
+if checked["ok"] == false {return checked}
+executable := manifest["executable"]
+if starts_with(executable, "/") == false {
+    manifest_path := get_or(manifest, "manifest_path", "")
+    if type(manifest_path) != "string"||trim(manifest_path) == "" {
+        return {"ok": false, "error": "relative backend executable requires manifest_path"}
+    }
+manifest_root := parent_of(manifest_path)
+executable = manifest_root + "/" + executable
+if path_within(manifest_root, executable) == false {
+    return {"ok": false, "error": "backend executable escapes manifest directory"}
+}
+}
+if file_exists(executable) == false||path_has_symlink(executable) {
+    return {"ok": false, "error": "backend executable is missing or unsafe: " + executable}
+}
+expected := get_or(manifest, "digest", "")
+if expected != "" {
+    mut actual := ""
+    try {
+        actual = "sha256:" + sha256_file(executable)
+    } except err {
+    return {"ok": false, "error": "backend executable could not be hashed"}
+}
+if actual != expected {
+    return {"ok": false, "error": "backend executable digest mismatch"}
+}
+}
+return {"ok": true, "path": executable}
 }

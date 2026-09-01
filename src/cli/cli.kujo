@@ -7,7 +7,9 @@ from src.policy.policy import inspect_policy
 from src.backend.oci.driver import backend_clean, backend_inventory
 from src.backend.registry import load_backend_registry
 from src.receipts.manifest import verify_manifest
-from src.util import get_or, project_version, save_json
+from src.receipts.v2 import verify_receipt_file
+from src.recovery.recovery import recover_with_adapter
+from src.util import get_or, load_json, project_version, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
 
 VERSION := project_version()
@@ -36,7 +38,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
 bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-value_flags := ["file", "repo", "output", "backend", "run", "manifest"]
+value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile"]
 mut positionals := []
 mut flags := {}
 mut i := 0
@@ -119,6 +121,7 @@ func options_for(command) {
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
     if command == "backends" {return ["json", "manifest"]}
+    if command == "recover" {return ["json", "dry-run", "journal", "manifest", "profile"]}
     if command == "help" {return ["json", "help"]}
     if command == "version" {return ["version"]}
     return []
@@ -169,6 +172,7 @@ func help_value() {
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
+        , {"name": "recover", "options": ["--journal", "--manifest", "--profile", "--dry-run", "--json"]}
         ],
         "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "backend or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
@@ -194,6 +198,7 @@ print_lines([
 "  workcell verify --run <dir> [--json]",
 "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
 "  workcell backends [--manifest <path>] [--json]",
+"  workcell recover --journal <path> --manifest <path> [--profile <path>] [--dry-run] [--json]",
 "",
 "Run options:",
 "  --dry-run       Resolve and record the policy without starting a container",
@@ -283,16 +288,21 @@ func verify_command(parsed) {
         return 2
     }
 result := verify_manifest(run_path)
-value := {"ok": result["ok"], "run_dir": run_path, "manifest": result}
+receipt_result := {"ok": false, "error": "manifest verification failed before receipt verification"}
+if result["ok"] {
+    receipt_result = verify_receipt_file(run_path + "/receipt.json")
+}
+receipt_ok := result["ok"]&&receipt_result["ok"]
+value := {"ok": receipt_ok, "run_dir": run_path, "manifest": result, "receipt": receipt_result}
 if has_flag(parsed, "json") {
     print(to_json_pretty(value))
-} else if result["ok"] {
+} else if value["ok"] {
 print("Integrity manifest verified: " + run_path)
 print("Files: " + to_string(result["files"]) + "  Bytes: " + to_string(result["bytes"]))
 } else {
-print("Integrity manifest verification failed: " + result["error"])
+print("Workcell evidence verification failed: " + get_or(result, "error", get_or(receipt_result, "error", "unknown error")))
 }
-if result["ok"] {return 0}
+if value["ok"] {return 0}
 return 8
 }
 
@@ -469,6 +479,35 @@ while adapter_i < len(adapters) {
 return 0
 }
 
+func recover_command(parsed) {
+    journal_path := flag(parsed, "journal", "")
+    manifest_path := flag(parsed, "manifest", "")
+    if journal_path == ""||manifest_path == "" {
+        print("error: recover requires --journal <path> and --manifest <path>")
+        return 2
+    }
+mut profile := {}
+if has_flag(parsed, "profile") {
+    loaded := load_json(flag(parsed, "profile", ""))
+    if loaded["ok"] == false||type(loaded["value"]) != "dict" {
+        print("error: recovery profile must be a readable JSON object")
+        return 2
+    }
+profile = loaded["value"]
+}
+result := recover_with_adapter(journal_path, manifest_path, profile, has_flag(parsed, "dry-run"))
+if has_flag(parsed, "json") {
+    print(to_json_pretty(result))
+} else if result["ok"] {
+print("Workcell recovery " + get_or(result, "status", "plan") + ": " + journal_path)
+print("Remaining resources: " + to_string(get_or(result, "remaining", [])))
+} else {
+print("Workcell recovery failed: " + get_or(result, "error", "unknown error"))
+}
+if result["ok"] {return 0}
+return 9
+}
+
 func clean_command(parsed) {
     prune_images := has_flag(parsed, "prune-images")
     backend := flag(parsed, "backend", "docker")
@@ -578,6 +617,9 @@ if command == "clean" {
 }
 if command == "backends" {
     return backends_command(parsed)
+}
+if command == "recover" {
+    return recover_command(parsed)
 }
 print("error: unknown command " + command)
 print_help(has_flag(parsed, "json"))

@@ -11,6 +11,7 @@ request_id="$(printf '%s' "$request" | jq -r '.request_id')"
 run_id="$(printf '%s' "$request" | jq -r '.run_id')"
 operation="$(printf '%s' "$request" | jq -r '.operation')"
 mode="$(printf '%s' "$request" | jq -r '.profile.mode // "success"')"
+nonce="$(printf '%s' "$request" | jq -r '.profile.nonce // "nonce-1"')"
 
 if [ "$mode" = "noise" ]; then
     printf 'sdk debug output\n'
@@ -19,6 +20,17 @@ fi
 
 if [ "$mode" = "duplicate-result" ]; then
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{}}'
+fi
+
+if [ "$operation" = "inventory" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
+    exit 0
+fi
+
+if [ "$operation" = "destroy" ]; then
+    resource_id="$(printf '%s' "$request" | jq -r '.payload.handle.resource_ids[0].id')"
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg resource_id "$resource_id" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{items:[{kind:"fixture",id:$resource_id,status:"removed"}],remaining:[]}}'
+    exit 0
 fi
 
 jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"event",event:"state",sequence:0,state:"fixture"}'

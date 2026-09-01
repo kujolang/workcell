@@ -3,10 +3,11 @@ from src.backend.fixture import fixture_dispatch
 from src.backend.oci.docker import docker_identity
 from src.backend.oci.driver import builtin_backend_identity, builtin_backend_valid
 from src.backend.oci.podman import podman_identity
-from src.backend.registry import load_backend_manifest, load_backend_registry, registry_backend, validate_backend_manifest
+from src.backend.registry import backend_executable, load_backend_manifest, load_backend_registry, registry_backend, validate_backend_manifest
 from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
 from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_terminal_result
 from src.domain.definition import default_definition
+from src.util import get_or
 
 mut passed := 0
 mut failed := 0
@@ -117,6 +118,8 @@ manifest := load_backend_manifest(manifest_path)
 expect("external backend manifest validates", manifest["ok"]&&manifest["manifest"]["id"] == "external-fixture")
 registry := load_backend_registry([manifest_path])
 expect("registry resolves explicit manifest", registry["ok"]&&registry_backend(registry, "external-fixture")["adapter_version"] == "1.0.0")
+external_executable := backend_executable(manifest["manifest"])
+expect("registry resolves executable relative to manifest", external_executable["ok"]&&ends_with(get_or(external_executable, "path", ""), "/workcell-backend-fixture"))
 expect("registry rejects duplicate backend ids", load_backend_registry([manifest_path, manifest_path])["ok"] == false)
 invalid_manifest := manifest["manifest"]
 invalid_manifest["unknown"] := true
@@ -131,15 +134,15 @@ external_request := {
     "profile": {},
     "payload": {}
 }
-external := invoke_backend("tests/fixtures/backend-protocol/workcell-backend-fixture", external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
+external := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
 expect("external JSONL adapter executes through bounded client", external["ok"]&&len(external["events"]) == 1&&external["result"]["data"]["adapter"] == "external-fixture")
 
 external_request["profile"] := {"mode": "noise"}
-noise := invoke_backend("tests/fixtures/backend-protocol/workcell-backend-fixture", external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
+noise := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
 expect("external adapter stdout noise is a protocol violation", noise["ok"] == false&&noise["result"]["error"]["code"] == "PROTOCOL_VIOLATION")
 
 external_request["profile"] := {"mode": "duplicate-result"}
-duplicate := invoke_backend("tests/fixtures/backend-protocol/workcell-backend-fixture", external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
+duplicate := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536})
 expect("external adapter duplicate result is rejected", duplicate["ok"] == false&&duplicate["result"]["error"]["code"] == "PROTOCOL_VIOLATION")
 
 wrong_echo := to_json({"contract": backend_contract_id(), "request_id": "wrong", "run_id": run_identifier, "operation": "describe", "type": "result", "ok": true, "status": "ok", "retryable": false, "data": {}})

@@ -1,0 +1,73 @@
+from src.backend.fixture import fixture_dispatch
+from src.backend.types import backend_contract_id, backend_handle, backend_identity
+from src.domain.definition import default_definition
+from src.evidence.controls import controls_have_false_enforcement_claim, controls_ledger, requirements_from_definition
+from src.receipts.v2 import checkpoint_v2, finish_v2, new_v2_receipt, receipt_v2_schema_version, verify_receipt_file
+from src.recovery.recovery import load_recovery_journal, plan_recovery, recover_with_adapter, recovery_schema_version, write_recovery_journal
+from src.util import get_or
+from src.workspace.workspace import temp_root
+
+mut passed := 0
+mut failed := 0
+
+func expect(label, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + label)
+    } else {
+    failed = failed + 1
+    print("FAIL " + label)
+}
+}
+
+definition := default_definition()
+requirements := requirements_from_definition(definition)
+expect("v1 definition maps to semantic requirements", requirements["ok"]&&len(requirements["requirements"]) > 15)
+
+run_identifier := "wc-22222222222222222222222222222222"
+resolve_request := {"contract": backend_contract_id(), "request_id": "evidence-resolve", "run_id": run_identifier, "operation": "resolve", "deadline_ms": 5000, "profile": {}, "payload": {"requirements": requirements["requirements"], "intent": {}}}
+resolution := fixture_dispatch(resolve_request)
+expect("fixture resolves complete portable default", resolution["ok"])
+ledger := controls_ledger(requirements["requirements"], resolution["data"]["capabilities"])
+expect("controls ledger preserves all requested controls", ledger["ok"]&&len(ledger["controls"]) == len(requirements["requirements"]))
+expect("controls ledger has no false enforcement claim", controls_have_false_enforcement_claim(ledger["controls"]) == false)
+
+root := temp_root() + "/workcell-evidence-recovery-test-" + replace(uuid_v4(), "-", "")
+spawn_process(["mkdir", "-p", root])
+receipt_path := root + "/receipt-v2.json"
+receipt := new_v2_receipt({"run_id": run_identifier, "backend": resolution["data"]["identity"], "controls": ledger["controls"], "definition": {"version": 2}, "source": {"commit": "fixture"}, "workspace": {"schema_version": "workcell-workspace/v1"}, "argv": ["sh", "-lc", "true"], "secret_names": [], "artifact_declarations": ["result.txt"]})
+expect("receipt v2 initializes normalized sections", receipt["schema_version"] == receipt_v2_schema_version()&&type(receipt["backend"]) == "dict"&&type(receipt["cleanup"]) == "dict")
+checkpoint := checkpoint_v2(receipt, receipt_path, "resolve", "resolved", {"backend": {"resource_ids": []}})
+expect("receipt v2 checkpoint persists atomically", checkpoint["ok"]&&file_exists(receipt_path))
+finished := finish_v2(checkpoint["receipt"], receipt_path, "completed", null, {"status": "complete", "journal_path": "", "items": [], "remaining": []})
+expect("receipt v2 finalizes cleanup and status", finished["ok"]&&finished["receipt"]["run"]["status"] == "completed"&&finished["receipt"]["cleanup"]["status"] == "complete")
+expect("receipt v2 verifies fully offline", verify_receipt_file(receipt_path)["ok"])
+mut unsafe_receipt := finished["receipt"]
+unsafe_backend := unsafe_receipt["backend"]
+unsafe_backend["raw_url"] := "https://objects.invalid/file?X-Amz-Signature=secret"
+unsafe_receipt["backend"] := unsafe_backend
+unsafe_path := root + "/unsafe-receipt.json"
+write_file_atomic(unsafe_path, to_json_pretty(unsafe_receipt), true)
+expect("receipt v2 rejects persisted signed transport URL", verify_receipt_file(unsafe_path)["ok"] == false)
+
+handle := backend_handle("external-fixture", "1.0.0", "workcell-fixture", "sha256:fixture-profile", [{"kind": "fixture", "id": "fixture-" + run_identifier}], run_identifier, "nonce-1", {"state": "running"})
+journal_root := root + "/recovery"
+journal := write_recovery_journal(journal_root, {"run_id": run_identifier, "handle": handle, "profile_id": "fixture", "receipt_path": receipt_path})
+expect("provisioned handle creates durable recovery journal", journal["ok"]&&journal["journal"]["schema_version"] == recovery_schema_version())
+expect("recovery journal reload validates ownership", load_recovery_journal(journal["path"])["ok"])
+
+mismatch := plan_recovery(journal["journal"], [{"kind": "fixture", "id": "fixture-" + run_identifier, "state": "running", "ownership": {"run_id": run_identifier, "nonce": "wrong"}}])
+expect("recovery plan refuses ownership mismatch", mismatch["ok"] == false&&get_or(mismatch, "code", "") == "OWNERSHIP_MISMATCH")
+
+manifest_path := "tests/fixtures/backend-protocol/manifest.json"
+dry_run := recover_with_adapter(journal["path"], manifest_path, {"nonce": "nonce-1"}, true)
+expect("recovery dry run inventories without deleting", dry_run["ok"]&&dry_run["dry_run"]&&dry_run["plan"]["items"][0]["status"] == "remove")
+recovered := recover_with_adapter(journal["path"], manifest_path, {"nonce": "nonce-1"}, false)
+expect("recovery invokes ownership-scoped destroy", recovered["ok"]&&recovered["status"] == "cleaned"&&len(recovered["remaining"]) == 0)
+final_journal := load_recovery_journal(journal["path"])
+expect("recovery journal preserves attempt timeline", final_journal["ok"]&&final_journal["journal"]["status"] == "cleaned"&&len(final_journal["journal"]["attempts"]) == 2)
+
+spawn_process(["rm", "-rf", root])
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

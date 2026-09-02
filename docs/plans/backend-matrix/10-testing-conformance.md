@@ -79,7 +79,7 @@ Before any remote adapter merges:
 - policy inspection produces equivalent engine argv for the same definition;
 - performance regression stays within the approved measured budget.
 
-`tests/portable_oci_contract.sh` is the end-to-end vertical-slice gate: one unchanged v2 workload runs through the built-in Docker profile without a manifest, emits receipt v2, verifies offline, leaves the source clean, and proves no labeled container remains.
+`tests/portable_oci_contract.sh` is the opt-in end-to-end vertical-slice gate: with `WORKCELL_LIVE_PORTABLE_OCI=1`, one unchanged v2 workload runs through the built-in Docker profile without a manifest, emits receipt v2, verifies offline, leaves the source clean, and proves no labeled container remains. The normal suite skips this live engine/image gate so offline development never depends on a registry or Docker daemon.
 
 Golden argv comparisons are appropriate for the OCI shared driver. They are not a universal backend contract.
 

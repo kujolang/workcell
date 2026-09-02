@@ -3,6 +3,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
+
+if [ "${WORKCELL_LIVE_PORTABLE_OCI:-0}" != "1" ]; then
+  printf 'portable OCI contract skipped (set WORKCELL_LIVE_PORTABLE_OCI=1 to enable)\n'
+  exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  printf 'portable OCI contract requires docker\n' >&2
+  exit 1
+fi
+
 TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/workcell-portable-oci-repo.XXXXXX")"
 OUT_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/workcell-portable-oci-output.XXXXXX")"
 trap 'rm -rf "$TMP_REPO" "$OUT_ROOT"' EXIT

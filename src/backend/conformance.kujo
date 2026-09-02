@@ -41,7 +41,7 @@ func best_effort_destroy(executable, run_identifier, profile, handle) {
     if type(handle) != "dict" {
         return
     }
-invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"]})
+invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"})
 }
 
 export func run_backend_conformance(manifest_path, profile, run_identifier) {
@@ -131,7 +131,7 @@ if collected["ok"] == false {
 report = add_check(report, "collect.evidence", {"complete": get_or(collected["result"]["data"]["logs"], "complete", false)})
 
 declarations := ["result.txt"]
-exported := invoke(executable, run_identifier, "export", profile, {"handle": handle, "declarations": declarations, "limits": {"max_bytes": 1024, "max_files": 1}, "exporter_version": "workcell-artifacts/v1", "idempotency_key": run_identifier + ":export"})
+exported := invoke(executable, run_identifier, "export", profile, {"handle": handle, "declarations": declarations, "limits": {"max_bytes": 1024, "max_files": 1}, "exporter_version": "workcell-artifacts/v1", "destination": "/tmp/workcell-conformance-" + run_identifier, "idempotency_key": run_identifier + ":export"})
 if exported["ok"] == false||to_json(get_or(exported["result"]["data"]["manifest"], "declared", [])) != to_json(declarations) {
     best_effort_destroy(executable, run_identifier, profile, handle)
     return failure(report, "export", exported)
@@ -150,7 +150,7 @@ if get_or(get_or(resource, "ownership", {}), "nonce", "") != nonce {
 }
 report = add_check(report, "inventory.ownership", resource["ownership"])
 
-destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"]})
+destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"})
 if destroyed["ok"] == false||len(get_or(destroyed["result"]["data"], "remaining", [])) != 0 {
     return failure(report, "destroy", destroyed)
 }

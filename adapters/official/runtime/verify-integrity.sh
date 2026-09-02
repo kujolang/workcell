@@ -24,8 +24,8 @@ verify() {
   fi
 }
 
-verify "runtime/adapter.mjs" "7101ddd1990cb15c0026506c4675f5ca47f2d8449642c796132729a9ad856100"
-verify "runtime/protocol.mjs" "3db6e67bd25f0f3006cca6025496be043091844e4060b368ad3de5f8ccf7b9d3"
+verify "runtime/adapter.mjs" "4cab815f621c49a93e896b5c0b35c52f47200454a120de908a27a011f46591c2"
+verify "runtime/protocol.mjs" "46d77642de72001007f09176c61412399c19185f6129911ff0b72ed571d445ed"
 verify "runtime/providers.mjs" "fad2fd5761e2530d42b39a39c9c4db30e112a8bf9f3bf67e972475c4b2b4eda3"
 verify "package.json" "ea3908a7121abd8115b3826a01edb26f4b78b5a430b710ca852ae513c0ad51cd"
 verify "package-lock.json" "754da3c337c82cf1fadebd1a8dc8038c93c60447748c6bd38502a5fb68c71794"

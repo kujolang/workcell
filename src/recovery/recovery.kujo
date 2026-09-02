@@ -301,7 +301,7 @@ export func recover_with_adapter(journal_path, manifest_path, profile, dry_run) 
         }
         cleanup_handle = backend_handle(journal["adapter_id"], journal["adapter_version"], journal["provider_id"], journal["profile_fingerprint"], resource_ids, journal["run_id"], journal["ownership"]["nonce"], {"recovered_from": "provision-intent"})
     }
-    destroy_request := recovery_request(journal, "destroy", profile, {"handle": cleanup_handle, "expected_ownership": journal["ownership"]})
+    destroy_request := recovery_request(journal, "destroy", profile, {"handle": cleanup_handle, "expected_ownership": journal["ownership"], "idempotency_key": journal["run_id"] + ":recover-destroy"})
     destroy_call := invoke_backend(executable["path"], destroy_request, invoke_options)
     if destroy_call["ok"] == false {
         update_recovery_journal(journal_path, "destroy", "failed", {"time": now_utc(), "operation": "destroy", "ok": false}, destroy_call["result"]["error"])

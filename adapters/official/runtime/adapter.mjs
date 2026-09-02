@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { describe, envelope, event, fixture, readRequest, redactError, resolve } from './protocol.mjs';
+import { describe, envelope, event, fixture, readRequest, redactError, resolve, validateProfile } from './protocol.mjs';
 import { daytona, e2b, vercel } from './providers.mjs';
 
 const provider = process.argv[2];
@@ -9,6 +9,7 @@ let req;
 try {
   if (process.argv[3] !== 'protocol') throw Object.assign(new Error('usage: adapter <provider> protocol'), { code: 'USAGE' });
   req = await readRequest();
+  validateProfile(provider, req.profile);
   let value;
   if (req.operation === 'describe') value = describe(provider);
   else if (req.operation === 'resolve') value = resolve(provider, req);

@@ -1,6 +1,6 @@
 # Bounded executable JSONL adapter client.
 
-from src.backend.types import backend_contract_id, backend_error, protocol_result, validate_protocol_request
+from src.backend.types import backend_contract_id, backend_error, protocol_result, validate_protocol_request, validate_protocol_result
 from src.util import get_or, lines_of, path_has_symlink, process_ok, redact, run_argv
 
 func request_temp_path() {
@@ -160,9 +160,8 @@ export func parse_backend_frames(request, output, bounds) {
             if type(result) != "null" {
                 return client_failure(request, "PROTOCOL_VIOLATION", "adapter emitted multiple results", false)
             }
-            if type(get_or(frame, "ok", null)) != "bool"||type(get_or(frame, "retryable", null)) != "bool"||type(get_or(frame, "data", null)) != "dict" {
-                return client_failure(request, "PROTOCOL_VIOLATION", "adapter result fields are invalid", false)
-            }
+            result_check := validate_protocol_result(request, frame)
+            if result_check["ok"] == false {return client_failure(request, "PROTOCOL_VIOLATION", result_check["error"], false)}
             result = redact_value(frame, secrets)
         } else {
             return client_failure(request, "PROTOCOL_VIOLATION", "adapter frame type is invalid", false)

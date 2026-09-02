@@ -12,6 +12,8 @@ workcell-backend-<id> protocol
 
 WorkCell writes one request envelope to stdin. The adapter writes zero or more bounded event envelopes followed by exactly one result envelope to stdout. Stderr is diagnostic-only, bounded, redacted, and never parsed as the contract. WorkCell starts a fresh adapter process for each operation; the provider handle carries durable state. This makes adapters language-neutral, locally inspectable, fixtureable, and killable.
 
+The alpha contract is closed at the request and result envelopes: unknown envelope fields fail. Core validates each operation payload before launching an adapter and validates operation-specific success data before using it. Provider-specific values belong inside the bounded `profile`, resolved plan, or handle `provider_state`, never as new top-level fields. A future field requires a new compatible contract revision.
+
 ## Envelope
 
 ```json
@@ -142,11 +144,10 @@ Adapters return stable codes mapped by core:
 ## Backpressure and bounds
 
 - Protocol lines, event count, bytes, and wall time are bounded by WorkCell.
-- Log bytes are decoded incrementally, redacted before persistence, and truncated at the core bound even if provider limits fail.
+- Log event bytes are bounded at process transport, decoded as UTF-8, coalesced per stream so secrets split across frames can be redacted, and redacted before persistence. A provider that cannot return logs within the requested bound must fail the operation rather than claim complete bounded logs.
 - Adapter protocol stdout may contain only JSON Lines; accidental SDK logging is a protocol violation.
 - WorkCell closes stdin after the request. Adapter process cancellation cannot be treated as provider resource termination; recovery uses the durable handle.
 
 ## Conformance contract
 
 An adapter passes base conformance only if all mandatory operations, idempotency, ownership, redaction, partial failure, and offline fixtures pass. Capability-specific suites are selected from the execution-time resolution, not the manifest hint. The machine-readable proposal is `BACKEND_CONTRACT_PROPOSAL.json`.
-

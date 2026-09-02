@@ -4,7 +4,7 @@
 
 The external-backend surface is alpha and additive. Existing version 1 definitions still use the stable Docker/Podman path without reinterpretation. Workcell owns definition validation, semantic requirements, clean-source packaging, declared artifacts, evidence, failure categories, and ownership-safe cleanup. An adapter owns provider API calls, compute provisioning, workspace transport, command execution, provider log collection, and deletion of the exact resources in its handle.
 
-External adapters communicate through `workcell-backend/v1alpha1`: one bounded JSON request on stdin, zero or more JSONL events, and exactly one result. Workcell never downloads or auto-discovers an adapter. The operator supplies a local manifest explicitly; its executable may be digest-pinned.
+External adapters communicate through `workcell-backend/v1alpha1`: one bounded JSON request on stdin, zero or more JSONL events, and exactly one result. Request envelopes reject unknown fields, operation payloads are validated before launch, and successful results are checked against operation-specific response shapes before core consumes them. Workcell never downloads or auto-discovers an adapter. The operator supplies a local manifest explicitly; official manifests are digest-pinned.
 
 The canonical lifecycle is:
 
@@ -57,7 +57,7 @@ The v2 definition contains workload semantics only. Provider, region, account, c
 }
 ```
 
-Operator guarantees are visible as `provider-claimed` with `operator-profile` authority. They are never relabeled `workcell-enforced`. Remove any guarantee the deployment cannot substantiate; strict resolution will then reject the run before provisioning.
+Operator guarantees are visible as `operator-claimed` with `operator-profile` authority and remain `not-observed` until separate evidence exists. They are never relabeled `workcell-enforced` or `provider-claimed`. Remove any guarantee the deployment cannot substantiate; strict resolution will then reject the run before provisioning.
 
 Inspect and run with explicit inputs:
 
@@ -81,6 +81,8 @@ Inspect and run with explicit inputs:
 Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The bundled adapters currently resolve only `env:` references. Workcell passes only the named environment variable to the adapter process; the value is not placed in the definition, profile, request payload, receipt, log, or artifact. Kujo Agent/OS-store resolution requires a host bridge and must fail rather than fall back to ambient credentials.
 
 Host routing fields are normalized identically by `inspect` and `run`. `region` and `provider_project` are bounded control-free strings. Custom endpoints require HTTPS; loopback HTTP is accepted only with `policy.allow_insecure_loopback_endpoint: true` for explicit local development. Embedded URL credentials, fragments, whitespace, backslashes, unknown policy keys, malformed credential names, and non-object adapter options fail during profile loading.
+
+An adapter also rejects normalized routing fields it does not implement. The current E2B and Vercel adapters reject non-empty endpoint, region, and provider-project overrides; Daytona accepts endpoint and region but rejects provider-project. This prevents an inspect result from implying that ignored placement or account routing took effect.
 
 ## Strict capability negotiation
 

@@ -114,7 +114,7 @@ func finalize_failure(executable, run_identifier, profile, definition, output_di
         cleanup = {"status": "recovery-required", "journal_path": journal_path, "items": [], "remaining": [{"kind": "provider-resource", "id": "unknown"}]}
     }
     if type(handle) == "dict" {
-        destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"]}, definition)
+        destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"}, definition)
         if destroyed["ok"] {
             cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": get_or(destroyed["result"]["data"], "remaining", [])}
             if journal_path != "" {update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
@@ -252,7 +252,7 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
         accepted_artifacts = accept_remote_artifact_archive(remote_archive, output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
         if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
     }
-    destroyed := invoke(executable, run_identifier, "destroy", adapter_options, {"handle": handle, "expected_ownership": handle["ownership"]}, definition)
+    destroyed := invoke(executable, run_identifier, "destroy", adapter_options, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"}, definition)
     cleanup := {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
     if destroyed["ok"]&&len(get_or(destroyed["result"]["data"], "remaining", [])) == 0 {cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": []}; update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
     status := terminal_exit(terminal)

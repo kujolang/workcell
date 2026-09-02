@@ -44,10 +44,15 @@ const PROVIDER_PROFILE_KEYS = {
   daytona: new Set([])
 };
 
-function validateProfile(provider, profile) {
+export function validateProfile(provider, profile) {
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) throw Object.assign(new Error('adapter profile must be an object'), { code: 'PROFILE_INVALID' });
   const allowed = new Set([...COMMON_PROFILE_KEYS, ...PROVIDER_PROFILE_KEYS[provider]]);
   const unknown = Object.keys(profile).filter((key) => !allowed.has(key));
   if (unknown.length > 0) throw Object.assign(new Error(`unknown ${provider} profile field(s): ${unknown.sort().join(', ')}`), { code: 'PROFILE_INVALID' });
+  for (const field of ['endpoint', 'provider_project', 'region']) {
+    if (profile[field] && provider !== 'daytona') throw Object.assign(new Error(`${provider} does not implement profile field ${field}`), { code: 'PROFILE_INVALID' });
+  }
+  if (profile.provider_project && provider === 'daytona') throw Object.assign(new Error('daytona does not implement profile field provider_project'), { code: 'PROFILE_INVALID' });
 }
 
 export function resolve(provider, req) {
@@ -64,8 +69,8 @@ export function resolve(provider, req) {
       requested: wanted.requested !== false,
       acceptance: accepted ? 'accepted' : 'rejected',
       resolved: accepted ? wanted.value : null,
-      enforcement: accepted ? { status: fixture ? 'workcell-enforced' : 'provider-claimed', authority: fixture ? 'offline-fixture' : guaranteed ? 'operator-profile' : PROVIDERS[provider].api, evidence: fixture ? 'deterministic fixture' : 'SDK request and provider response' } : { status: 'unknown', authority: PROVIDERS[provider].api, evidence: 'no verified mapping' },
-      observation: { status: accepted ? 'observed' : 'not-observed', method: fixture ? 'fixture' : 'request-resolution', result: accepted ? 'configured' : 'not-configured' },
+      enforcement: accepted ? { status: fixture ? 'workcell-enforced' : guaranteed ? 'operator-claimed' : 'provider-claimed', authority: fixture ? 'offline-fixture' : guaranteed ? 'operator-profile' : PROVIDERS[provider].api, evidence: fixture ? 'deterministic fixture' : guaranteed ? 'explicit operator guarantee' : 'documented SDK request mapping' } : { status: 'unknown', authority: PROVIDERS[provider].api, evidence: 'no verified mapping' },
+      observation: { status: fixture ? 'observed' : 'not-observed', method: fixture ? 'fixture' : 'resolution-only', result: fixture ? 'configured' : accepted ? 'not yet executed' : 'not-configured' },
       limitations: accepted ? [] : ['provider adapter cannot prove this requirement from the selected profile']
     };
   });
@@ -156,8 +161,31 @@ export async function readRequest() {
   for await (const chunk of process.stdin) text += chunk;
   if (Buffer.byteLength(text) > 1_048_576) throw Object.assign(new Error('request exceeded one MiB'), { code: 'PROTOCOL_VIOLATION' });
   const req = JSON.parse(text);
-  if (req.contract !== CONTRACT || !req.request_id || !req.run_id || !req.operation || typeof req.profile !== 'object' || typeof req.payload !== 'object') throw Object.assign(new Error('request envelope is invalid'), { code: 'PROTOCOL_VIOLATION' });
+  const envelopeFields = ['contract', 'request_id', 'run_id', 'operation', 'deadline_ms', 'profile', 'payload'];
+  if (Object.keys(req).some((key) => !envelopeFields.includes(key)) || envelopeFields.some((key) => !Object.hasOwn(req, key)) || req.contract !== CONTRACT || typeof req.request_id !== 'string' || !/^wc-[0-9a-f]{32}$/.test(req.run_id) || !Number.isSafeInteger(req.deadline_ms) || req.deadline_ms <= 0 || !plainObject(req.profile) || !plainObject(req.payload)) throw Object.assign(new Error('request envelope is invalid'), { code: 'PROTOCOL_VIOLATION' });
+  validatePayload(req.operation, req.payload, req.run_id);
   return req;
+}
+
+function plainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+function text(value) { return typeof value === 'string' && value.length > 0 && value.length <= 4096 && !value.includes('\0'); }
+function ownFields(value, allowed, required = allowed) { return plainObject(value) && Object.keys(value).every((key) => allowed.includes(key)) && required.every((key) => Object.hasOwn(value, key)); }
+function strings(value, max) { return Array.isArray(value) && value.length <= max && value.every(text); }
+function ownership(value, runId) { return ownFields(value, ['run_id', 'nonce']) && value.run_id === runId && text(value.nonce); }
+
+function validatePayload(operation, payload, runId) {
+  let valid = false;
+  if (operation === 'describe') valid = ownFields(payload, [], []);
+  else if (operation === 'resolve') valid = ownFields(payload, ['requirements', 'intent']) && Array.isArray(payload.requirements) && payload.requirements.length <= 256 && plainObject(payload.intent);
+  else if (operation === 'provision') valid = ownFields(payload, ['resolved_plan', 'ownership', 'idempotency_key']) && plainObject(payload.resolved_plan) && ownership(payload.ownership, runId) && text(payload.idempotency_key);
+  else if (operation === 'prepare') valid = ownFields(payload, ['handle', 'workspace_package', 'execution_prerequisites', 'idempotency_key'], ['handle', 'workspace_package', 'idempotency_key']) && plainObject(payload.handle) && plainObject(payload.workspace_package) && text(payload.workspace_package.sha256) && text(payload.idempotency_key);
+  else if (operation === 'execute') valid = ownFields(payload, ['handle', 'attempt_id', 'argv', 'workdir', 'environment', 'secret_channel', 'timeout_ms', 'max_output_bytes']) && plainObject(payload.handle) && text(payload.attempt_id) && strings(payload.argv, 1024) && payload.argv.length > 0 && text(payload.workdir) && payload.workdir.startsWith('/') && plainObject(payload.environment) && strings(payload.secret_channel, 1024) && Number.isSafeInteger(payload.timeout_ms) && payload.timeout_ms > 0 && Number.isSafeInteger(payload.max_output_bytes) && payload.max_output_bytes > 0;
+  else if (operation === 'cancel') valid = ownFields(payload, ['handle', 'command_id', 'idempotency_key']) && plainObject(payload.handle) && text(payload.command_id) && text(payload.idempotency_key);
+  else if (operation === 'collect') valid = ownFields(payload, ['handle', 'attempt_id', 'stream_cursor']) && plainObject(payload.handle) && text(payload.attempt_id);
+  else if (operation === 'export') valid = ownFields(payload, ['handle', 'declarations', 'limits', 'exporter_version', 'destination', 'idempotency_key']) && plainObject(payload.handle) && strings(payload.declarations, 10000) && plainObject(payload.limits) && text(payload.exporter_version) && text(payload.destination) && text(payload.idempotency_key);
+  else if (operation === 'destroy') valid = ownFields(payload, ['handle', 'expected_ownership', 'idempotency_key']) && plainObject(payload.handle) && ownership(payload.expected_ownership, runId) && text(payload.idempotency_key);
+  else if (operation === 'inventory') valid = ownFields(payload, ['ownership']) && ownership(payload.ownership, runId);
+  if (!valid) throw Object.assign(new Error(`request ${operation || 'unknown'} payload is invalid`), { code: 'PROTOCOL_VIOLATION' });
 }
 
 export function archiveDownloadLimit(limits = {}) {

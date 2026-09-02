@@ -32,16 +32,16 @@ for (const provider of ['e2b', 'vercel-sandbox', 'daytona']) {
     const ownership = { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' };
     const provisioned = call(provider, 'provision', { ownership, resolved_plan: {}, idempotency_key: 'test' }).result.data;
     assert.deepEqual(provisioned.handle.ownership, ownership);
-    const executed = call(provider, 'execute', { handle: provisioned.handle, argv: ['true'], workdir: '/workspace', environment: {}, timeout_ms: 1000 });
+    const executed = call(provider, 'execute', { handle: provisioned.handle, attempt_id: 'attempt-1', argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: [], timeout_ms: 1000, max_output_bytes: 65536 });
     assert.equal(executed.result.data.terminal.exit_code, 0);
     assert.equal(executed.events.length, 1);
-    const destroyed = call(provider, 'destroy', { handle: provisioned.handle, expected_ownership: ownership }).result.data;
+    const destroyed = call(provider, 'destroy', { handle: provisioned.handle, expected_ownership: ownership, idempotency_key: 'test-destroy' }).result.data;
     assert.deepEqual(destroyed.remaining, []);
   });
 }
 
 test('live mode never accepts missing provider credentials', () => {
-  const result = call('e2b', 'provision', { ownership: { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' }, resolved_plan: {} }, { credential_ref: 'env:E2B_API_KEY' });
+  const result = call('e2b', 'provision', { ownership: { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' }, resolved_plan: {}, idempotency_key: 'test-provision' }, { credential_ref: 'env:E2B_API_KEY' });
   assert.equal(result.result.ok, false);
   assert.equal(result.result.error.code, 'AUTH_MISSING');
   assert.equal(result.stdout?.includes?.('secret'), undefined);
@@ -53,8 +53,22 @@ test('profile validation rejects unknown provider fields before provisioning', (
   assert.equal(result.result.error.code, 'PROFILE_INVALID');
 });
 
+test('profile validation rejects routing fields an adapter does not implement', () => {
+  const result = call('e2b', 'resolve', { requirements, intent: {} }, { fixture_mode: true, region: 'us-east' });
+  assert.equal(result.result.ok, false);
+  assert.equal(result.result.error.code, 'PROFILE_INVALID');
+});
+
+test('live resolution keeps operator guarantees claimed and unobserved', () => {
+  const result = call('e2b', 'resolve', { requirements: [{ id: 'compute.cpu_limit', requested: true, required: true, value: 2 }], intent: {} }, { guarantees: { 'compute.cpu_limit': 2 } });
+  const state = result.result.data.capabilities[0];
+  assert.equal(state.acceptance, 'accepted');
+  assert.equal(state.enforcement.status, 'operator-claimed');
+  assert.equal(state.observation.status, 'not-observed');
+});
+
 test('adapter errors redact workload and provider secrets', () => {
-  const req = { contract: 'workcell-backend/v1alpha1', request_id: 'test-redaction', run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation: 'execute', deadline_ms: 10000, profile: { credential_ref: 'env:E2B_API_KEY' }, payload: { secret_channel: ['WORKLOAD_TOKEN'] } };
+  const req = { contract: 'workcell-backend/v1alpha1', request_id: 'test-redaction', run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation: 'execute', deadline_ms: 10000, profile: { credential_ref: 'env:E2B_API_KEY' }, payload: { handle: {}, attempt_id: 'attempt-1', argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: ['WORKLOAD_TOKEN'], timeout_ms: 1000, max_output_bytes: 65536 } };
   const result = spawnSync(path.join(root, 'e2b', 'workcell-backend-e2b'), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: { E2B_API_KEY: 'provider-secret-value', WORKLOAD_TOKEN: 'workload-secret-value' } });
   assert.equal(result.stdout.includes('provider-secret-value'), false);
   assert.equal(result.stdout.includes('workload-secret-value'), false);
@@ -64,7 +78,7 @@ test('adapter log events redact raw and encoded workload secrets', () => {
   const secret = 'workload-secret-value';
   const providerSecret = 'provider-secret-value';
   const encoded = Buffer.from(secret).toString('base64');
-  const execution = call('e2b', 'execute', { handle: { resource_ids: [], ownership: {} }, argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: ['WORKLOAD_TOKEN'], timeout_ms: 1000 }, { fixture_mode: true, fixture_stdout: `raw=${secret} encoded=${encoded} provider=${providerSecret}` }, { E2B_API_KEY: providerSecret, WORKLOAD_TOKEN: secret });
+  const execution = call('e2b', 'execute', { handle: { resource_ids: [], ownership: {} }, attempt_id: 'attempt-1', argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: ['WORKLOAD_TOKEN'], timeout_ms: 1000, max_output_bytes: 65536 }, { fixture_mode: true, fixture_stdout: `raw=${secret} encoded=${encoded} provider=${providerSecret}` }, { E2B_API_KEY: providerSecret, WORKLOAD_TOKEN: secret });
   assert.equal(execution.events.length, 1);
   const decoded = Buffer.from(execution.events[0].bytes_base64, 'base64').toString('utf8');
   assert.equal(decoded.includes(secret), false);

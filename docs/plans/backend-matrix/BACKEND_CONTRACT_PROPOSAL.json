@@ -52,6 +52,7 @@
     ]
   },
   "result_envelope": {
+    "additional_properties": false,
     "required": [
       "contract",
       "request_id",

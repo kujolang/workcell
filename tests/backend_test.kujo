@@ -5,7 +5,7 @@ from src.backend.oci.driver import builtin_backend_identity, builtin_backend_val
 from src.backend.oci.podman import podman_identity
 from src.backend.registry import backend_executable, load_backend_manifest, load_backend_registry, registry_backend, validate_backend_manifest
 from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
-from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_terminal_result
+from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_protocol_result, validate_terminal_result
 from src.domain.definition import default_definition
 from src.util import get_or, run_argv
 
@@ -79,6 +79,8 @@ request := {
     "payload": {}
 }
 expect("protocol request validates", validate_protocol_request(request)["ok"])
+unexpected_request := {"contract": backend_contract_id(), "request_id": "request-unknown", "run_id": run_identifier, "operation": "describe", "deadline_ms": 1000, "profile": {}, "payload": {}, "vendor": true}
+expect("protocol request rejects unknown envelope fields", validate_protocol_request(unexpected_request)["ok"] == false)
 describe := fixture_dispatch(request)
 expect("fixture describe succeeds offline", describe["ok"]&&describe["data"]["adapter"]["id"] == "fixture")
 
@@ -88,28 +90,28 @@ resolved := fixture_dispatch(request)
 expect("fixture resolves required capability", resolved["ok"]&&resolved["data"]["capabilities"][0]["acceptance"] == "accepted")
 
 request["operation"] := "provision"
-request["payload"] := {"ownership": {"nonce": "nonce-1"}, "resolved_plan": resolved["data"]["resolved_plan"]}
+request["payload"] := {"ownership": {"run_id": run_identifier, "nonce": "nonce-1"}, "resolved_plan": resolved["data"]["resolved_plan"], "idempotency_key": run_identifier + ":provision"}
 provisioned := fixture_dispatch(request)
 expect("fixture provisions owned handle", provisioned["ok"]&&validate_backend_handle(provisioned["data"]["handle"], run_identifier)["ok"])
 
 request["operation"] := "prepare"
-request["payload"] := {"handle": provisioned["data"]["handle"], "workspace_package": {"sha256": "sha256:fixture"}}
+request["payload"] := {"handle": provisioned["data"]["handle"], "workspace_package": {"sha256": "sha256:fixture"}, "idempotency_key": run_identifier + ":prepare"}
 prepared := fixture_dispatch(request)
 expect("fixture verifies workspace package digest", prepared["ok"]&&prepared["data"]["observed_package_digest"] == "sha256:fixture")
 
 request["operation"] := "execute"
 request["profile"] := {"execution": {"exit_code": 7, "stdout": "hello", "stderr": "warning"}}
-request["payload"] := {"handle": provisioned["data"]["handle"], "argv": ["false"]}
+request["payload"] := {"handle": provisioned["data"]["handle"], "attempt_id": "attempt-1", "argv": ["false"], "workdir": "/workspace", "environment": {}, "secret_channel": [], "timeout_ms": 1000, "max_output_bytes": 65536}
 executed := fixture_dispatch(request)
 expect("fixture preserves workload non-zero exit as protocol success", executed["ok"]&&executed["data"]["terminal"]["exit_code"] == 7)
 
 request["operation"] := "export"
-request["payload"] := {"handle": provisioned["data"]["handle"], "declarations": ["out.txt"]}
+request["payload"] := {"handle": provisioned["data"]["handle"], "declarations": ["out.txt"], "limits": {"max_bytes": 1024, "max_files": 1}, "exporter_version": "workcell-artifacts/v1", "destination": "/tmp/workcell-backend-test", "idempotency_key": run_identifier + ":export"}
 exported := fixture_dispatch(request)
 expect("fixture exports only declarations", exported["ok"]&&exported["data"]["manifest"]["declared"][0] == "out.txt")
 
 request["operation"] := "destroy"
-request["payload"] := {"handle": provisioned["data"]["handle"]}
+request["payload"] := {"handle": provisioned["data"]["handle"], "expected_ownership": provisioned["data"]["handle"]["ownership"], "idempotency_key": run_identifier + ":destroy"}
 destroyed := fixture_dispatch(request)
 expect("fixture destroy is itemized", destroyed["ok"]&&destroyed["data"]["items"][0]["status"] == "removed")
 
@@ -147,6 +149,11 @@ expect("external adapter duplicate result is rejected", duplicate["ok"] == false
 
 wrong_echo := to_json({"contract": backend_contract_id(), "request_id": "wrong", "run_id": run_identifier, "operation": "describe", "type": "result", "ok": true, "status": "ok", "retryable": false, "data": {}})
 expect("protocol parser rejects request echo mismatch", parse_backend_frames(external_request, wrong_echo, {})["ok"] == false)
+invalid_success := {"contract": backend_contract_id(), "request_id": external_request["request_id"], "run_id": run_identifier, "operation": "describe", "type": "result", "ok": true, "status": "ok", "retryable": false, "data": {}}
+expect("protocol validator rejects invalid operation result data", validate_protocol_result(external_request, invalid_success)["ok"] == false)
+expect("protocol parser rejects invalid operation result data", parse_backend_frames(external_request, to_json(invalid_success), {})["ok"] == false)
+invalid_failure := {"contract": backend_contract_id(), "request_id": external_request["request_id"], "run_id": run_identifier, "operation": "describe", "type": "result", "ok": false, "status": "failed", "retryable": false, "data": {}}
+expect("protocol validator requires structured failure error", validate_protocol_result(external_request, invalid_failure)["ok"] == false)
 
 secret := "portable-secret-value"
 log_frame := {"contract": backend_contract_id(), "request_id": external_request["request_id"], "run_id": run_identifier, "operation": "describe", "type": "event", "event": "log", "sequence": 0, "stream": "stdout", "bytes_base64": encode_base64("token=" + secret), "provider_timestamp": null, "ordering": "per-stream"}

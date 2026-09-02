@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rm } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -160,10 +160,37 @@ export async function readRequest() {
   return req;
 }
 
-export async function writeDownloaded(filePath, bytes) {
+export function archiveDownloadLimit(limits = {}) {
+  const contentBytes = Number.isInteger(limits.max_bytes) && limits.max_bytes > 0 ? limits.max_bytes : 1_000_000_000;
+  const files = Number.isInteger(limits.max_files) && limits.max_files > 0 ? limits.max_files : 100_000;
+  const metadataBytes = Math.min((files * 2048) + 1_048_576, 268_435_456);
+  return contentBytes + metadataBytes;
+}
+
+export async function writeBoundedStream(filePath, stream, maxBytes) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) throw Object.assign(new Error('download bound is invalid'), { code: 'ARTIFACT_LIMIT' });
   await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, Buffer.from(bytes));
-  return { path: filePath, bytes: Buffer.byteLength(Buffer.from(bytes)) };
+  const file = await open(filePath, 'w', 0o600);
+  let bytes = 0;
+  try {
+    for await (const chunk of stream) {
+      const data = Buffer.from(chunk);
+      bytes += data.length;
+      if (bytes > maxBytes) {
+        if (typeof stream.destroy === 'function') stream.destroy();
+        else if (typeof stream.cancel === 'function') await stream.cancel();
+        throw Object.assign(new Error(`artifact archive exceeded transport bound ${maxBytes}`), { code: 'ARTIFACT_LIMIT' });
+      }
+      await file.write(data);
+    }
+    await file.sync();
+  } catch (error) {
+    await file.close().catch(() => {});
+    await rm(filePath, { force: true }).catch(() => {});
+    throw error;
+  }
+  await file.close();
+  return { path: filePath, bytes };
 }
 
 export async function packageBytes(packageValue) { return readFile(packageValue.archive_path); }

@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { access, mkdtemp, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { Readable } from 'node:stream';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { archiveDownloadLimit, writeBoundedStream } from '../runtime/protocol.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requirements = ['lifecycle.provision','lifecycle.terminate','lifecycle.destroy','lifecycle.inventory','workspace.stage','workspace.collect_delta','process.argv','process.exit_status','execution.timeout','logs.bounded','artifact.selective_export','environment.explicit','credentials.redacted_transport','evidence.provider_identity','ownership.markers'].map((id) => ({ id, requested: true, required: true, value: true }));
@@ -66,4 +70,20 @@ test('adapter log events redact raw and encoded workload secrets', () => {
   assert.equal(decoded.includes(encoded), false);
   assert.equal(decoded.includes(providerSecret), false);
   assert.equal(decoded, 'raw=[REDACTED] encoded=[REDACTED] provider=[REDACTED]');
+});
+
+test('artifact transport streams within an explicit bound', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'workcell-adapter-stream-'));
+  const destination = path.join(directory, 'artifacts.tar');
+  const result = await writeBoundedStream(destination, Readable.from([Buffer.from('abc'), Buffer.from('def')]), 6);
+  assert.equal(result.bytes, 6);
+  assert.equal((await readFile(destination)).toString('utf8'), 'abcdef');
+  assert.ok(archiveDownloadLimit({ max_bytes: 10, max_files: 1 }) > 10);
+});
+
+test('artifact transport aborts and removes an oversized partial file', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'workcell-adapter-stream-'));
+  const destination = path.join(directory, 'artifacts.tar');
+  await assert.rejects(writeBoundedStream(destination, Readable.from([Buffer.alloc(4), Buffer.alloc(4)]), 7), { code: 'ARTIFACT_LIMIT' });
+  await assert.rejects(access(destination));
 });

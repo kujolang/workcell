@@ -17,7 +17,7 @@
     "filesystem": {"read_only_root": true, "writable": ["/workspace"], "tmpfs": ["/tmp"]}
   },
   "artifacts": {"export": []},
-  "verification": {"version": 1, "commands": []},
+  "verification": {"version": 1, "commands": [{"name": "fixture-check", "command": ["sh", "-lc", "true"]}]},
   "cleanup": {"keep_failed": false},
   "receipt": {"path": ".workcell/runs"}
 }

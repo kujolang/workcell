@@ -233,6 +233,7 @@ expected_digest := get_or(package, "sha256", "")
 if file_exists(archive_path) == false||path_has_symlink(archive_path)||type(manifest) != "dict"||expected_digest == "" {
     return {"ok": false, "error": "artifact package archive, digest, or manifest is missing"}
 }
+
 mut digest := ""
 try {
     digest = sha256_file(archive_path)
@@ -275,4 +276,30 @@ if path_is_dir(root) == false||path_within(target_dir, root) == false||path_has_
 verified := verify_artifact_manifest(root, manifest, policy)
 if verified["ok"] == false {return verified}
 return {"ok": true, "artifact_root": root, "observed_archive_digest": digest, "artifacts": manifest["declared"], "files": verified["files"], "bytes": verified["bytes"]}
+}
+
+# Accept an untrusted provider-downloaded tar by re-exporting only declarations
+# through Workcell's local policy before it becomes run evidence.
+export func accept_remote_artifact_archive(archive_path, target_dir, policy, secret_names) {
+    if type(archive_path) != "string"||trim(archive_path) == ""||file_exists(archive_path) == false||path_has_symlink(archive_path)||type(target_dir) != "string"||trim(target_dir) == ""||type(policy) != "dict"||type(secret_names) != "array" {
+        return {"ok": false, "error": "remote artifact archive inputs are invalid"}
+    }
+    bounds := artifact_bounds(policy)
+    max_entries := bounds["max_files"]
+    if max_entries <= 0 {max_entries = 100000}
+    inspected := inspect_artifact_tar(archive_path, max_entries)
+    if inspected["ok"] == false {return inspected}
+    parent := parent_of(target_dir)
+    if path_has_symlink(parent)||ensure_dir(parent) == false {return {"ok": false, "error": "remote artifact target parent is unsafe"}}
+    staging := parent + "/workcell-artifacts-remote-" + replace(uuid_v4(), "-", "")
+    if path_has_symlink(staging)||ensure_dir(staging) == false {return {"ok": false, "error": "remote artifact staging is unsafe"}}
+    extracted := run_argv(["tar", "-xf", archive_path, "-C", staging], 120000)
+    if process_ok(extracted) == false {
+        remove_staging(staging, parent)
+        return {"ok": false, "error": process_error(extracted, "extract remote artifact archive")}
+    }
+    accepted := create_artifact_archive(staging, target_dir, policy, secret_names)
+    removed := remove_staging(staging, parent)
+    if removed == false {return {"ok": false, "error": "remote artifact staging cleanup failed"}}
+    return accepted
 }

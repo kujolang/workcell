@@ -29,6 +29,7 @@ expect("portable lifecycle succeeds", result["ok"])
 if result["ok"] == false {run_argv(["rm", "-rf", repo], 30000); run_argv(["rm", "-rf", output], 30000); exit(1)}
 expect("portable lifecycle uses receipt v2", result["receipt"]["schema_version"] == "workcell-receipt/v2alpha1")
 expect("portable lifecycle records complete cleanup", result["cleanup_status"] == "complete")
+expect("portable lifecycle executes declarative verification", result["receipt"]["verification"]["status"] == "passed"&&len(result["receipt"]["verification"]["checks"]) == 1)
 expect("portable receipt verifies offline", verify_receipt_file(result["receipt_path"])["ok"])
 expect("portable manifest verifies offline", verify_manifest(result["output_dir"])["ok"])
 

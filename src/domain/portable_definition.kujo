@@ -120,6 +120,20 @@ export func validate_portable_definition(raw) {
     checked = validate_relative_list(get_or(artifacts, "export", null), "artifacts.export")
     if checked["ok"] == false {return checked}
     if type(get_or(raw, "verification", null)) != "dict"||type(get_or(raw, "cleanup", null)) != "dict"||type(get_or(raw, "receipt", null)) != "dict" {return {"ok": false, "error": "verification, cleanup, and receipt must be objects"}}
+    verification := raw["verification"]
+    checked = keys_allowed(verification, ["version", "commands"], "verification")
+    if checked["ok"] == false {return checked}
+    commands := get_or(verification, "commands", null)
+    if get_or(verification, "version", null) != 1||type(commands) != "array"||len(commands) > 32 {return {"ok": false, "error": "verification requires version 1 and at most 32 commands"}}
+    mut check_i := 0
+    while check_i < len(commands) {
+        check := commands[check_i]
+        checked = keys_allowed(check, ["name", "command"], "verification.commands")
+        if checked["ok"] == false||nonempty(get_or(check, "name", null)) == false {return {"ok": false, "error": "verification command name is invalid"}}
+        checked = string_array(get_or(check, "command", null), "verification command")
+        if checked["ok"] == false||len(check["command"]) == 0 {return {"ok": false, "error": "verification command argv is invalid"}}
+        check_i = check_i + 1
+    }
     if type(get_or(raw["cleanup"], "keep_failed", null)) != "bool" {return {"ok": false, "error": "cleanup.keep_failed must be boolean"}}
     if nonempty(get_or(raw["receipt"], "path", null)) == false {return {"ok": false, "error": "receipt.path must be a non-empty string"}}
     return {"ok": true}

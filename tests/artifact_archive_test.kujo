@@ -1,4 +1,4 @@
-from src.artifacts.archive import artifact_archive_schema_version, create_artifact_archive, materialize_artifact_archive
+from src.artifacts.archive import accept_remote_artifact_archive, artifact_archive_schema_version, create_artifact_archive, materialize_artifact_archive
 from src.workspace.workspace import temp_root
 
 mut passed := 0
@@ -33,6 +33,16 @@ materialized := materialize_artifact_archive(package, target, policy)
 expect("artifact archive materializes and verifies", materialized["ok"])
 expect("materialized artifact content exists", file_exists(materialized["artifact_root"] + "/reports/result.txt"))
 expect("undeclared workspace content is absent", file_exists(materialized["artifact_root"] + "/undeclared.txt") == false)
+
+remote_source := root + "/remote-source"
+remote_archive := root + "/remote-transfer/artifacts.tar"
+spawn_process(["mkdir", "-p", remote_source + "/reports", root + "/remote-transfer"])
+write_file_atomic(remote_source + "/reports/result.txt", "remote result\n", true)
+write_file_atomic(remote_source + "/undeclared.txt", "remote secret\n", true)
+spawn_process(["tar", "-cf", remote_archive, "-C", remote_source, "reports"])
+accepted := accept_remote_artifact_archive(remote_archive, root + "/accepted", policy, [])
+expect("remote archive is re-exported through core policy", accepted["ok"]&&accepted["manifest"]["files"][0]["path"] == "reports/result.txt")
+expect("remote archive receives a local integrity digest", len(accepted["sha256"]) == 64)
 
 wrong_policy := {"export": ["undeclared.txt"], "limits": {}, "max_bytes": 100000, "max_files": 10, "max_depth": 8, "allowed_extensions": [".txt"], "secret_action": "allow"}
 expect("artifact materialization rejects declaration mismatch", materialize_artifact_archive(package, root + "/wrong-target", wrong_policy)["ok"] == false)

@@ -43,7 +43,12 @@ func invoke(executable, run_identifier, operation, profile, payload, definition)
     credential_env := get_or(profile, "credential_env", "")
     env_allow := secret_names
     if credential_env != "" {env_allow = push(env_allow, credential_env)}
-    return invoke_backend(executable, request(run_identifier, operation, profile, payload, deadline), {"timeout_ms": deadline, "max_output_bytes": get_or(execution, "max_output_bytes", 4000000), "inherit_env": false, "env_allow": env_allow, "redact_values": env_secret_values(env_allow)})
+    options := {"timeout_ms": deadline, "max_output_bytes": get_or(execution, "max_output_bytes", 4000000), "inherit_env": false, "env_allow": env_allow, "redact_values": env_secret_values(env_allow)}
+    if operation == "execute" {
+        cancel_file := get_or(definition, "_runtime_cancel_file", "")
+        if type(cancel_file) == "string"&&cancel_file != "" {options["cancel_file"] := cancel_file}
+    }
+    return invoke_backend(executable, request(run_identifier, operation, profile, payload, deadline), options)
 }
 
 func terminal_exit(terminal) {
@@ -60,6 +65,13 @@ func result_value(run_identifier, output_dir, receipt, ok, stage, error, exit_co
 
 func provider_failure(call, fallback) {
     return get_or(get_or(get_or(call, "result", {}), "error", {}), "message", fallback)
+}
+
+func execute_failure(call) {
+    code := get_or(get_or(get_or(call, "result", {}), "error", {}), "code", "")
+    if code == "ADAPTER_CANCELLED" {return {"stage": "cancelled", "exit_code": 7}}
+    if code == "ADAPTER_TIMEOUT" {return {"stage": "timeout", "exit_code": 6}}
+    return {"stage": "executing", "exit_code": 10}
 }
 
 export func inspect_portable_workcell(definition_path, manifest_path, profiles_path, profile_id, backend_override) {
@@ -113,6 +125,8 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     loaded := load_workcell_definition(definition_path)
     if loaded["ok"] == false||get_or(loaded, "version", 1) != 2 {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(loaded, "error", "portable runner requires a v2 definition"), "exit_code": 2}}
     definition := loaded["definition"]
+    cancel_file := option(flags, "cancel_file", "")
+    if type(cancel_file) == "string"&&cancel_file != "" {definition["_runtime_cancel_file"] := cancel_file}
     profile_state := load_host_profile(profiles_path, profile_id, backend_override)
     if profile_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": profile_state["error"], "exit_code": 2}}
     profile := profile_state["profile"]
@@ -187,7 +201,10 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
         allow_i = allow_i + 1
     }
     executed := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "attempt-1", "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
-    if executed["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", provider_failure(executed, "backend execute failed"), 10)}
+    if executed["ok"] == false {
+        failed_execution := execute_failure(executed)
+        return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, failed_execution["stage"], provider_failure(executed, "backend execute failed"), failed_execution["exit_code"])
+    }
     terminal := get_or(executed["result"]["data"], "terminal", null)
     if validate_terminal_result(terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", "backend returned invalid terminal result", 10)}
     mut log_events := executed["events"]
@@ -203,7 +220,11 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
             continue
         }
         checked_call := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "verify-" + to_string(check_i + 1), "argv": check["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
-        if checked_call["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", provider_failure(checked_call, "verification command failed to execute"), 8)}
+        if checked_call["ok"] == false {
+            failed_check := execute_failure(checked_call)
+            if failed_check["stage"] == "executing" {failed_check = {"stage": "verification-failed", "exit_code": 8}}
+            return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, failed_check["stage"], provider_failure(checked_call, "verification command failed to execute"), failed_check["exit_code"])
+        }
         check_terminal := get_or(checked_call["result"]["data"], "terminal", null)
         if validate_terminal_result(check_terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", "backend returned invalid verification terminal result", 8)}
         mut event_i := 0

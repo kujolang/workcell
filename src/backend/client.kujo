@@ -226,14 +226,20 @@ export func invoke_backend(executable, request, options) {
     mut output := ""
     mut invocation_error := ""
     try {
-        output = pipe_commands([["cat", request_path], [executable, "protocol"]], {"timeout_ms": timeout_ms, "max_output_bytes": output_limit, "inherit_env": get_or(options, "inherit_env", false), "env_allow": get_or(options, "env_allow", []), "env": get_or(options, "env", {})})
+        mut process_options := {"timeout_ms": timeout_ms, "max_output_bytes": output_limit, "inherit_env": get_or(options, "inherit_env", false), "env_allow": get_or(options, "env_allow", []), "env": get_or(options, "env", {})}
+        cancel_file := get_or(options, "cancel_file", "")
+        if type(cancel_file) == "string"&&cancel_file != "" {process_options["cancel_file"] = cancel_file}
+        output = pipe_commands([["cat", request_path], [executable, "protocol"]], process_options)
     } except err {
         invocation_error = to_string(err)
     }
     cleanup_request_file(request_path)
     if invocation_error != "" {
         secrets := get_or(options, "redact_values", [])
-        return client_failure(request, "ADAPTER_UNAVAILABLE", redact(invocation_error, secrets), false)
+        code := "ADAPTER_UNAVAILABLE"
+        cancel_file := get_or(options, "cancel_file", "")
+        if type(cancel_file) == "string"&&cancel_file != ""&&file_exists(cancel_file) {code = "ADAPTER_CANCELLED"} else if contains(invocation_error, "timed out") == 1 {code = "ADAPTER_TIMEOUT"}
+        return client_failure(request, code, redact(invocation_error, secrets), false)
     }
     return parse_backend_frames(request, output, options)
 }

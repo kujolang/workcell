@@ -7,7 +7,7 @@ from src.backend.registry import backend_executable, load_backend_manifest, load
 from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
 from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_terminal_result
 from src.domain.definition import default_definition
-from src.util import get_or
+from src.util import get_or, run_argv
 
 mut passed := 0
 mut failed := 0
@@ -168,6 +168,15 @@ expect("protocol parser redacts secrets split across log events", contains(split
 invalid_log := log_frame
 invalid_log["bytes_base64"] = "/w=="
 expect("protocol parser rejects non-UTF-8 log bytes", parse_backend_frames(external_request, to_json(invalid_log) + "\n" + to_json(result_frame), {"redact_values": [secret]})["ok"] == false)
+
+cancel_file := "/tmp/workcell-backend-cancel-" + replace(uuid_v4(), "-", "")
+write_file_atomic(cancel_file, "cancel\n", true)
+external_request["profile"] := {"mode": "hang"}
+cancelled_call := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 5000, "max_output_bytes": 65536, "cancel_file": cancel_file})
+expect("backend client classifies operator cancellation", cancelled_call["ok"] == false&&cancelled_call["result"]["error"]["code"] == "ADAPTER_CANCELLED")
+run_argv(["rm", "-f", cancel_file], 5000)
+timed_call := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 50, "max_output_bytes": 65536})
+expect("backend client classifies adapter timeout", timed_call["ok"] == false&&timed_call["result"]["error"]["code"] == "ADAPTER_TIMEOUT")
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

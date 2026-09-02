@@ -161,15 +161,15 @@ export func load_recovery_journal(path) {
     return {"ok": true, "path": path, "journal": loaded["value"]}
 }
 
-export func update_recovery_journal(path, phase, status, attempt, last_error) {
+export func update_recovery_journal(path, phase_value, status_value, attempt, last_error) {
     loaded := load_recovery_journal(path)
     if loaded["ok"] == false {return loaded}
-    if type(phase) != "string"||trim(phase) == ""||type(status) != "string"||trim(status) == ""||type(attempt) != "dict" {
+    if type(phase_value) != "string"||trim(phase_value) == ""||type(status_value) != "string"||trim(status_value) == ""||type(attempt) != "dict" {
         return {"ok": false, "error": "recovery journal update is invalid"}
     }
     journal := loaded["journal"]
-    journal["phase"] := phase
-    journal["status"] := status
+    journal["phase"] := phase_value
+    journal["status"] := status_value
     journal["attempts"] := push(journal["attempts"], attempt)
     journal["last_error"] := last_error
     checked := validate_recovery_journal(journal)

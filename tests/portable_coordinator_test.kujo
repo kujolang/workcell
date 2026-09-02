@@ -43,6 +43,11 @@ failed_journal := load_recovery_journal(failed_journal_path)
 expect("unknown provision result preserves a recovery-required intent", failed_provision["ok"] == false&&failed_provision["stage"] == "provisioning"&&failed_provision["cleanup_status"] == "recovery-required"&&failed_journal["ok"]&&failed_journal["journal"]["phase"] == "provision-unknown"&&type(failed_journal["journal"]["handle"]) == "null")
 expect("failed provision receipt remains offline-verifiable", verify_receipt_file(failed_provision["receipt_path"])["ok"])
 
+cancel_file := output + "/cancel-requested"
+write_file_atomic(cancel_file, "cancel\n", true)
+cancelled := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"cancel_file": cancel_file})
+expect("portable cancellation is classified and cleans the owned resource", cancelled["ok"] == false&&cancelled["stage"] == "cancelled"&&cancelled["cancelled"]&&cancelled["cleanup_status"] == "complete"&&verify_receipt_file(cancelled["receipt_path"])["ok"])
+
 run_argv(["rm", "-rf", repo], 30000)
 run_argv(["rm", "-rf", output], 30000)
 

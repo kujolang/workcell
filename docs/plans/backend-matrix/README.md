@@ -80,6 +80,7 @@ Modal, Runloop, Cloudflare Sandbox, and Kubernetes Agent Sandbox are the next of
 - [Acceptance criteria](ACCEPTANCE_CRITERIA.md)
 - [Dependency-ordered implementation plan](IMPLEMENTATION_PLAN.md)
 - [Implementation agent prompt](IMPLEMENTATION_PROMPT.md)
+- [Productionization mega prompt](../../../MEGA_PROMPT.md)
 - [Research source ledger](REPORT_SOURCE.md)
 - [Backend data](BACKEND_MATRIX.json)
 - [Capability contract data](CAPABILITY_MATRIX.json)

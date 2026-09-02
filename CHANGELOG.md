@@ -27,6 +27,7 @@
 - Added profile policy ceilings, compact phase/performance and cost evidence, adapter integrity refresh/check tooling, enterprise deployment gates, and a bounded third-party adapter authoring contract.
 - Added single-line `workcell-run-summary/v1` and `workcell-inspect-summary/v1` outputs so agents can consume verdicts, backend identity, policy/capability counts, and evidence paths without embedding full receipts or resolved policies in context.
 - Added the complete backend landscape, taxonomy, capability and security matrices, target architecture, contract proposal, risk register, acceptance criteria, and dependency-ordered implementation package under `docs/plans/backend-matrix/`.
+- Added a root `MEGA_PROMPT.md` that turns the remaining live certification, contract stabilization, packaging, onboarding, ecosystem integration, provider expansion, enterprise operations, and release work into a dependency-ordered implementation assignment for another engineering agent.
 
 The provider-neutral surface and remote adapters remain alpha. Production promotion requires credential-gated evidence for the exact provider account, plan, region, adapter/API/SDK version, requested controls, latency/cost envelope, recovery path, and zero owned orphans.
 

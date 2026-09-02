@@ -182,6 +182,7 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 - [Backend adapters](docs/backend-adapters.md)
 - [Backend adapter authoring](docs/adapter-authoring.md)
 - [Backend matrix research and implementation package](docs/plans/backend-matrix/README.md)
+- [Backend matrix productionization mega prompt](MEGA_PROMPT.md)
 - [API compatibility and machine contracts](docs/api-compatibility.md)
 - [Workcell definition](docs/workcell-definition.md)
 - [Runtime lifecycle](docs/runtime-lifecycle.md)

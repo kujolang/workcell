@@ -1,3 +1,4 @@
+from src.domain.caller_context import caller_context_schema_version, validate_caller_context
 from src.domain.portable_definition import host_profiles_schema_version, load_host_profile, portable_definition_schema_version, resolve_portable_definition, validate_portable_definition, validate_profile_budgets
 from src.evidence.controls import requirements_from_definition
 from src.util import run_argv
@@ -36,6 +37,15 @@ oversized_values["memory"] := "65g"
 oversized_requirements["compute"] := oversized_values
 oversized_compute["requirements"] := oversized_requirements
 expect("portable compute bounds reject excessive memory", validate_portable_definition(oversized_compute)["ok"] == false)
+
+caller := {"schema": caller_context_schema_version(), "caller": "dispatch", "workflow_id": "wf-1", "step_id": "step-2", "attempt_id": "attempt-3", "correlation_id": "corr-1", "causation_id": "parent-1"}
+expect("bounded caller correlation context validates", validate_caller_context(caller)["ok"])
+unsafe_caller := parse_json(to_json(caller))
+unsafe_caller["credential"] := "must-not-be-accepted"
+expect("caller context rejects provider data and secret-shaped extensions", validate_caller_context(unsafe_caller)["ok"] == false)
+oversized_caller := parse_json(to_json(caller))
+oversized_caller["correlation_id"] := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+expect("caller context rejects oversized identifiers", validate_caller_context(oversized_caller)["ok"] == false)
 
 bad := definition
 bad["e2b"] := {}

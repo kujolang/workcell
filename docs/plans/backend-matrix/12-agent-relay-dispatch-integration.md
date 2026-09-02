@@ -84,10 +84,11 @@ Relay owns bounded mission composition, agent/tool policy, lifecycle handoffs, m
 
 ## Correlation fields
 
-Receipt v2 should accept optional caller metadata:
+Receipt v2 accepts optional caller metadata through `workcell run --context <path>`:
 
 ```json
 {
+  "schema": "workcell-caller-context/v1",
   "caller": "dispatch",
   "workflow_id": "...",
   "run_id": "...",
@@ -98,5 +99,6 @@ Receipt v2 should accept optional caller metadata:
 }
 ```
 
-Values are bounded non-secret identifiers. WorkCell's own run ID remains unique and authoritative for resource ownership.
+`caller` and `correlation_id` are required. Workflow, step, attempt, and causation IDs are optional bounded identifiers. Unknown fields fail validation so the context cannot become an orchestration-policy or secret side channel.
 
+Values are bounded non-secret identifiers. WorkCell's own run ID remains unique and authoritative for resource ownership.

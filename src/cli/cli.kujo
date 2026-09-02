@@ -40,7 +40,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
     bool_flags := ["json", "summary", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file"]
+    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context"]
     mut positionals := []
     mut flags := {}
     mut i := 0
@@ -119,7 +119,7 @@ func options_for(command) {
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
     if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json"]}
-    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
+    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
     if command == "backends" {return ["json", "manifest"]}
@@ -170,7 +170,7 @@ func help_value() {
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json"]},
-        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
@@ -212,6 +212,7 @@ func print_help(json_mode) {
     "  --profile       Host profile ID (v2)",
     "  --backend       Optional assertion matching the selected profile (v2)",
     "  --cancel-file   Cancel execution when this operator-owned path appears",
+    "  --context       Bounded caller correlation JSON (v2 only)",
     "  --json          Emit one machine-readable JSON object",
     "  --summary       Emit a compact machine summary without embedding the receipt",
     "  --schema        Emit the versioned Workcell definition schema (validate only)",
@@ -482,6 +483,8 @@ func run_command(parsed) {
     }
     cancel_file := flag(parsed, "cancel-file", "")
     if cancel_file != "" {run_flags["cancel_file"] := cancel_file}
+    caller_context := flag(parsed, "context", "")
+    if caller_context != "" {run_flags["context"] := caller_context}
     if has_flag(parsed, "keep-failed") {
         run_flags["keep_failed"] := true
     }
@@ -491,7 +494,7 @@ func run_command(parsed) {
     if loaded["ok"]&&get_or(loaded, "version", 1) == 2 {
         result = run_portable_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), flag(parsed, "manifest", ""), flag(parsed, "profiles", ""), flag(parsed, "profile", ""), flag(parsed, "backend", ""), run_flags)
     } else {
-        if has_flag(parsed, "manifest")||has_flag(parsed, "profiles")||has_flag(parsed, "profile")||has_flag(parsed, "backend") {
+        if has_flag(parsed, "manifest")||has_flag(parsed, "profiles")||has_flag(parsed, "profile")||has_flag(parsed, "backend")||has_flag(parsed, "context") {
             result = {"ok": false, "run_id": "", "stage": "validated", "error": "portable backend flags require a v2 definition", "exit_code": 2}
         } else {
             result = run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)

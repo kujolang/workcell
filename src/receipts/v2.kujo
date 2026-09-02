@@ -1,6 +1,7 @@
 # Provider-neutral Workcell receipt v2 and atomic lifecycle checkpoints.
 
 from src.backend.types import backend_contract_id, validate_backend_identity
+from src.domain.caller_context import validate_caller_context
 from src.evidence.controls import controls_have_false_enforcement_claim
 from src.util import get_or, load_json, path_has_symlink, redact_with_env, save_json, valid_run_id
 
@@ -40,6 +41,7 @@ export func new_v2_receipt(context) {
     return {
         "schema_version": receipt_v2_schema_version(),
         "run": {"id": run_identifier, "attempt_id": get_or(context, "attempt_id", "attempt-1"), "start_time": now_utc(), "end_time": null, "status": "created", "failure_category": null},
+        "caller": get_or(context, "caller", null),
         "definition": get_or(context, "definition", {}),
         "source": get_or(context, "source", {}),
         "backend": {"contract": backend_contract_id(), "adapter_id": identity["adapter"], "adapter_version": identity["adapter_version"], "provider_id": identity["provider"], "provider_api": identity["provider_api"], "substrate": identity["substrate"], "profile_id": get_or(context, "profile_id", ""), "profile_fingerprint": get_or(context, "profile_fingerprint", ""), "resource_ids": []},
@@ -137,6 +139,11 @@ export func verify_receipt_file(path) {
     run := get_or(receipt, "run", null)
     if type(run) != "dict"||valid_run_id(get_or(run, "id", "")) == false {
         return {"ok": false, "error": "receipt v2 run section is invalid"}
+    }
+    caller := get_or(receipt, "caller", null)
+    if type(caller) != "null" {
+        caller_check := validate_caller_context(caller)
+        if caller_check["ok"] == false {return {"ok": false, "error": "receipt v2 caller context is invalid"}}
     }
     for section in ["definition", "source", "backend", "workspace", "execution", "logs", "changes", "verification", "artifacts", "resources", "cost", "cleanup"] {
         if type(get_or(receipt, section, null)) != "dict" {

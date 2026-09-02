@@ -38,8 +38,8 @@ expect("controls ledger rejects semantic resolution drift", drift_ledger["ok"] =
 root := temp_root() + "/workcell-evidence-recovery-test-" + replace(uuid_v4(), "-", "")
 spawn_process(["mkdir", "-p", root])
 receipt_path := root + "/receipt-v2.json"
-receipt := new_v2_receipt({"run_id": run_identifier, "backend": resolution["data"]["identity"], "controls": ledger["controls"], "definition": {"version": 2}, "source": {"commit": "fixture"}, "workspace": {"schema_version": "workcell-workspace/v1"}, "argv": ["sh", "-lc", "true"], "secret_names": [], "artifact_declarations": ["result.txt"]})
-expect("receipt v2 initializes normalized sections", receipt["schema_version"] == receipt_v2_schema_version()&&type(receipt["backend"]) == "dict"&&type(receipt["cleanup"]) == "dict")
+receipt := new_v2_receipt({"run_id": run_identifier, "caller": {"schema": "workcell-caller-context/v1", "caller": "dispatch", "correlation_id": "corr-1"}, "backend": resolution["data"]["identity"], "controls": ledger["controls"], "definition": {"version": 2}, "source": {"commit": "fixture"}, "workspace": {"schema_version": "workcell-workspace/v1"}, "argv": ["sh", "-lc", "true"], "secret_names": [], "artifact_declarations": ["result.txt"]})
+expect("receipt v2 initializes normalized sections", receipt["schema_version"] == receipt_v2_schema_version()&&receipt["caller"]["correlation_id"] == "corr-1"&&type(receipt["backend"]) == "dict"&&type(receipt["cleanup"]) == "dict")
 checkpoint := checkpoint_v2(receipt, receipt_path, "resolve", "resolved", {"backend": {"resource_ids": []}})
 expect("receipt v2 checkpoint persists atomically", checkpoint["ok"]&&file_exists(receipt_path))
 finished := finish_v2(checkpoint["receipt"], receipt_path, "completed", null, {"status": "complete", "journal_path": "", "items": [], "remaining": []})

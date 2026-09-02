@@ -5,6 +5,7 @@ from src.artifacts.archive import accept_remote_artifact_archive
 from src.backend.registry import backend_executable, load_backend_manifest
 from src.backend.types import backend_contract_id, validate_backend_handle, validate_backend_identity, validate_terminal_result
 from src.domain.portable_definition import load_host_profile, load_workcell_definition, validate_profile_budgets
+from src.domain.caller_context import load_caller_context
 from src.evidence.controls import controls_ledger, requirements_from_definition
 from src.receipts.manifest import write_manifest
 from src.receipts.v2 import add_v2_error, checkpoint_v2, finish_v2, new_v2_receipt
@@ -152,6 +153,8 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     loaded := load_workcell_definition(definition_path)
     if loaded["ok"] == false||get_or(loaded, "version", 1) != 2 {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(loaded, "error", "portable runner requires a v2 definition"), "exit_code": 2}}
     definition := loaded["definition"]
+    caller_state := load_caller_context(option(flags, "context", ""))
+    if caller_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": caller_state["error"], "exit_code": 2}}
     cancel_file := option(flags, "cancel_file", "")
     if type(cancel_file) == "string"&&cancel_file != "" {definition["_runtime_cancel_file"] := cancel_file}
     profile_state := load_host_profile(profiles_path, profile_id, backend_override)
@@ -183,7 +186,7 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     if validate_backend_identity(identity)["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend returned invalid identity", "output_dir": output_dir, "exit_code": 2}}
     ledger := controls_ledger(requirements_state["requirements"], get_or(resolved["result"]["data"], "capabilities", []))
     if ledger["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend rejected required capabilities: " + to_string(get_or(ledger, "rejected", [])), "output_dir": output_dir, "exit_code": 2}}
-    receipt := new_v2_receipt({"run_id": run_identifier, "backend": identity, "profile_id": profile_id, "profile_fingerprint": profile_state["fingerprint"], "definition": {"schema": definition["schema"], "name": definition["name"]}, "source": {"commit": source["commit"], "clean": true}, "workspace": {"source": "clean-git-commit", "materialization": "portable-clone"}, "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment_names": keys(definition["environment"]["set"]), "secret_names": definition["secrets"], "artifact_declarations": definition["artifacts"]["export"], "controls": ledger["controls"], "journal_path": output_dir + "/recovery/" + run_identifier + ".json", "timings": {"resolve": {"duration_ms": resolve_duration, "authority": "workcell-monotonic"}}, "cost": get_or(resolved["result"]["data"], "cost", {"status": "unknown", "class": "unknown", "amount": null, "usage": [], "source": "not-reported"})})
+    receipt := new_v2_receipt({"run_id": run_identifier, "caller": caller_state["context"], "backend": identity, "profile_id": profile_id, "profile_fingerprint": profile_state["fingerprint"], "definition": {"schema": definition["schema"], "name": definition["name"]}, "source": {"commit": source["commit"], "clean": true}, "workspace": {"source": "clean-git-commit", "materialization": "portable-clone"}, "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment_names": keys(definition["environment"]["set"]), "secret_names": definition["secrets"], "artifact_declarations": definition["artifacts"]["export"], "controls": ledger["controls"], "journal_path": output_dir + "/recovery/" + run_identifier + ".json", "timings": {"resolve": {"duration_ms": resolve_duration, "authority": "workcell-monotonic"}}, "cost": get_or(resolved["result"]["data"], "cost", {"status": "unknown", "class": "unknown", "amount": null, "usage": [], "source": "not-reported"})})
     if get_or(receipt, "ok", true) == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": receipt["error"], "output_dir": output_dir, "exit_code": 10}}
     initial := checkpoint_v2(receipt, output_dir + "/receipt.json", "resolve", "resolved", {})
     if initial["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": initial["error"], "output_dir": output_dir, "exit_code": 10}}

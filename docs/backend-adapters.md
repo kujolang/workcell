@@ -80,6 +80,8 @@ Inspect and run with explicit inputs:
 
 Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The bundled adapters currently resolve only `env:` references. Workcell passes only the named environment variable to the adapter process; the value is not placed in the definition, profile, request payload, receipt, log, or artifact. Kujo Agent/OS-store resolution requires a host bridge and must fail rather than fall back to ambient credentials.
 
+Orchestrators may pass `--context <path>` with a `workcell-caller-context/v1` JSON object. Only bounded identifiers (`caller`, required `correlation_id`, and optional workflow, step, attempt, and causation IDs) are accepted. Context is copied into receipt evidence; it cannot carry provider options, credentials, retry policy, or workload semantics.
+
 Host routing fields are normalized identically by `inspect` and `run`. `region` and `provider_project` are bounded control-free strings. Custom endpoints require HTTPS; loopback HTTP is accepted only with `policy.allow_insecure_loopback_endpoint: true` for explicit local development. Embedded URL credentials, fragments, whitespace, backslashes, unknown policy keys, malformed credential names, and non-object adapter options fail during profile loading.
 
 Operator profiles may impose preflight ceilings with `max_cpus`, `max_memory_mb`, `max_pids`, `max_timeout_ms`, `max_output_bytes`, `max_workspace_upload_bytes`, and `max_artifact_download_bytes`. Inspect and run apply the same checks before adapter resolution or provisioning. These are deterministic resource/transfer ceilings, not monetary estimates or concurrency promises.

@@ -8,7 +8,7 @@ func flag_value(argv, name, fallback) {
         if argv[i] == name&&i + 1 < len(argv) {return argv[i + 1]}
         i = i + 1
     }
-return fallback
+    return fallback
 }
 
 func metric_result(text, label) {
@@ -21,13 +21,13 @@ func metric_result(text, label) {
             try {
                 value = parse_int(trim(substring(line, len(label), len(line))))
             } except err {
-            return {"ok": false, "value": 0}
+                return {"ok": false, "value": 0}
+            }
+            return {"ok": true, "value": value}
         }
-    return {"ok": true, "value": value}
-}
-i = i + 1
-}
-return {"ok": true, "value": 0}
+        i = i + 1
+    }
+    return {"ok": true, "value": 0}
 }
 
 func metric(text, label) {
@@ -41,9 +41,9 @@ func number_file(path, fallback) {
     try {
         value = parse_int(trim(loaded["text"]))
     } except err {
-    return fallback
-}
-return value
+        return fallback
+    }
+    return value
 }
 
 func suite_result(report_dir, name) {
@@ -77,7 +77,7 @@ export func render_report(report_dir) {
         if suite["ok"] == false {ok = false}
         i = i + 1
     }
-return {"schema_version": "workcell-report/v1", "workcell_version": project_version(), "ok": ok, "suites": suites, "totals": {"passed": total_passed, "failed": total_failed, "elapsed_ms": total_elapsed}, "deployment_gates": {"docker_integration": "skipped", "podman_matrix": "skipped", "ecosystem_tools": "skipped"}}
+    return {"schema_version": "workcell-report/v1", "workcell_version": project_version(), "ok": ok, "suites": suites, "totals": {"passed": total_passed, "failed": total_failed, "elapsed_ms": total_elapsed}, "deployment_gates": {"docker_integration": "skipped", "podman_matrix": "skipped", "ecosystem_tools": "skipped"}}
 }
 
 argv := args()

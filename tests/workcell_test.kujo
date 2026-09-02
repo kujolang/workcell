@@ -23,9 +23,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-    failed = failed + 1
-    print("FAIL " + label)
-}
+        failed = failed + 1
+        print("FAIL " + label)
+    }
 }
 
 func with_network(definition, mode) {

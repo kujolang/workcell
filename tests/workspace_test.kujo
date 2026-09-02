@@ -33,9 +33,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-    failed = failed + 1
-    print("FAIL " + label)
-}
+        failed = failed + 1
+        print("FAIL " + label)
+    }
 }
 
 repo := "/tmp/workcell-patch-fixture-" + run_id()
@@ -68,7 +68,7 @@ if cleanup_strategy_workspace["ok"] {
     valid_cleanup := cleanup_workspace(cleanup_strategy_workspace, false)
     expect("workspace remains cleanable after invalid cleanup strategy", valid_cleanup["ok"])
 } else {
-expect("workspace for cleanup strategy contract created", false)
+    expect("workspace for cleanup strategy contract created", false)
 }
 if workspace["ok"] {
     binary_path := workspace["workspace_path"] + "/added.bin"
@@ -99,10 +99,10 @@ if workspace["ok"] {
             if unusual_details["files"][unusual_i]["path"] == newline_name {saw_newline_name = true}
             unusual_i = unusual_i + 1
         }
-}
-expect("change report preserves tabs and newlines in Git paths", unusual_details["ok"]&&saw_tab_name&&saw_newline_name)
-cleanup := cleanup_workspace(workspace, false)
-expect("worktree cleanup succeeded", cleanup["ok"])
+    }
+    expect("change report preserves tabs and newlines in Git paths", unusual_details["ok"]&&saw_tab_name&&saw_newline_name)
+    cleanup := cleanup_workspace(workspace, false)
+    expect("worktree cleanup succeeded", cleanup["ok"])
 }
 run_argv(["rm", "-rf", repo], 30000)
 

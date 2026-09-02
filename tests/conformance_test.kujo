@@ -8,9 +8,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-    failed = failed + 1
-    print("FAIL " + label)
-}
+        failed = failed + 1
+        print("FAIL " + label)
+    }
 }
 
 report := run_backend_conformance("tests/fixtures/backend-protocol/manifest.json", {"nonce": "ignored"}, "wc-33333333333333333333333333333333")

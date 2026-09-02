@@ -11,11 +11,11 @@ if type(requested_count) == "string"&&trim(requested_count) != "" {
     try {
         parsed_count = parse_int(trim(requested_count))
     } except err {
-    parsed_count = 0
-}
-if parsed_count > 0&&parsed_count <= 10000 {
-    file_count = parsed_count
-}
+        parsed_count = 0
+    }
+    if parsed_count > 0&&parsed_count <= 10000 {
+        file_count = parsed_count
+    }
 }
 ensure_dir(repo)
 run_argv(["git", "-C", repo, "init", "-q"], 30000)

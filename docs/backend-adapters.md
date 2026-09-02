@@ -57,6 +57,8 @@ The v2 definition contains workload semantics only. Provider, region, account, c
 }
 ```
 
+Docker and Podman profiles are built in and require no adapter manifest. The portable coordinator translates the v2 workload into the stable v1 OCI policy/lifecycle, then normalizes the resulting evidence into receipt v2. Built-in profile options are limited to `engine_runtime` (for example `runsc` or a configured Kata runtime) and `workspace_run_as`; remote routing and credentials are rejected. Domain allowlists are not mapped to an OCI custom network and fail capability resolution because Docker/Podman alone cannot provide equivalent semantics.
+
 Operator guarantees are visible as `operator-claimed` with `operator-profile` authority and remain `not-observed` until separate evidence exists. They are never relabeled `workcell-enforced` or `provider-claimed`. Remove any guarantee the deployment cannot substantiate; strict resolution will then reject the run before provisioning.
 
 Inspect and run with explicit inputs:

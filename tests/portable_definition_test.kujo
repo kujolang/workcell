@@ -1,6 +1,7 @@
 from src.domain.caller_context import caller_context_schema_version, validate_caller_context
 from src.domain.portable_definition import host_profiles_schema_version, load_host_profile, portable_definition_schema_version, resolve_portable_definition, validate_portable_definition, validate_profile_budgets
 from src.evidence.controls import requirements_from_definition
+from src.execution.portable_oci import inspect_portable_oci, portable_to_legacy
 from src.util import run_argv
 
 mut passed := 0
@@ -8,6 +9,11 @@ mut failed := 0
 
 func expect(label, condition) {
     if condition {passed = passed + 1; print("PASS " + label)} else {failed = failed + 1; print("FAIL " + label)}
+}
+
+func has_requirement(requirements, id) {
+    for requirement in requirements {if requirement["id"] == id {return true}}
+    return false
 }
 
 definition := {
@@ -26,6 +32,22 @@ resolved := resolve_portable_definition(definition)
 expect("portable defaults resolve", resolved["ok"]&&resolved["definition"]["workspace"]["scan"]["max_files"] == 100000)
 requirements := requirements_from_definition(resolved["definition"])
 expect("portable requirements become semantic capabilities", requirements["ok"]&&len(requirements["requirements"]) >= 20)
+local_profile := {"backend": "docker", "credential_ref": "", "region": "", "provider_project": "", "endpoint": "", "adapter_options": {"docker": {"engine_runtime": "runsc", "workspace_run_as": "host"}}, "policy": {}}
+legacy := portable_to_legacy(resolved["definition"], "docker", local_profile)
+if legacy["ok"] == false {print(to_json_pretty(legacy))}
+expect("portable workload translates to the stable Docker contract", legacy["ok"]&&legacy["definition"]["runtime"]["engine_runtime"] == "runsc"&&legacy["definition"]["command"][0] == "sh")
+local_inspection := inspect_portable_oci(resolved["definition"], "docker", local_profile)
+expect("portable Docker capability resolution preserves semantic controls", local_inspection["ok"]&&len(local_inspection["controls"]) == len(requirements["requirements"]))
+remote_fields := parse_json(to_json(local_profile))
+remote_fields["credential_ref"] := "env:DOCKER_TOKEN"
+expect("built-in OCI profiles reject remote credential routing", portable_to_legacy(resolved["definition"], "docker", remote_fields)["ok"] == false)
+allowlisted := parse_json(to_json(resolved["definition"]))
+allowlisted_sections := allowlisted["requirements"]
+allowlisted_sections["network"] := {"mode": "allowlist", "allow": ["api.example.invalid"]}
+allowlisted["requirements"] := allowlisted_sections
+allowlisted_requirements := requirements_from_definition(allowlisted)
+expect("domain allowlist uses a distinct semantic capability", allowlisted_requirements["ok"]&&has_requirement(allowlisted_requirements["requirements"], "network.allowlist.domain"))
+expect("Docker never downgrades a domain allowlist to a custom network", inspect_portable_oci(allowlisted, "docker", local_profile)["ok"] == false)
 
 unbounded_artifacts := parse_json(to_json(definition))
 unbounded_artifacts["artifacts"] := {"export": ["result.txt"]}

@@ -26,6 +26,8 @@ inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json",
 expect("portable inspect negotiates before execution", inspection["ok"]&&len(inspection["controls"]) >= 20)
 routing_inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json", "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture-routing", "")
 expect("portable inspect resolves region project and endpoint like run", routing_inspection["ok"])
+docker_inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json", "", "tests/fixtures/portable/profiles.json", "docker", "")
+expect("portable inspect resolves built-in Docker without a manifest", docker_inspection["ok"]&&docker_inspection["backend"]["adapter"] == "docker")
 
 result := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {})
 expect("portable lifecycle succeeds", result["ok"])
@@ -40,6 +42,8 @@ expect("portable manifest verifies offline", verify_manifest(result["output_dir"
 
 dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"dry_run": true})
 expect("portable dry run resolves without provisioning", dry["ok"]&&dry["receipt"]["cleanup"]["status"] == "not-provisioned")
+local_dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "", "tests/fixtures/portable/profiles.json", "docker", "", {"dry_run": true})
+expect("portable Docker dry run uses normalized v2 evidence", local_dry["ok"]&&local_dry["receipt"]["schema_version"] == "workcell-receipt/v2alpha1"&&verify_receipt_file(local_dry["receipt_path"])["ok"]&&verify_manifest(local_dry["output_dir"])["ok"])
 
 failed_provision := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture-fail-provision", "", {})
 failed_journal_path := get_or(get_or(failed_provision, "receipt", {}), "cleanup", {})["journal_path"]

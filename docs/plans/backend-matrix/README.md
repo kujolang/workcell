@@ -1,6 +1,6 @@
 # WorkCell backend matrix architecture package
 
-Status: implementation-ready architecture decision  
+Status: alpha implementation landed; live-provider promotion gates remain  
 Research date: 2026-09-01  
 Audience: WorkCell maintainers and the engineering agent implementing WorkCell 2.x provider portability
 
@@ -90,3 +90,7 @@ Modal, Runloop, Cloudflare Sandbox, and Kubernetes Agent Sandbox are the next of
 The review covered all hand-written WorkCell source, tests, fixtures, examples, release workflows, architecture/security/compatibility documentation, and relevant boundaries in Kujo Agent, Relay, Dispatch, Agents SDK, RunLedger, Watchdog, Eval, CaseFile, Spec, ShipCheck, Kujo Workflows, and Kujo Pi. Provider facts use first-party product, API, security, pricing, and runtime documentation available on the research date. Unknown matrix values remain `null`; marketing phrases are not converted into security guarantees.
 
 No live provider credentials or billable environments were used. Startup numbers in provider marketing are not accepted as WorkCell benchmarks. Every live performance and security claim remains a release gate for the exact adapter version and target environment.
+
+## Implemented foundation
+
+The repository now contains the narrow executable protocol, strict capability negotiation, receipt v2, clean workspace packaging, bounded adapter I/O and artifacts, durable ownership recovery, offline conformance, Docker/Podman portable profiles, and official E2B, Vercel Sandbox, and Daytona adapters. gVisor and Kata remain OCI `engine_runtime` selections rather than backend IDs. The implementation is not promoted as universally production-certified until the credential-gated live matrix, provider-specific isolation probes, performance baselines, and zero-orphan evidence pass for each supported account/plan/region.

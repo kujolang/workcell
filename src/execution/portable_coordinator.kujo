@@ -7,6 +7,7 @@ from src.backend.types import backend_contract_id, validate_backend_handle, vali
 from src.domain.portable_definition import load_host_profile, load_workcell_definition, validate_profile_budgets
 from src.domain.caller_context import load_caller_context
 from src.evidence.controls import controls_ledger, requirements_from_definition
+from src.execution.portable_oci import inspect_portable_oci, run_portable_oci
 from src.receipts.manifest import write_manifest
 from src.receipts.v2 import add_v2_error, checkpoint_v2, finish_v2, new_v2_receipt
 from src.recovery.recovery import attach_recovery_handle, update_recovery_journal, write_recovery_intent
@@ -108,6 +109,10 @@ export func inspect_portable_workcell(definition_path, manifest_path, profiles_p
     profile := profile_state["profile"]
     budget_state := validate_profile_budgets(definition, profile)
     if budget_state["ok"] == false {return budget_state}
+    if profile_state["backend"] == "docker"||profile_state["backend"] == "podman" {
+        local := inspect_portable_oci(definition, profile_state["backend"], profile)
+        return {"ok": local["ok"], "schema_version": "workcell-portable-inspect/v1", "run_id": run_id(), "definition": {"schema": definition["schema"], "name": definition["name"]}, "profile": {"id": profile_id, "backend": profile_state["backend"], "fingerprint": profile_state["fingerprint"]}, "backend": get_or(local, "identity", {}), "controls": get_or(local, "controls", []), "rejected": get_or(local, "rejected", []), "error": get_or(local, "error", "")}
+    }
     manifest_state := load_backend_manifest(manifest_path)
     if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile")}}
     credential_state := validate_backend_credential_ref(manifest_state["manifest"], get_or(profile, "credential_ref", ""))
@@ -164,6 +169,9 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     profile := profile_state["profile"]
     budget_state := validate_profile_budgets(definition, profile)
     if budget_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": budget_state["error"], "exit_code": 2}}
+    if profile_state["backend"] == "docker"||profile_state["backend"] == "podman" {
+        return run_portable_oci(definition, repo_path, requested_output, profile_id, profile_state["fingerprint"], profile, profile_state["backend"], caller_state["context"], flags)
+    }
     adapter_options := adapter_options_for(profile, profile_state["backend"])
     manifest_state := load_backend_manifest(manifest_path)
     if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile"), "exit_code": 2}}

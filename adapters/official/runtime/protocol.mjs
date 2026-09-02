@@ -33,8 +33,8 @@ export function describe(provider) {
 const BASE = new Set(['lifecycle.provision', 'lifecycle.terminate', 'lifecycle.destroy', 'lifecycle.inventory', 'workspace.stage', 'workspace.collect_delta', 'process.argv', 'process.exit_status', 'execution.timeout', 'logs.bounded', 'artifact.selective_export', 'environment.explicit', 'credentials.redacted_transport', 'evidence.provider_identity', 'ownership.markers']);
 const DIRECT = {
   e2b: new Set([...BASE, 'network.none']),
-  'vercel-sandbox': new Set([...BASE, 'compute.cpu_limit', 'network.none', 'network.custom']),
-  daytona: new Set([...BASE, 'compute.cpu_limit', 'compute.memory_limit', 'network.none', 'network.custom', 'image.oci'])
+  'vercel-sandbox': new Set([...BASE, 'compute.cpu_limit', 'network.none', 'network.allowlist.domain']),
+  daytona: new Set([...BASE, 'compute.cpu_limit', 'compute.memory_limit', 'network.none', 'network.allowlist.domain', 'image.oci'])
 };
 
 const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_cancelled', 'fixture_exit_code', 'fixture_mode', 'fixture_stderr', 'fixture_stdout', 'fixture_timed_out', 'guarantees', 'policy', 'provider_project', 'region']);

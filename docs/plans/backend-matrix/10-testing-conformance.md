@@ -79,6 +79,8 @@ Before any remote adapter merges:
 - policy inspection produces equivalent engine argv for the same definition;
 - performance regression stays within the approved measured budget.
 
+`tests/portable_oci_contract.sh` is the end-to-end vertical-slice gate: one unchanged v2 workload runs through the built-in Docker profile without a manifest, emits receipt v2, verifies offline, leaves the source clean, and proves no labeled container remains.
+
 Golden argv comparisons are appropriate for the OCI shared driver. They are not a universal backend contract.
 
 ## Live provider tests
@@ -109,4 +111,3 @@ Live tests prove behavior for one account/plan/region/time. They do not convert 
 ## Clean-machine verification
 
 The implementation release gate uses a clean checkout with only the pinned Kujo runtime, Git, jq, and the selected built-in engine for core. External adapter gates install their declared runtime/SDK in their own environment. Core tests prove that no Node, Python, Go, cloud CLI, provider account, or network is needed to validate, inspect with fixture profiles, run conformance fixtures, or verify receipts.
-

@@ -1,6 +1,12 @@
 {
   "schema": "workcell-host-profiles/v1alpha1",
   "profiles": {
+    "docker": {
+      "backend": "docker",
+      "credential_ref": "",
+      "adapter_options": {"docker": {"workspace_run_as": "host"}},
+      "policy": {}
+    },
     "fixture": {
       "backend": "external-fixture",
       "credential_ref": "",

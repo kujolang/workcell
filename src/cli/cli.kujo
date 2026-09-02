@@ -176,7 +176,7 @@ func help_value() {
         , {"name": "backends", "options": ["--json", "--manifest"]}
         , {"name": "recover", "options": ["--journal", "--manifest", "--profile", "--dry-run", "--json"]}
         ],
-        "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "backend or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
+        "exit_codes": {"0": "success", "2": "usage or definition validation", "3": "source or workspace preparation", "4": "backend or image preparation", "5": "container startup", "6": "timeout", "7": "workload failure or cancellation", "8": "verification or artifact failure", "9": "cleanup failure", "10": "internal failure"},
         "definition_schema": definition_schema()
     }
 }
@@ -403,6 +403,9 @@ func run_exit_code(result) {
         return 6
     }
     if status == "workload-failed" {
+        return 7
+    }
+    if status == "cancelled" {
         return 7
     }
     if status == "artifact-failed" {

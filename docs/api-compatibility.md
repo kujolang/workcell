@@ -30,7 +30,7 @@ The Workcell product version and contract identifiers are independent. Workcell 
 
 ## Exit-code stability
 
-`0` means success. `2` means usage or definition validation, `3` source/workspace preparation, `4` Docker or image preparation, `5` container startup, `6` timeout, `7` workload failure, `8` verification or artifact failure, `9` cleanup failure, and `10` internal failure. A future major contract version is required to repurpose an existing code.
+`0` means success. `2` means usage or definition validation, `3` source/workspace preparation, `4` backend or image preparation, `5` workload startup, `6` timeout, `7` workload failure or operator cancellation, `8` verification or artifact failure, `9` cleanup failure, and `10` internal failure. A future major contract version is required to repurpose an existing code.
 
 ## Deprecation and release rules
 

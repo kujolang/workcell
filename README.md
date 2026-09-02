@@ -155,6 +155,7 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 
 - [Architecture](docs/architecture.md)
 - [Backend adapters](docs/backend-adapters.md)
+- [Backend adapter authoring](docs/adapter-authoring.md)
 - [Workcell definition](docs/workcell-definition.md)
 - [Runtime lifecycle](docs/runtime-lifecycle.md)
 - [Platform compatibility](docs/compatibility.md)

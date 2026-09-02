@@ -2,7 +2,7 @@
 
 from src.backend.client import invoke_backend
 from src.artifacts.archive import accept_remote_artifact_archive
-from src.backend.registry import backend_executable, load_backend_manifest
+from src.backend.registry import backend_executable, load_backend_manifest, validate_backend_credential_ref
 from src.backend.types import backend_contract_id, validate_backend_handle, validate_backend_identity, validate_terminal_result
 from src.domain.portable_definition import load_host_profile, load_workcell_definition, validate_profile_budgets
 from src.domain.caller_context import load_caller_context
@@ -110,6 +110,8 @@ export func inspect_portable_workcell(definition_path, manifest_path, profiles_p
     if budget_state["ok"] == false {return budget_state}
     manifest_state := load_backend_manifest(manifest_path)
     if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile")}}
+    credential_state := validate_backend_credential_ref(manifest_state["manifest"], get_or(profile, "credential_ref", ""))
+    if credential_state["ok"] == false {return credential_state}
     required_digest := get_or(profile["policy"], "required_adapter_digest", "")
     if required_digest != ""&&get_or(manifest_state["manifest"], "digest", "") != required_digest {return {"ok": false, "error": "adapter manifest does not satisfy required_adapter_digest"}}
     executable_state := backend_executable(manifest_state["manifest"])
@@ -165,6 +167,8 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     adapter_options := adapter_options_for(profile, profile_state["backend"])
     manifest_state := load_backend_manifest(manifest_path)
     if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile"), "exit_code": 2}}
+    credential_state := validate_backend_credential_ref(manifest_state["manifest"], get_or(profile, "credential_ref", ""))
+    if credential_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": credential_state["error"], "exit_code": 2}}
     required_digest := get_or(profile["policy"], "required_adapter_digest", "")
     if required_digest != ""&&get_or(manifest_state["manifest"], "digest", "") != required_digest {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "adapter manifest does not satisfy required_adapter_digest", "exit_code": 2}}
     executable_state := backend_executable(manifest_state["manifest"])

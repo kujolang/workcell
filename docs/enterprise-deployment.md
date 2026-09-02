@@ -33,6 +33,28 @@ Workcell 1.0 provides a stable, release-gated local Docker/Podman execution cont
 - Workcell redacts exact captured values and common base64 encodings incrementally while the process streams, before logs and receipts are persisted. Hashed or otherwise transformed secret output still requires workload-level controls.
 - Retain receipts, logs, patches, and failure workspaces according to the organization's evidence-retention policy.
 
+## Remote adapters and policy profiles
+
+- Keep workload definitions provider-neutral. Select the backend through an operator-owned host profile and pin the adapter digest for approved environments.
+- Set profile ceilings for CPU, memory, PIDs, timeout, output, workspace upload, and artifact download. A workload exceeding any ceiling fails before capability resolution or provisioning.
+- Treat every receipt control separately as requested, accepted, enforced, and observed. Provider-claimed and operator-claimed enforcement is evidence of configuration, not an independently observed isolation result.
+- Permit only reviewed adapter IDs, versions, digests, profile fingerprints, regions, projects, endpoints, and provider plans in deployment policy. Workcell validates the selected explicit profile but does not operate a fleet-wide allowlist service.
+- Use `env:` credentials only for tightly scoped CI environments. The adapter manifest must advertise the exact reference. Kujo Agent and OS-store references require a separately reviewed host bridge; Workcell does not export secrets from `kujo agent auth` or silently fall back to ambient provider SDK discovery.
+- Pass orchestrator correlation through `--context`; do not place retry policy, queue state, provider credentials, or model credentials in caller context.
+- Keep provider control-plane credentials distinct from secrets intentionally injected into the workload. Prefer short-lived, project-scoped provider credentials and provider-native audit logging.
+
+## Data governance and recovery
+
+- Approve provider region, data residency, subprocess/log retention, backup, snapshot, and deletion behavior outside Workcell. A requested region is not observed residency unless the provider supplies suitable evidence.
+- Inventory remote resources by both run ID and ownership nonce. Recovery must refuse incomplete inventory and ownership mismatches.
+- Alert on `recovery-required`, failed cleanup, terminal-unknown, artifact partial failure, and receipt persistence failure. Dispatch or Relay may start a new correlated attempt; Workcell never retries a workload invisibly.
+- Define evidence retention separately from provider resource retention. Workcell manifests prove local evidence integrity, not provider-side erasure.
+- Run credential-gated provider smoke tests on a schedule and before adapter promotion. A passing smoke is scoped to its exact account, plan, region, adapter, SDK, and time.
+
+## Operational release gate
+
+Production promotion requires a clean-machine core suite, adapter integrity verification, offline conformance, capability-specific live probes, zero-orphan inventory, dependency and license review, rollback instructions, API-deprecation ownership, measured lifecycle latency, and an explicit spend ceiling. Unsupported or unknown security controls block the run; evidence-only metrics or cost may remain unknown if the profile permits no security degradation.
+
 ## Operator acceptance
 
 Before an organization calls a deployment production-accepted, it must separately approve daemon and kernel hardening, tenant isolation, egress enforcement, image provenance and vulnerability policy, signing-key custody, retention and deletion, incident response, and applicable compliance controls. Workcell receipts can support that review but do not replace it or provide certification.

@@ -9,3 +9,5 @@ All adapters provide deterministic `fixture_mode` tests without network access. 
 Official manifests pin the launcher digest. Each launcher pins a verifier that checks the shared runtime, `package.json`, and `package-lock.json` before Node starts. Production installations must use `npm ci` from the committed lockfile and make the installed adapter tree read-only. The integrity chain detects local file changes; it does not authenticate a distribution channel or prove that a mutable `node_modules` tree matches the lockfile.
 
 After an intentional runtime or dependency change, run `npm run integrity:update` and review every digest diff. CI runs `npm run integrity:check`; a stale chain fails closed.
+
+See [Backend adapter authoring](../../docs/adapter-authoring.md) for the protocol boundary, capability evidence rules, conformance requirements, and promotion gate.

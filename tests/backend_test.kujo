@@ -3,7 +3,7 @@ from src.backend.fixture import fixture_dispatch
 from src.backend.oci.docker import docker_identity
 from src.backend.oci.driver import builtin_backend_identity, builtin_backend_valid
 from src.backend.oci.podman import podman_identity
-from src.backend.registry import backend_executable, load_backend_manifest, load_backend_registry, registry_backend, validate_backend_manifest
+from src.backend.registry import backend_executable, load_backend_manifest, load_backend_registry, registry_backend, validate_backend_credential_ref, validate_backend_manifest
 from src.backend.resolution import capability_state_by_id, resolve_capabilities, validate_capability_implications
 from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state, terminal_result, validate_backend_handle, validate_backend_identity, validate_capability_state, validate_protocol_request, validate_protocol_result, validate_terminal_result
 from src.domain.definition import default_definition
@@ -125,6 +125,10 @@ expect("registry resolves explicit manifest", registry["ok"]&&registry_backend(r
 external_executable := backend_executable(manifest["manifest"])
 expect("registry resolves executable relative to manifest", external_executable["ok"]&&ends_with(get_or(external_executable, "path", ""), "/workcell-backend-fixture"))
 expect("registry rejects duplicate backend ids", load_backend_registry([manifest_path, manifest_path])["ok"] == false)
+credential_manifest := parse_json(to_json(manifest["manifest"]))
+credential_manifest["credential_refs"] := ["env:E2B_API_KEY"]
+expect("registry accepts an explicitly advertised credential reference", validate_backend_credential_ref(credential_manifest, "env:E2B_API_KEY")["ok"])
+expect("registry rejects an unadvertised credential-store bridge", validate_backend_credential_ref(credential_manifest, "kujo-agent:e2b")["ok"] == false)
 invalid_manifest := manifest["manifest"]
 invalid_manifest["unknown"] := true
 expect("backend manifest rejects unknown fields", validate_backend_manifest(invalid_manifest)["ok"] == false)

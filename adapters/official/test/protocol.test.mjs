@@ -16,7 +16,7 @@ const requirements = ['lifecycle.provision','lifecycle.terminate','lifecycle.des
 
 function call(provider, operation, payload = {}, profile = { fixture_mode: true }, environment = {}) {
   const req = { contract: 'workcell-backend/v1alpha1', request_id: `test-${operation}`, run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation, deadline_ms: 10000, profile, payload };
-  const result = spawnSync(path.join(root, provider, `workcell-backend-${provider}`), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: environment });
+  const result = spawnSync(path.join(root, provider, `workcell-backend-${provider}`), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: { PATH: process.env.PATH, ...environment } });
   assert.equal(result.status, 0);
   const lines = result.stdout.trim().split('\n').map(JSON.parse);
   return { req, events: lines.filter((x) => x.type === 'event'), result: lines.at(-1) };

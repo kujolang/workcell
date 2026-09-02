@@ -66,6 +66,8 @@ Read-only. May authenticate and inspect account/host/profile/plan/region. Takes 
 
 It must not create compute, snapshots, volumes, networks, object buckets, or images.
 
+For `v1alpha1`, accepted capability values are exact: the returned `resolved` value must equal the requested semantic value. An adapter that needs a different value rejects and explains the limitation; it does not silently round resources, widen a network policy, or substitute a different image. Accepted states require a positive enforcement authority (`workcell-enforced`, `provider-claimed`, or `operator-claimed`) and separate observation evidence. `unknown` is never an accepted enforcement claim.
+
 ### `provision`
 
 Creates or exclusively acquires the run resource. It is idempotent by `run_id + idempotency_key`. Returns an opaque handle, provider resource IDs, ownership markers, created time, expected expiration, and actual capability resolution. WorkCell persists the handle before calling another mutating operation.

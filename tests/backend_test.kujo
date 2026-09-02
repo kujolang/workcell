@@ -43,6 +43,7 @@ expect("built-in identity dispatches by backend", builtin_backend_identity(podma
 state := capability_state("network.none", "supported", true, "accepted", {"mode": "deny-all"}, {"status": "provider-claimed", "authority": "fixture", "evidence": "deny"}, {"status": "observed", "method": "probe", "result": "blocked"}, [])
 expect("capability state validates", validate_capability_state(state)["ok"])
 expect("capability state rejects invalid enforcement", validate_capability_state(capability_state("network.none", "supported", true, "accepted", {}, {"status": "enforced"}, {"status": "observed"}, []))["ok"] == false)
+expect("accepted capability rejects unknown enforcement", validate_capability_state(capability_state("network.none", "supported", true, "accepted", {"mode": "deny-all"}, {"status": "unknown", "authority": "fixture", "evidence": ""}, {"status": "not-observed", "method": "", "result": ""}, []))["ok"] == false)
 
 handle := backend_handle("fixture", "1.0.0", "fixture", "sha256:fixture", [{"kind": "fixture", "id": "fixture-1"}], run_identifier, "nonce-1", {})
 expect("backend handle validates ownership", validate_backend_handle(handle, run_identifier)["ok"])
@@ -61,6 +62,7 @@ capabilities := {
 }
 strict := resolve_capabilities([{"id": "network.none", "requested": true, "required": true, "value": {"mode": "none"}}], capabilities)
 expect("supported strict capability resolves", strict["ok"]&&capability_state_by_id(strict["states"], "network.none")["acceptance"] == "accepted")
+expect("capability resolution preserves requested semantic value", to_json(capability_state_by_id(strict["states"], "network.none")["resolved"]) == to_json({"mode": "none"}))
 unknown := resolve_capabilities([{"id": "compute.pid_limit", "requested": true, "required": true, "value": 64}], capabilities)
 expect("unknown required capability fails closed", unknown["ok"] == false&&unknown["rejected"][0] == "compute.pid_limit")
 degraded := resolve_capabilities([{"id": "metrics.cpu", "requested": true, "required": false, "allow_degradation": true}], capabilities)

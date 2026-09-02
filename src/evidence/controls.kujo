@@ -104,6 +104,11 @@ state := get_or(by_id, request["id"], null)
 if type(state) != "dict" {
     return {"ok": false, "error": "control resolution is missing: " + request["id"]}
 }
+expected_requested := get_or(request, "requested", true)
+if state["requested"] != expected_requested {return {"ok": false, "error": "control requested state mismatch: " + request["id"]}}
+if state["acceptance"] == "accepted"&&to_json(state["resolved"]) != to_json(get_or(request, "value", true)) {
+    return {"ok": false, "error": "control resolution changed requested semantics: " + request["id"]}
+}
 control := {
     "id": request["id"],
     "requested": get_or(request, "value", true),

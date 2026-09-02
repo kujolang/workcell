@@ -14,7 +14,7 @@ return limitations
 func enforcement_for(capability, accepted) {
     enforcement := get_or(capability, "enforcement", {})
     if type(enforcement) == "dict"&&type(get_or(enforcement, "status", null)) == "string" {
-        return enforcement
+        return {"status": enforcement["status"], "authority": get_or(enforcement, "authority", "adapter-resolution"), "evidence": get_or(enforcement, "evidence", "")}
     }
 if accepted {
     return {"status": "unknown", "authority": "adapter-resolution", "evidence": ""}
@@ -25,7 +25,7 @@ return {"status": "unsupported", "authority": "adapter-resolution", "evidence": 
 func observation_for(capability) {
     observation := get_or(capability, "observation", {})
     if type(observation) == "dict"&&type(get_or(observation, "status", null)) == "string" {
-        return observation
+        return {"status": observation["status"], "method": get_or(observation, "method", ""), "result": get_or(observation, "result", "")}
     }
 return {"status": "not-observed", "method": "", "result": ""}
 }
@@ -48,7 +48,7 @@ func resolve_one(requirement, capability) {
         return capability_state(id, support, false, "not-requested", null, enforcement_for(capability, false), observation_for(capability), limitation_list(capability))
     }
 if supported {
-    return capability_state(id, support, true, "accepted", get_or(capability, "resolved", get_or(requirement, "value", true)), enforcement_for(capability, true), observation_for(capability), limitation_list(capability))
+    return capability_state(id, support, true, "accepted", get_or(requirement, "value", true), enforcement_for(capability, true), observation_for(capability), limitation_list(capability))
 }
 if required == false&&degradation_allowed(requirement, id) {
     limitations := limitation_list(capability)

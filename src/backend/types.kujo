@@ -165,12 +165,27 @@ enforcement := get_or(value, "enforcement", null)
 if type(enforcement) != "dict"||valid_enforcement_status(get_or(enforcement, "status", null)) == false {
     return {"ok": false, "error": "invalid capability enforcement for " + value["id"]}
 }
+if type(get_or(enforcement, "authority", null)) != "string"||type(get_or(enforcement, "evidence", null)) != "string" {
+    return {"ok": false, "error": "capability enforcement evidence is invalid for " + value["id"]}
+}
 observation := get_or(value, "observation", null)
 if type(observation) != "dict"||valid_observation_status(get_or(observation, "status", null)) == false {
     return {"ok": false, "error": "invalid capability observation for " + value["id"]}
 }
+if type(get_or(observation, "method", null)) != "string"||type(get_or(observation, "result", null)) != "string" {
+    return {"ok": false, "error": "capability observation evidence is invalid for " + value["id"]}
+}
 if type(get_or(value, "limitations", null)) != "array" {
     return {"ok": false, "error": "capability limitations must be an array for " + value["id"]}
+}
+if string_array(value["limitations"], 256) == false&&len(value["limitations"]) > 0 {
+    return {"ok": false, "error": "capability limitations must contain bounded strings for " + value["id"]}
+}
+if value["acceptance"] == "accepted" {
+    status := enforcement["status"]
+    if value["support"] != "supported"&&value["support"] != "conditional" {return {"ok": false, "error": "accepted capability support is invalid for " + value["id"]}}
+    if type(get_or(value, "resolved", null)) == "null" {return {"ok": false, "error": "accepted capability resolution is missing for " + value["id"]}}
+    if status != "workcell-enforced"&&status != "provider-claimed"&&status != "operator-claimed" {return {"ok": false, "error": "accepted capability enforcement is not credible for " + value["id"]}}
 }
 return {"ok": true}
 }

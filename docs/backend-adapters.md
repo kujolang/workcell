@@ -86,7 +86,7 @@ An adapter also rejects normalized routing fields it does not implement. The cur
 
 ## Strict capability negotiation
 
-Every requested control is required by default. Unknown, unsupported, not enforceable, or unproved conditional controls reject before provision. There is no global best-effort mode and no backend-name shortcut. Only exact non-security evidence capabilities may use an operator-approved degradation list in future compatible versions.
+Every requested control is required by default. Unknown, unsupported, not enforceable, unproved conditional, or semantically changed controls reject before provision. An adapter cannot accept a request with `unknown`, `unsupported`, or `not-enforceable` enforcement, and an accepted resolved value must exactly match the requested semantic value in this alpha contract. There is no global best-effort mode and no backend-name shortcut. Only exact non-security evidence capabilities may use an operator-approved degradation list in future compatible versions.
 
 The receipt control ledger records:
 

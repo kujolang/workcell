@@ -1,5 +1,5 @@
 from src.backend.fixture import fixture_dispatch
-from src.backend.types import backend_contract_id, backend_handle, backend_identity
+from src.backend.types import backend_contract_id, backend_handle, backend_identity, capability_state
 from src.domain.definition import default_definition
 from src.evidence.controls import controls_have_false_enforcement_claim, controls_ledger, requirements_from_definition
 from src.receipts.v2 import checkpoint_v2, finish_v2, new_v2_receipt, receipt_v2_schema_version, verify_receipt_file
@@ -31,6 +31,9 @@ expect("fixture resolves complete portable default", resolution["ok"])
 ledger := controls_ledger(requirements["requirements"], resolution["data"]["capabilities"])
 expect("controls ledger preserves all requested controls", ledger["ok"]&&len(ledger["controls"]) == len(requirements["requirements"]))
 expect("controls ledger has no false enforcement claim", controls_have_false_enforcement_claim(ledger["controls"]) == false)
+drift_state := capability_state("compute.cpu_limit", "supported", true, "accepted", 4, {"status": "provider-claimed", "authority": "fixture", "evidence": "configured"}, {"status": "not-observed", "method": "", "result": ""}, [])
+drift_ledger := controls_ledger([{"id": "compute.cpu_limit", "requested": true, "required": true, "value": 2}], [drift_state])
+expect("controls ledger rejects semantic resolution drift", drift_ledger["ok"] == false)
 
 root := temp_root() + "/workcell-evidence-recovery-test-" + replace(uuid_v4(), "-", "")
 spawn_process(["mkdir", "-p", root])

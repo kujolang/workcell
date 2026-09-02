@@ -12,7 +12,7 @@ export func host_profiles_schema_version() {
 }
 
 func keys_allowed(value, allowed, label) {
-    if type(value) != "dict" {return {"ok": false, "error": label + " must be an object"}}
+    if type(value) != "dict" {return {"ok": false, "error": label + " must be an object (got " + type(value) + ")"}}
     names := keys(value)
     mut i := 0
     while i < len(names) {
@@ -59,6 +59,22 @@ func valid_endpoint(value, allow_insecure_loopback) {
     if starts_with(value, "https://")&&len(value) > 8 {return true}
     if allow_insecure_loopback == true&&(endpoint_host(value, "http://127.0.0.1")||endpoint_host(value, "http://localhost")||endpoint_host(value, "http://[::1]")) {return true}
     return false
+}
+
+func memory_megabytes(value) {
+    if type(value) != "string"||len(value) < 2 {return 0}
+    unit := substring(value, len(value) - 1, len(value))
+    digits := substring(value, 0, len(value) - 1)
+    mut amount := 0
+    try {amount = parse_int(digits)} except err {return 0}
+    if amount <= 0 {return 0}
+    if unit == "g"||unit == "G" {return amount * 1024}
+    if unit == "m"||unit == "M" {return amount}
+    return 0
+}
+
+func bounded_positive(value, maximum) {
+    return type(value) == "int"&&value > 0&&value <= maximum
 }
 
 func string_array(value, label) {
@@ -113,6 +129,12 @@ export func validate_portable_definition(raw) {
     if get_or(workspace, "source", "") != "clean-git-commit"||get_or(workspace, "materialization", "") != "portable-clone"||get_or(workspace, "mount_path", "") != "/workspace" {
         return {"ok": false, "error": "v2alpha1 workspace requires clean-git-commit, portable-clone, and /workspace"}
     }
+    scan := get_or(workspace, "scan", {})
+    checked = keys_allowed(scan, ["max_files", "max_bytes", "max_depth"], "workspace.scan")
+    if checked["ok"] == false {return checked}
+    if has_key(scan, "max_files")&&bounded_positive(scan["max_files"], 1000000) == false {return {"ok": false, "error": "workspace.scan.max_files is out of bounds"}}
+    if has_key(scan, "max_bytes")&&bounded_positive(scan["max_bytes"], 16000000000) == false {return {"ok": false, "error": "workspace.scan.max_bytes is out of bounds"}}
+    if has_key(scan, "max_depth")&&bounded_positive(scan["max_depth"], 512) == false {return {"ok": false, "error": "workspace.scan.max_depth is out of bounds"}}
 
     environment := get_or(raw, "environment", null)
     checked = keys_allowed(environment, ["allow", "set"], "environment")
@@ -133,8 +155,9 @@ export func validate_portable_definition(raw) {
         checked = keys_allowed(pair[0], pair[1], pair[2])
         if checked["ok"] == false {return checked}
     }
-    if type(get_or(compute, "cpus", null)) != "int"||compute["cpus"] <= 0||nonempty(get_or(compute, "memory", null)) == false||type(get_or(compute, "pids", null)) != "int"||compute["pids"] <= 0 {return {"ok": false, "error": "compute requirements are invalid"}}
-    if type(get_or(execution, "timeout_ms", null)) != "int"||execution["timeout_ms"] <= 0||type(get_or(execution, "max_output_bytes", null)) != "int"||execution["max_output_bytes"] <= 0 {return {"ok": false, "error": "execution requirements are invalid"}}
+    memory_mb := memory_megabytes(get_or(compute, "memory", ""))
+    if bounded_positive(get_or(compute, "cpus", null), 64) == false||memory_mb <= 0||memory_mb > 65536||bounded_positive(get_or(compute, "pids", null), 65536) == false {return {"ok": false, "error": "compute requirements are invalid or out of bounds"}}
+    if bounded_positive(get_or(execution, "timeout_ms", null), 86400000) == false||bounded_positive(get_or(execution, "max_output_bytes", null), 16000000) == false {return {"ok": false, "error": "execution requirements are invalid or out of bounds"}}
     if get_or(network, "mode", "") != "none"&&get_or(network, "mode", "") != "default"&&get_or(network, "mode", "") != "allowlist" {return {"ok": false, "error": "network mode must be none, default, or allowlist"}}
     if get_or(network, "mode", "") == "allowlist"&&len(get_or(network, "allow", [])) == 0 {return {"ok": false, "error": "network allowlist mode requires entries"}}
     if type(get_or(filesystem, "read_only_root", null)) != "bool" {return {"ok": false, "error": "filesystem.read_only_root must be boolean"}}
@@ -143,11 +166,19 @@ export func validate_portable_definition(raw) {
     checked = string_array(get_or(filesystem, "tmpfs", []), "requirements.filesystem.tmpfs")
     if checked["ok"] == false {return checked}
 
-    artifacts := get_or(raw, "artifacts", null)
-    checked = keys_allowed(artifacts, ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"], "artifacts")
+    artifact_policy := get_or(raw, "artifacts", null)
+    checked = keys_allowed(artifact_policy, ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"], "artifacts")
     if checked["ok"] == false {return checked}
-    checked = validate_relative_list(get_or(artifacts, "export", null), "artifacts.export")
+    checked = validate_relative_list(get_or(artifact_policy, "export", null), "artifacts.export")
     if checked["ok"] == false {return checked}
+    artifact_exports := artifact_policy["export"]
+    if len(artifact_exports) > 0&&(bounded_positive(get_or(artifact_policy, "max_bytes", null), 16000000000) == false||bounded_positive(get_or(artifact_policy, "max_files", null), 1000000) == false) {return {"ok": false, "error": "artifact exports require explicit bounded max_bytes and max_files"}}
+    if has_key(artifact_policy, "max_depth")&&bounded_positive(artifact_policy["max_depth"], 512) == false {return {"ok": false, "error": "artifacts.max_depth is out of bounds"}}
+    if has_key(artifact_policy, "secret_action")&&artifact_policy["secret_action"] != "allow"&&artifact_policy["secret_action"] != "redact"&&artifact_policy["secret_action"] != "reject" {return {"ok": false, "error": "artifacts.secret_action is invalid"}}
+    if has_key(artifact_policy, "allowed_extensions") {
+        checked = string_array(artifact_policy["allowed_extensions"], "artifacts.allowed_extensions")
+        if checked["ok"] == false {return checked}
+    }
     if type(get_or(raw, "verification", null)) != "dict"||type(get_or(raw, "cleanup", null)) != "dict"||type(get_or(raw, "receipt", null)) != "dict" {return {"ok": false, "error": "verification, cleanup, and receipt must be objects"}}
     verification := raw["verification"]
     checked = keys_allowed(verification, ["version", "commands"], "verification")
@@ -231,12 +262,15 @@ export func load_host_profile(path, profile_id, backend_override) {
     }
     if type(get_or(profile, "adapter_options", {})) != "dict"||type(get_or(profile, "policy", {})) != "dict" {return {"ok": false, "error": "profile adapter_options and policy must be objects"}}
     policy := get_or(profile, "policy", {})
-    checked = keys_allowed(policy, ["required_adapter_digest", "allow_insecure_loopback_endpoint"], "profile.policy")
+    checked = keys_allowed(policy, ["required_adapter_digest", "allow_insecure_loopback_endpoint", "max_cpus", "max_memory_mb", "max_pids", "max_timeout_ms", "max_output_bytes", "max_workspace_upload_bytes", "max_artifact_download_bytes"], "profile.policy")
     if checked["ok"] == false {return checked}
     required_digest := get_or(policy, "required_adapter_digest", "")
     if required_digest != ""&&(type(required_digest) != "string"||starts_with(required_digest, "sha256:") == false||len(required_digest) != 71) {return {"ok": false, "error": "profile.policy.required_adapter_digest must be a sha256 digest"}}
     allow_insecure := get_or(policy, "allow_insecure_loopback_endpoint", false)
     if type(allow_insecure) != "bool" {return {"ok": false, "error": "profile.policy.allow_insecure_loopback_endpoint must be boolean"}}
+    for field in ["max_cpus", "max_memory_mb", "max_pids", "max_timeout_ms", "max_output_bytes", "max_workspace_upload_bytes", "max_artifact_download_bytes"] {
+        if has_key(policy, field)&&bounded_positive(policy[field], 16000000000) == false {return {"ok": false, "error": "profile.policy." + field + " must be a bounded positive integer"}}
+    }
     for field in ["region", "provider_project"] {
         if bounded_profile_text(get_or(profile, field, "")) == false {return {"ok": false, "error": "profile " + field + " is invalid"}}
     }
@@ -246,4 +280,30 @@ export func load_host_profile(path, profile_id, backend_override) {
     fingerprint := ""
     try {fingerprint = sha256(to_json(profile))} except err {return {"ok": false, "error": "host profile could not be fingerprinted"}}
     return {"ok": true, "id": profile_id, "profile": profile, "backend": profile["backend"], "fingerprint": fingerprint}
+}
+
+export func validate_profile_budgets(definition, profile) {
+    if type(definition) != "dict"||type(profile) != "dict" {return {"ok": false, "error": "definition and profile are required for budget validation"}}
+    policy := get_or(profile, "policy", {})
+    compute := definition["requirements"]["compute"]
+    execution := definition["requirements"]["execution"]
+    workspace := definition["workspace"]["scan"]
+    artifacts := definition["artifacts"]
+    checks := [
+    ["max_cpus", compute["cpus"]],
+    ["max_memory_mb", memory_megabytes(compute["memory"])],
+    ["max_pids", compute["pids"]],
+    ["max_timeout_ms", execution["timeout_ms"]],
+    ["max_output_bytes", execution["max_output_bytes"]],
+    ["max_workspace_upload_bytes", workspace["max_bytes"]],
+    ["max_artifact_download_bytes", get_or(artifacts, "max_bytes", 0)]
+    ]
+    mut i := 0
+    while i < len(checks) {
+        field := checks[i][0]
+        requested := checks[i][1]
+        if has_key(policy, field)&&requested > policy[field] {return {"ok": false, "error": "workload exceeds profile policy " + field}}
+        i = i + 1
+    }
+    return {"ok": true}
 }

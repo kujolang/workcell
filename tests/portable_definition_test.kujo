@@ -1,4 +1,4 @@
-from src.domain.portable_definition import host_profiles_schema_version, load_host_profile, portable_definition_schema_version, resolve_portable_definition, validate_portable_definition
+from src.domain.portable_definition import host_profiles_schema_version, load_host_profile, portable_definition_schema_version, resolve_portable_definition, validate_portable_definition, validate_profile_budgets
 from src.evidence.controls import requirements_from_definition
 from src.util import run_argv
 
@@ -15,14 +15,27 @@ definition := {
     "workspace": {"source": "clean-git-commit", "materialization": "portable-clone", "mount_path": "/workspace"},
     "environment": {"allow": [], "set": {}}, "secrets": [],
     "requirements": {"compute": {"cpus": 1, "memory": "512m", "pids": 64}, "execution": {"timeout_ms": 10000, "max_output_bytes": 65536}, "network": {"mode": "none"}, "filesystem": {"read_only_root": true, "writable": ["/workspace"], "tmpfs": ["/tmp"]}},
-    "artifacts": {"export": ["result.txt"]}, "verification": {"version": 1, "commands": []}, "cleanup": {"keep_failed": false}, "receipt": {"path": ".workcell/runs"}
+    "artifacts": {"export": ["result.txt"], "max_bytes": 1048576, "max_files": 100}, "verification": {"version": 1, "commands": []}, "cleanup": {"keep_failed": false}, "receipt": {"path": ".workcell/runs"}
 }
 
-expect("portable definition validates", validate_portable_definition(definition)["ok"])
+definition_check := validate_portable_definition(definition)
+if definition_check["ok"] == false {print(to_json_pretty(definition_check))}
+expect("portable definition validates", definition_check["ok"])
 resolved := resolve_portable_definition(definition)
 expect("portable defaults resolve", resolved["ok"]&&resolved["definition"]["workspace"]["scan"]["max_files"] == 100000)
 requirements := requirements_from_definition(resolved["definition"])
 expect("portable requirements become semantic capabilities", requirements["ok"]&&len(requirements["requirements"]) >= 20)
+
+unbounded_artifacts := parse_json(to_json(definition))
+unbounded_artifacts["artifacts"] := {"export": ["result.txt"]}
+expect("portable artifact exports require explicit bounds", validate_portable_definition(unbounded_artifacts)["ok"] == false)
+oversized_compute := parse_json(to_json(definition))
+oversized_requirements := oversized_compute["requirements"]
+oversized_values := oversized_requirements["compute"]
+oversized_values["memory"] := "65g"
+oversized_requirements["compute"] := oversized_values
+oversized_compute["requirements"] := oversized_requirements
+expect("portable compute bounds reject excessive memory", validate_portable_definition(oversized_compute)["ok"] == false)
 
 bad := definition
 bad["e2b"] := {}
@@ -33,6 +46,8 @@ profiles := {"schema": host_profiles_schema_version(), "profiles": {"fixture": {
 write_file_atomic(profile_path, to_json(profiles), true)
 profile := load_host_profile(profile_path, "fixture", "")
 expect("explicit host profile loads", profile["ok"]&&profile["backend"] == "external-fixture"&&len(profile["fingerprint"]) == 64)
+expect("profile budgets accept bounded workload", validate_profile_budgets(resolved["definition"], {"policy": {"max_cpus": 1, "max_memory_mb": 512, "max_pids": 64, "max_timeout_ms": 10000, "max_output_bytes": 65536, "max_workspace_upload_bytes": 1000000000, "max_artifact_download_bytes": 1048576}})["ok"])
+expect("profile budgets reject excessive workload before resolve", validate_profile_budgets(resolved["definition"], {"policy": {"max_timeout_ms": 1000}})["ok"] == false)
 expect("backend override conflict fails", load_host_profile(profile_path, "fixture", "e2b")["ok"] == false)
 run_argv(["rm", "-f", profile_path], 5000)
 

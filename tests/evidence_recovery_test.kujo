@@ -45,6 +45,11 @@ expect("receipt v2 checkpoint persists atomically", checkpoint["ok"]&&file_exist
 finished := finish_v2(checkpoint["receipt"], receipt_path, "completed", null, {"status": "complete", "journal_path": "", "items": [], "remaining": []})
 expect("receipt v2 finalizes cleanup and status", finished["ok"]&&finished["receipt"]["run"]["status"] == "completed"&&finished["receipt"]["cleanup"]["status"] == "complete")
 expect("receipt v2 verifies fully offline", verify_receipt_file(receipt_path)["ok"])
+invented_cost_receipt := parse_json(to_json(finished["receipt"]))
+invented_cost_receipt["cost"] := {"status": "unknown", "class": "per-second-compute", "amount": {"value": 1, "currency": "USD"}, "usage": [], "source": "estimate"}
+invented_cost_path := root + "/invented-cost-receipt.json"
+write_file_atomic(invented_cost_path, to_json_pretty(invented_cost_receipt), true)
+expect("receipt v2 rejects invented amount for unknown cost", verify_receipt_file(invented_cost_path)["ok"] == false)
 mut unsafe_receipt := finished["receipt"]
 unsafe_backend := unsafe_receipt["backend"]
 unsafe_backend["raw_url"] := "https://objects.invalid/file?X-Amz-Signature=secret"

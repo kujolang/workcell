@@ -46,6 +46,8 @@ for (const provider of ['e2b', 'vercel-sandbox', 'daytona']) {
     assert.equal(resolved.result.ok, true);
     assert.equal(resolved.result.data.capabilities.length, requirements.length);
     assert.ok(resolved.result.data.capabilities.every((x) => x.acceptance === 'accepted'));
+    assert.equal(resolved.result.data.cost.status, 'unknown');
+    assert.equal(resolved.result.data.cost.amount, null);
   });
   test(`${provider} fixture lifecycle preserves ownership`, () => {
     const ownership = { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' };

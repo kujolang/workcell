@@ -5,9 +5,9 @@ import path from 'node:path';
 
 export const CONTRACT = 'workcell-backend/v1alpha1';
 const PROVIDERS = {
-  e2b: { version: '2.46.1', api: 'e2b-sdk/2.46.1', substrate: 'provider-claimed-firecracker', credential: 'E2B_API_KEY' },
-  'vercel-sandbox': { version: '3.2.1', api: '@vercel/sandbox/3.2.1', substrate: 'provider-claimed-firecracker', credential: 'VERCEL_OIDC_TOKEN' },
-  daytona: { version: '0.207.1', api: '@daytonaio/sdk/0.207.1', substrate: 'provider-reported-sandbox-class', credential: 'DAYTONA_API_KEY' }
+  e2b: { version: '2.46.1', api: 'e2b-sdk/2.46.1', substrate: 'provider-claimed-firecracker', credential: 'E2B_API_KEY', costClass: 'per-second-compute' },
+  'vercel-sandbox': { version: '3.2.1', api: '@vercel/sandbox/3.2.1', substrate: 'provider-claimed-firecracker', credential: 'VERCEL_OIDC_TOKEN', costClass: 'composite-platform' },
+  daytona: { version: '0.207.1', api: '@daytonaio/sdk/0.207.1', substrate: 'provider-reported-sandbox-class', credential: 'DAYTONA_API_KEY', costClass: 'provisioned-compute' }
 };
 
 export function envelope(req, ok, data = {}, error = undefined, status = ok ? 'ok' : 'failed') {
@@ -74,7 +74,7 @@ export function resolve(provider, req) {
       limitations: accepted ? [] : ['provider adapter cannot prove this requirement from the selected profile']
     };
   });
-  return { identity: identity(provider), capabilities: caps, resolved_plan: req.payload.intent || {}, volatile_fields: ['provider_resource_id', 'region', 'startup_time'] };
+  return { identity: identity(provider), capabilities: caps, resolved_plan: req.payload.intent || {}, volatile_fields: ['provider_resource_id', 'region', 'startup_time'], cost: { status: 'unknown', class: PROVIDERS[provider].costClass, amount: null, usage: [], source: 'provider-not-reported' } };
 }
 
 export function credential(req, provider) {

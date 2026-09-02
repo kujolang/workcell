@@ -82,6 +82,8 @@ Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The 
 
 Host routing fields are normalized identically by `inspect` and `run`. `region` and `provider_project` are bounded control-free strings. Custom endpoints require HTTPS; loopback HTTP is accepted only with `policy.allow_insecure_loopback_endpoint: true` for explicit local development. Embedded URL credentials, fragments, whitespace, backslashes, unknown policy keys, malformed credential names, and non-object adapter options fail during profile loading.
 
+Operator profiles may impose preflight ceilings with `max_cpus`, `max_memory_mb`, `max_pids`, `max_timeout_ms`, `max_output_bytes`, `max_workspace_upload_bytes`, and `max_artifact_download_bytes`. Inspect and run apply the same checks before adapter resolution or provisioning. These are deterministic resource/transfer ceilings, not monetary estimates or concurrency promises.
+
 An adapter also rejects normalized routing fields it does not implement. The current E2B and Vercel adapters reject non-empty endpoint, region, and provider-project overrides; Daytona accepts endpoint and region but rejects provider-project. This prevents an inspect result from implying that ignored placement or account routing took effect.
 
 ## Strict capability negotiation
@@ -104,6 +106,10 @@ Remote input is a one-commit shallow clone of a clean Git source. Workcell remov
 Adapters export a tar containing only declared paths. Workcell treats the download as untrusted: it rejects traversal and non-regular entry types, extracts into run-owned staging, re-exports through local declaration/extension/size/secret policy, computes a fresh manifest and SHA-256 digest, and removes staging. Entire-workspace download is not supported.
 
 JSONL events preserve per-stream order only. Receipt v2 says `buffered-protocol`; it does not claim global stdout/stderr ordering or provider timestamps. Provider adapters must not advertise real-time streaming until the core transport exposes it.
+
+Portable receipts record separate WorkCell-monotonic durations for resolve, workspace packaging, provisioning, preparation, execution, verification, collection, artifact export/verification, cleanup, and total-before-record. These timings measure the client-observed phase and do not pretend to separate provider queue/cold-start time without provider evidence.
+
+Adapters may classify the provider billing shape, but `amount` stays null and cost status stays `unknown` unless the provider reports usage or money for the exact run with a source and billing window. The official E2B, Vercel, and Daytona adapters currently report only `per-second-compute`, `composite-platform`, and `provisioned-compute` classes respectively; they do not estimate charges.
 
 Before provision, Workcell writes `workcell-recovery/v1` with the run ID, nonce, backend identity, profile fingerprint, and idempotency key. It attaches the owned handle before upload. A lost provision response remains `recovery-required`; recovery inventories by the exact ownership tuple and can synthesize a one-use cleanup handle only from matching provider inventory. If a client dies or cleanup fails, use:
 

@@ -15,7 +15,7 @@ These are local diagnostic samples, not release claims. The full Docker lifecycl
 
 ## Timing model
 
-Every receipt records these non-overlapping intervals where applicable:
+Every portable receipt records client-observed phase intervals where applicable. The implemented `workcell-monotonic` values cover resolve, workspace packaging, provision, prepare, execute, verification, collect, artifact export/local verification, cleanup, and total-before-record. Provider queue, upload, materialization, and workload sub-intervals remain unknown unless an adapter returns same-clock authoritative timing evidence:
 
 ```text
 T_total
@@ -75,6 +75,8 @@ Final thresholds must be derived from the implemented baseline and committed as 
 
 WorkCell records cost; it does not route by price, maintain a rate catalog, or predict invoices.
 
+Receipt validation rejects a monetary amount when status is `unknown`. Provider-reported amounts require a numeric value, non-empty currency, provider source, and usage evidence; the first official adapters intentionally leave amount null until exact-run billing evidence is available.
+
 | Backend class | Billing shape to record |
 | --- | --- |
 | Docker/Podman/local | `local-operator`; monetary cost unknown |
@@ -100,4 +102,3 @@ Provider profiles may set operator budgets:
 - optional provider-native spending/quota guard.
 
 These are preflight controls, not a WorkCell billing system. If exact cost cannot be known before execution, a dollar budget cannot be promised. WorkCell fails closed only on limits it can resolve, otherwise labels monetary cost `unknown`. Every orphan inventory highlights cost-accruing states where the provider reports them.
-

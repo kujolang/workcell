@@ -53,6 +53,7 @@ jobs:
         shell: bash
         run: |
           npm ci --ignore-scripts --prefix adapters/official
+          npm run integrity:check --prefix adapters/official
           npm test --prefix adapters/official
 
       - name: Audit local Markdown links

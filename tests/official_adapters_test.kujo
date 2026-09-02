@@ -16,7 +16,7 @@ while i < len(providers) {
     manifest := load_backend_manifest(manifest_path)
     expect(provider + " official manifest validates", manifest["ok"])
     report := run_backend_conformance(manifest_path, {"fixture_mode": true, "fixture_exit_code": 7}, "wc-" + substring("11111111111111111111111111111111", 0, 31) + to_string(i + 1))
-    expect(provider + " passes offline conformance", report["ok"]&&len(report["checks"]) == 9)
+    expect(provider + " passes offline conformance", report["ok"]&&len(report["checks"]) == 13)
     i = i + 1
 }
 

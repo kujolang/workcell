@@ -99,6 +99,13 @@ if validate_backend_handle(handle, run_identifier)["ok"] == false {
 }
 report = add_check(report, "provision.ownership", handle["ownership"])
 
+reprovisioned := invoke(executable, run_identifier, "provision", profile, {"resolved_plan": resolved["result"]["data"]["resolved_plan"], "ownership": {"run_id": run_identifier, "nonce": nonce}, "idempotency_key": run_identifier + ":provision"})
+if reprovisioned["ok"] == false||to_json(get_or(reprovisioned["result"]["data"], "handle", null)) != to_json(handle) {
+    best_effort_destroy(executable, run_identifier, profile, handle)
+    return failure(report, "provision", {"result": {"error": {"code": "IDEMPOTENCY_FAILED", "message": "repeated provision did not return the same handle"}}})
+}
+report = add_check(report, "provision.idempotent", {"resource_ids": handle["resource_ids"]})
+
 package_digest := "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 prepared := invoke(executable, run_identifier, "prepare", profile, {"handle": handle, "workspace_package": {"schema_version": "workcell-workspace/v1", "sha256": package_digest}, "idempotency_key": run_identifier + ":prepare"})
 if prepared["ok"] == false {
@@ -123,6 +130,16 @@ if validate_terminal_result(terminal)["ok"] == false||terminal["exit_code"] != 7
 }
 report = add_check(report, "execute.nonzero-is-result", terminal)
 
+timeout_profile := parse_json(to_json(profile))
+timeout_profile["fixture_timed_out"] := true
+timed := invoke(executable, run_identifier, "execute", timeout_profile, {"handle": handle, "attempt_id": "attempt-timeout", "argv": ["fixture", "timeout"], "workdir": "/workspace", "environment": {}, "secret_channel": [], "timeout_ms": 1, "max_output_bytes": 65536})
+timed_terminal := get_or(get_or(timed["result"], "data", {}), "terminal", null)
+if timed["ok"] == false||validate_terminal_result(timed_terminal)["ok"] == false||timed_terminal["timed_out"] != true||timed_terminal["status"] != "timed-out" {
+    best_effort_destroy(executable, run_identifier, profile, handle)
+    return failure(report, "execute", {"result": {"error": {"code": "TIMEOUT_INVALID", "message": "advertised timeout was not normalized as terminal timeout"}}})
+}
+report = add_check(report, "execute.timeout", timed_terminal)
+
 collected := invoke(executable, run_identifier, "collect", profile, {"handle": handle, "attempt_id": "attempt-1", "stream_cursor": null})
 if collected["ok"] == false {
     best_effort_destroy(executable, run_identifier, profile, handle)
@@ -137,6 +154,13 @@ if exported["ok"] == false||to_json(get_or(exported["result"]["data"]["manifest"
     return failure(report, "export", exported)
 }
 report = add_check(report, "export.declared-only", {"declared": declarations})
+
+unsafe_export := invoke(executable, run_identifier, "export", profile, {"handle": handle, "declarations": ["../escape"], "limits": {"max_bytes": 1024, "max_files": 1}, "exporter_version": "workcell-artifacts/v1", "destination": "/tmp/workcell-conformance-" + run_identifier, "idempotency_key": run_identifier + ":unsafe-export"})
+if unsafe_export["ok"]||get_or(get_or(unsafe_export["result"], "error", {}), "code", "") != "PATH_UNSAFE" {
+    best_effort_destroy(executable, run_identifier, profile, handle)
+    return failure(report, "export", {"result": {"error": {"code": "PATH_SAFETY_FAILED", "message": "unsafe artifact declaration was not rejected"}}})
+}
+report = add_check(report, "export.path-safety", {"declaration": "../escape"})
 
 inventory := invoke(executable, run_identifier, "inventory", profile, {"ownership": handle["ownership"]})
 if inventory["ok"] == false||len(get_or(inventory["result"]["data"], "resources", [])) != 1 {
@@ -155,5 +179,10 @@ if destroyed["ok"] == false||len(get_or(destroyed["result"]["data"], "remaining"
     return failure(report, "destroy", destroyed)
 }
 report = add_check(report, "destroy.zero-remaining", {"items": destroyed["result"]["data"]["items"]})
+post_inventory := invoke(executable, run_identifier, "inventory", profile, {"ownership": handle["ownership"]})
+if post_inventory["ok"] == false||get_or(post_inventory["result"]["data"], "complete", false) != true||len(get_or(post_inventory["result"]["data"], "resources", [])) != 0 {
+    return failure(report, "inventory", {"result": {"error": {"code": "CLEANUP_INCOMPLETE", "message": "owned inventory was not empty after destroy"}}})
+}
+report = add_check(report, "destroy.zero-inventory", {"resources": []})
 return report
 }

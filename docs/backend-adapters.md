@@ -119,7 +119,7 @@ Recovery inventories first, requires a complete inventory response, and refuses 
 
 ## Adapter conformance and live gates
 
-`tests/official_adapters_test.kujo` runs the base suite against all official adapters in deterministic fixture mode. `npm test --prefix adapters/official` tests protocol framing, ownership, lifecycle results, and credential failure. Capability-specific and live tests must be gated by explicit credentials and should preserve a verified receipt plus zero-resource inventory for the exact adapter/provider version.
+`tests/official_adapters_test.kujo` runs the base suite against all official adapters in deterministic fixture mode. It proves repeated provisioning is idempotent, timeout normalization is terminal, unsafe artifact paths fail, and owned inventory is empty after destroy in addition to the complete mandatory lifecycle. `npm test --prefix adapters/official` tests protocol framing, ownership, lifecycle results, credential failure, integrity tampering, and a deterministic malformed-request corpus. Capability-specific and live tests must be gated by explicit credentials and should preserve a verified receipt plus zero-resource inventory for the exact adapter/provider version.
 
 Conformance proves the adapter follows the tested machine contract. It does not certify the provider, host, network, tenant isolation, data retention, or operator profile.
 

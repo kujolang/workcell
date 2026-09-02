@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { archiveDownloadLimit, writeBoundedStream } from '../runtime/protocol.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const adapterEntry = path.join(root, 'runtime', 'adapter.mjs');
 const requirements = ['lifecycle.provision','lifecycle.terminate','lifecycle.destroy','lifecycle.inventory','workspace.stage','workspace.collect_delta','process.argv','process.exit_status','execution.timeout','logs.bounded','artifact.selective_export','environment.explicit','credentials.redacted_transport','evidence.provider_identity','ownership.markers'].map((id) => ({ id, requested: true, required: true, value: true }));
 
 function call(provider, operation, payload = {}, profile = { fixture_mode: true }, environment = {}) {
@@ -123,4 +124,29 @@ test('official runtime integrity verification fails closed on tampering', async 
   const tampered = spawnSync(verifier, [temporaryRoot], { encoding: 'utf8' });
   assert.equal(tampered.status, 70);
   assert.match(tampered.stderr, /integrity check failed/);
+});
+
+test('protocol parser fails closed for a deterministic malformed corpus', () => {
+  const valid = { contract: 'workcell-backend/v1alpha1', request_id: 'fuzz-request', run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation: 'describe', deadline_ms: 1000, profile: {}, payload: {} };
+  const corpus = [
+    '', '{', 'null', '[]', 'true',
+    JSON.stringify({ ...valid, contract: 'workcell-backend/v0' }),
+    JSON.stringify({ ...valid, run_id: 'wc-bad' }),
+    JSON.stringify({ ...valid, deadline_ms: 0 }),
+    JSON.stringify({ ...valid, vendor: true }),
+    JSON.stringify({ ...valid, operation: 'exec' }),
+    JSON.stringify({ ...valid, payload: [] }),
+    JSON.stringify({ ...valid, profile: { unknown: true } }),
+    `${' '.repeat(1_048_577)}{}`
+  ];
+  for (const input of corpus) {
+    const result = spawnSync(process.execPath, [adapterEntry, 'e2b', 'protocol'], { input, encoding: 'utf8', env: {} });
+    assert.equal(result.status, 0);
+    const lines = result.stdout.trim().split('\n');
+    assert.equal(lines.length, 1);
+    const frame = JSON.parse(lines[0]);
+    assert.equal(frame.ok, false);
+    assert.ok(['PROTOCOL_VIOLATION', 'PROFILE_INVALID'].includes(frame.error.code));
+    assert.equal(result.stderr, '');
+  }
 });

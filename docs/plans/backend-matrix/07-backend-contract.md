@@ -152,4 +152,4 @@ Adapters return stable codes mapped by core:
 
 ## Conformance contract
 
-An adapter passes base conformance only if all mandatory operations, idempotency, ownership, redaction, partial failure, and offline fixtures pass. Capability-specific suites are selected from the execution-time resolution, not the manifest hint. The machine-readable proposal is `BACKEND_CONTRACT_PROPOSAL.json`.
+An adapter passes base conformance only if all mandatory operations, repeated-provision idempotency, ownership, normalized timeout, artifact path rejection, post-destroy zero inventory, redaction, partial failure, and offline fixtures pass. Capability-specific suites are selected from the execution-time resolution, not the manifest hint. The machine-readable proposal is `BACKEND_CONTRACT_PROPOSAL.json`.

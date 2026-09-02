@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, rm } from 'node:fs/promises';
+import { mkdir, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -37,7 +37,7 @@ const DIRECT = {
   daytona: new Set([...BASE, 'compute.cpu_limit', 'compute.memory_limit', 'network.none', 'network.custom', 'image.oci'])
 };
 
-const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_exit_code', 'fixture_mode', 'fixture_stderr', 'fixture_stdout', 'guarantees', 'policy', 'provider_project', 'region']);
+const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_cancelled', 'fixture_exit_code', 'fixture_mode', 'fixture_stderr', 'fixture_stdout', 'fixture_timed_out', 'guarantees', 'policy', 'provider_project', 'region']);
 const PROVIDER_PROFILE_KEYS = {
   e2b: new Set(['sandbox_timeout_ms', 'template']),
   'vercel-sandbox': new Set(['image']),
@@ -141,17 +141,40 @@ export async function localTar(directory, archive, names) {
 export async function fixture(provider, req) {
   const resourceId = `${provider}-${req.run_id}`;
   const owned = handle(provider, req, resourceId, { fixture: true });
-  if (req.operation === 'provision') return { handle: owned, resource_inventory: [{ kind: 'sandbox', id: resourceId, state: 'running', ownership: owned.ownership }], actual_resolution: {} };
+  const stateRoot = path.join(process.env.TMPDIR || '/tmp', 'workcell-official-adapter-fixtures', provider);
+  const statePath = path.join(stateRoot, `${req.run_id}.json`);
+  if (req.operation === 'provision') {
+    await mkdir(stateRoot, { recursive: true, mode: 0o700 });
+    let existing = null;
+    try { existing = JSON.parse(await readFile(statePath, 'utf8')); } catch {}
+    if (existing && JSON.stringify(existing.ownership) !== JSON.stringify(owned.ownership)) throw Object.assign(new Error('fixture ownership collision'), { code: 'OWNERSHIP_MISMATCH' });
+    await writeFile(statePath, JSON.stringify({ resource_id: resourceId, ownership: owned.ownership }), { mode: 0o600 });
+    return { handle: owned, resource_inventory: [{ kind: 'sandbox', id: resourceId, state: 'running', ownership: owned.ownership }], actual_resolution: {} };
+  }
   if (req.operation === 'prepare') return { handle: req.payload.handle, workspace_root: '/workspace', observed_package_digest: req.payload.workspace_package.sha256 };
   if (req.operation === 'execute') {
     const stdout = redactOutput(req, req.profile.fixture_stdout ?? `${provider} fixture\n`, provider);
     const stderr = redactOutput(req, req.profile.fixture_stderr ?? '', provider);
-    return { events: [stdout ? { stream: 'stdout', bytes: stdout } : null, stderr ? { stream: 'stderr', bytes: stderr } : null].filter(Boolean), data: { handle: req.payload.handle, command_id: 'fixture-command', terminal: { status: 'exited', exit_code: Number(req.profile.fixture_exit_code || 0), signal: null, reason: 'fixture-exit', timed_out: false, cancelled: false, certainty: 'terminal' }, logs: { stdout_bytes: Buffer.byteLength(stdout), stderr_bytes: Buffer.byteLength(stderr), truncated: false, complete: true, ordering: 'per-stream' } } };
+    const timedOut = req.profile.fixture_timed_out === true;
+    const cancelled = req.profile.fixture_cancelled === true;
+    const status = timedOut ? 'timed-out' : cancelled ? 'cancelled' : 'exited';
+    return { events: [stdout ? { stream: 'stdout', bytes: stdout } : null, stderr ? { stream: 'stderr', bytes: stderr } : null].filter(Boolean), data: { handle: req.payload.handle, command_id: 'fixture-command', terminal: { status, exit_code: timedOut || cancelled ? null : Number(req.profile.fixture_exit_code || 0), signal: null, reason: `fixture-${status}`, timed_out: timedOut, cancelled, certainty: 'terminal' }, logs: { stdout_bytes: Buffer.byteLength(stdout), stderr_bytes: Buffer.byteLength(stderr), truncated: false, complete: true, ordering: 'per-stream' } } };
   }
   if (req.operation === 'collect') return { terminal: { status: 'exited', exit_code: 0, signal: null, reason: 'fixture-exit', timed_out: false, cancelled: false, certainty: 'terminal' }, logs: { complete: true, ordering: 'per-stream' }, workspace_delta: { files: [], complete: true }, metrics: {}, attempt_inventory: [] };
-  if (req.operation === 'export') return { archive: null, manifest: { declared: req.payload.declarations || [], files: [] }, failures: [], cleanup_resources: [] };
-  if (req.operation === 'inventory') return { resources: [{ kind: 'sandbox', id: resourceId, state: 'running', ownership: req.payload.ownership }], complete: true };
-  if (req.operation === 'destroy') return { items: (req.payload.handle.resource_ids || []).map((r) => ({ ...r, status: 'removed' })), remaining: [] };
+  if (req.operation === 'export') {
+    for (const item of req.payload.declarations || []) if (!/^[A-Za-z0-9._/-]+$/.test(item) || item.includes('..') || item.startsWith('/')) throw Object.assign(new Error('artifact declaration is unsafe'), { code: 'PATH_UNSAFE' });
+    return { archive: null, manifest: { declared: req.payload.declarations || [], files: [] }, failures: [], cleanup_resources: [] };
+  }
+  if (req.operation === 'inventory') {
+    let state = null;
+    try { state = JSON.parse(await readFile(statePath, 'utf8')); } catch {}
+    const resources = state && JSON.stringify(state.ownership) === JSON.stringify(req.payload.ownership) ? [{ kind: 'sandbox', id: state.resource_id, state: 'running', ownership: state.ownership }] : [];
+    return { resources, complete: true };
+  }
+  if (req.operation === 'destroy') {
+    await rm(statePath, { force: true });
+    return { items: (req.payload.handle.resource_ids || []).map((r) => ({ ...r, status: 'removed' })), remaining: [] };
+  }
   if (req.operation === 'cancel') return { cancel_result: 'requested', terminal_certainty: 'unknown' };
   throw Object.assign(new Error(`fixture operation ${req.operation} is unsupported`), { code: 'UNSUPPORTED' });
 }
@@ -160,9 +183,10 @@ export async function readRequest() {
   let text = '';
   for await (const chunk of process.stdin) text += chunk;
   if (Buffer.byteLength(text) > 1_048_576) throw Object.assign(new Error('request exceeded one MiB'), { code: 'PROTOCOL_VIOLATION' });
-  const req = JSON.parse(text);
+  let req;
+  try { req = JSON.parse(text); } catch { throw Object.assign(new Error('request must be valid JSON'), { code: 'PROTOCOL_VIOLATION' }); }
   const envelopeFields = ['contract', 'request_id', 'run_id', 'operation', 'deadline_ms', 'profile', 'payload'];
-  if (Object.keys(req).some((key) => !envelopeFields.includes(key)) || envelopeFields.some((key) => !Object.hasOwn(req, key)) || req.contract !== CONTRACT || typeof req.request_id !== 'string' || !/^wc-[0-9a-f]{32}$/.test(req.run_id) || !Number.isSafeInteger(req.deadline_ms) || req.deadline_ms <= 0 || !plainObject(req.profile) || !plainObject(req.payload)) throw Object.assign(new Error('request envelope is invalid'), { code: 'PROTOCOL_VIOLATION' });
+  if (!plainObject(req) || Object.keys(req).some((key) => !envelopeFields.includes(key)) || envelopeFields.some((key) => !Object.hasOwn(req, key)) || req.contract !== CONTRACT || typeof req.request_id !== 'string' || !/^wc-[0-9a-f]{32}$/.test(req.run_id) || !Number.isSafeInteger(req.deadline_ms) || req.deadline_ms <= 0 || !plainObject(req.profile) || !plainObject(req.payload)) throw Object.assign(new Error('request envelope is invalid'), { code: 'PROTOCOL_VIOLATION' });
   validatePayload(req.operation, req.payload, req.run_id);
   return req;
 }

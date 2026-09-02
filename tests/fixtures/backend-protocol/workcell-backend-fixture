@@ -12,6 +12,8 @@ run_id="$(printf '%s' "$request" | jq -r '.run_id')"
 operation="$(printf '%s' "$request" | jq -r '.operation')"
 mode="$(printf '%s' "$request" | jq -r '.profile.mode // "success"')"
 nonce="$(printf '%s' "$request" | jq -r '.profile.nonce // "nonce-1"')"
+state_root="${TMPDIR:-/tmp}/workcell-backend-fixture-state"
+state_path="$state_root/$run_id"
 
 if [ "$mode" = "noise" ]; then
     printf 'sdk debug output\n'
@@ -29,13 +31,18 @@ fi
 
 if [ "$operation" = "inventory" ]; then
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce // .profile.nonce // "nonce-1"')"
-    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
+    if [ -f "$state_path" ] && [ "$(cat "$state_path")" = "$nonce" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
+    else
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[],complete:true}}'
+    fi
     exit 0
 fi
 
 if [ "$operation" = "destroy" ]; then
     resource_id="$(printf '%s' "$request" | jq -r '.payload.handle.resource_ids[0].id')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg resource_id "$resource_id" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{items:[{kind:"fixture",id:$resource_id,status:"removed"}],remaining:[]}}'
+    rm -f "$state_path"
     exit 0
 fi
 
@@ -67,6 +74,14 @@ if [ "$operation" = "provision" ]; then
         exit 0
     fi
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce')"
+    mkdir -p "$state_root"
+    chmod 700 "$state_root"
+    if [ -f "$state_path" ] && [ "$(cat "$state_path")" != "$nonce" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"OWNERSHIP_MISMATCH",message:"fixture ownership collision",provider_code:"fixture"}}'
+        exit 0
+    fi
+    printf '%s' "$nonce" > "$state_path"
+    chmod 600 "$state_path"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:{backend:"external-fixture",adapter_version:"1.0.0",provider:"workcell-fixture",profile_fingerprint:"sha256:fixture-profile",resource_ids:[{kind:"fixture",id:("fixture-"+$run_id)}],ownership:{run_id:$run_id,nonce:$nonce},provider_state:{state:"provisioned"}},resource_inventory:[{kind:"fixture",id:("fixture-"+$run_id),state:"provisioned",ownership:{run_id:$run_id,nonce:$nonce}}],actual_resolution:{}}}'
     exit 0
 fi
@@ -78,6 +93,11 @@ if [ "$operation" = "prepare" ]; then
 fi
 
 if [ "$operation" = "execute" ]; then
+    timed_out="$(printf '%s' "$request" | jq -r '.profile.fixture_timed_out // false')"
+    if [ "$timed_out" = "true" ]; then
+        printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-timeout",terminal:{status:"timed-out",exit_code:null,signal:null,reason:"fixture-timeout",timed_out:true,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:0,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'
+        exit 0
+    fi
     exit_code="$(printf '%s' "$request" | jq -r '.profile.exit_code // 7')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"event",event:"log",sequence:0,stream:"stdout",bytes_base64:"Zml4dHVyZQo=",provider_timestamp:null,ordering:"per-stream"}'
     printf '%s' "$request" | jq -c --argjson exit_code "$exit_code" '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-command",terminal:{status:"exited",exit_code:$exit_code,signal:null,reason:"fixture-exit",timed_out:false,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:8,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'
@@ -90,6 +110,10 @@ if [ "$operation" = "collect" ]; then
 fi
 
 if [ "$operation" = "export" ]; then
+    if ! printf '%s' "$request" | jq -e '.payload.declarations | all(type == "string" and (startswith("/") | not) and (contains("..") | not) and test("^[A-Za-z0-9._/-]+$"))' >/dev/null; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"PATH_UNSAFE",message:"artifact declaration is unsafe",provider_code:"fixture"}}'
+        exit 0
+    fi
     printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{archive:{path:"artifacts.tar",sha256:"sha256:fixture",bytes:0},manifest:{declared:.payload.declarations,files:[]},failures:[],cleanup_resources:[]}}'
     exit 0
 fi

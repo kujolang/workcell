@@ -22,7 +22,9 @@ jobs:
       - name: Install exact SDK versions
         run: npm ci --ignore-scripts --prefix adapters/official
       - name: Run offline protocol fixtures
-        run: npm test --prefix adapters/official
+        run: |
+          npm run integrity:check --prefix adapters/official
+          npm test --prefix adapters/official
       - name: Record available SDK updates without changing runtime behavior
         shell: bash
         run: |

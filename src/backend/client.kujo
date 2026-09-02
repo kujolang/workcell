@@ -72,7 +72,13 @@ func redact_value(value, secrets) {
         }
         i = i + 1
     }
-    return parse_json(encoded)
+    mut decoded := null
+    try {
+        decoded = parse_json(encoded)
+    } except err {
+        return "[REDACTED ADAPTER VALUE]"
+    }
+    return decoded
 }
 
 func validate_log_event(frame) {

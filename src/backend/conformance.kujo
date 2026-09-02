@@ -130,7 +130,13 @@ export func run_backend_conformance(manifest_path, profile, run_identifier) {
     }
     report = add_check(report, "execute.nonzero-is-result", terminal)
 
-    timeout_profile := parse_json(to_json(profile))
+    mut timeout_profile := {}
+    try {
+        timeout_profile = parse_json(to_json(profile))
+    } except err {
+        best_effort_destroy(executable, run_identifier, profile, handle)
+        return failure(report, "execute", {"result": {"error": {"code": "CONFORMANCE_INTERNAL", "message": "timeout profile could not be copied"}}})
+    }
     timeout_profile["fixture_timed_out"] := true
     timed := invoke(executable, run_identifier, "execute", timeout_profile, {"handle": handle, "attempt_id": "attempt-timeout", "argv": ["fixture", "timeout"], "workdir": "/workspace", "environment": {}, "secret_channel": [], "timeout_ms": 1, "max_output_bytes": 65536})
     timed_terminal := get_or(get_or(timed["result"], "data", {}), "terminal", null)

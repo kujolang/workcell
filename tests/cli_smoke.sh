@@ -70,6 +70,12 @@ git -C "$TMP_DIR" add workcell.json
 git -C "$TMP_DIR" commit -qm "add workcell definition fixture"
 
 "$KUJO" run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --json | jq -e '.network_mode == "none" and (.docker_security_arguments | contains(["--read-only"]))' >/dev/null
+INSPECT_SUMMARY="$($KUJO run "$ROOT/main.kujo" -- inspect --file "$ROOT/examples/hello/workcell.json" --repo "$TMP_DIR" --summary)"
+printf '%s' "$INSPECT_SUMMARY" | jq -e '.schema_version == "workcell-inspect-summary/v1" and .ok == true and .backend.adapter_id == "docker" and .policy.network == "none" and .policy.read_only_root == true and (.definition | has("command") | not)' >/dev/null
+test "${#INSPECT_SUMMARY}" -lt 1024
+PORTABLE_INSPECT_SUMMARY="$($KUJO run "$ROOT/main.kujo" -- inspect --file "$ROOT/tests/fixtures/portable/workcell.json" --manifest "$ROOT/tests/fixtures/backend-protocol/manifest.json" --profiles "$ROOT/tests/fixtures/portable/profiles.json" --profile fixture --summary)"
+printf '%s' "$PORTABLE_INSPECT_SUMMARY" | jq -e '.schema_version == "workcell-inspect-summary/v1" and .ok == true and .backend.adapter_id == "external-fixture" and .controls.total >= 20 and .controls.rejected == 0 and (.controls | has("items") | not)' >/dev/null
+test "${#PORTABLE_INSPECT_SUMMARY}" -lt 1024
 
 ln -s "$(type -P false)" "$FAKE_BIN/id"
 set +e
@@ -110,6 +116,7 @@ MISSING_CONTEXT_SUMMARY_CODE=$?
 set -e
 test "$MISSING_CONTEXT_SUMMARY_CODE" -eq 4
 printf '%s' "$MISSING_CONTEXT_SUMMARY" | jq -e '.schema_version == "workcell-run-summary/v1" and .ok == false and .stage == "preparing" and (.receipt | not)' >/dev/null
+test "${#MISSING_CONTEXT_SUMMARY}" -lt 2048
 set +e
 MISSING_CONTEXT_HUMAN="$($KUJO run "$ROOT/main.kujo" -- run --file "$TMP_DIR/missing-context.json" --repo "$TMP_DIR" --output "$MISSING_OUTPUT/human" 2>&1)"
 MISSING_CONTEXT_HUMAN_CODE=$?

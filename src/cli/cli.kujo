@@ -118,7 +118,7 @@ func options_for(command) {
     if command == "doctor" {return ["repo", "backend", "json"]}
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
-    if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json"]}
+    if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json", "summary"]}
     if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
@@ -169,7 +169,7 @@ func help_value() {
         {"name": "doctor", "options": ["--repo", "--backend", "--json"]},
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
-        {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json"]},
+        {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json", "--summary"]},
         {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
@@ -195,7 +195,7 @@ func print_help(json_mode) {
     "  workcell doctor [--repo <path>] [--backend docker|podman] [--json]",
     "  workcell init [--file <path>] [--force]",
     "  workcell validate [--file <path>] [--json] [--schema]",
-    "  workcell inspect [--file <path>] [--repo <path>] [--json]",
+    "  workcell inspect [--file <path>] [--repo <path>] [--json|--summary]",
     "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
     "  workcell verify --run <dir> [--json]",
     "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
@@ -214,7 +214,7 @@ func print_help(json_mode) {
     "  --cancel-file   Cancel execution when this operator-owned path appears",
     "  --context       Bounded caller correlation JSON (v2 only)",
     "  --json          Emit one machine-readable JSON object",
-    "  --summary       Emit a compact machine summary without embedding the receipt",
+    "  --summary       Emit a compact machine summary for inspect or run",
     "  --schema        Emit the versioned Workcell definition schema (validate only)",
     "",
     "Security defaults:",
@@ -323,6 +323,51 @@ func verify_command(parsed) {
     return 8
 }
 
+func portable_control_summary(controls, rejected) {
+    mut accepted := 0
+    mut degraded := 0
+    mut unknown_enforcement := 0
+    mut unobserved := 0
+    mut rejected_ids := []
+    for control in controls {
+        acceptance := get_or(control, "acceptance", "unknown")
+        if acceptance == "accepted" {accepted = accepted + 1}
+        if acceptance == "degraded" {degraded = degraded + 1}
+        enforcement := get_or(get_or(control, "enforcement", {}), "status", "unknown")
+        if enforcement == "unknown"||enforcement == "unsupported"||enforcement == "not-enforceable" {unknown_enforcement = unknown_enforcement + 1}
+        if get_or(get_or(control, "observation", {}), "status", "unknown") != "observed" {unobserved = unobserved + 1}
+    }
+    for item in rejected {
+        if type(item) == "dict" {rejected_ids = push(rejected_ids, get_or(item, "id", "unknown"))} else {rejected_ids = push(rejected_ids, "unknown")}
+    }
+    return {"total": len(controls), "accepted": accepted, "degraded": degraded, "rejected": len(rejected), "unknown_enforcement": unknown_enforcement, "unobserved": unobserved, "rejected_ids": rejected_ids}
+}
+
+func inspect_summary(value, portable) {
+    if portable {
+        backend := get_or(value, "backend", {})
+        profile := get_or(value, "profile", {})
+        definition := get_or(value, "definition", {})
+        controls := get_or(value, "controls", [])
+        rejected := get_or(value, "rejected", [])
+        return {
+            "schema_version": "workcell-inspect-summary/v1", "ok": get_or(value, "ok", false), "definition": {"schema": get_or(definition, "schema", ""), "name": get_or(definition, "name", "")},
+            "profile": {"id": get_or(profile, "id", ""), "backend": get_or(profile, "backend", ""), "fingerprint": get_or(profile, "fingerprint", "")},
+            "backend": {"adapter_id": get_or(backend, "adapter_id", get_or(backend, "adapter", "")), "provider_id": get_or(backend, "provider_id", get_or(backend, "provider", "")), "substrate": get_or(backend, "substrate", "")},
+            "controls": portable_control_summary(controls, rejected), "error": get_or(value, "error", "")
+        }
+    }
+    definition := get_or(value, "definition", {})
+    resources := get_or(definition, "resources", {})
+    filesystem := get_or(definition, "filesystem", {})
+    return {
+        "schema_version": "workcell-inspect-summary/v1", "ok": get_or(value, "ok", false), "definition": {"schema": "workcell-definition/v1", "name": get_or(definition, "name", "")},
+        "backend": {"adapter_id": get_or(value, "runtime_backend", get_or(get_or(definition, "runtime", {}), "backend", "")), "provider_id": get_or(value, "runtime_engine", ""), "substrate": "oci"},
+        "policy": {"network": get_or(value, "network_mode", ""), "cpus": get_or(resources, "cpus", null), "memory": get_or(resources, "memory", ""), "pids": get_or(resources, "pids", null), "timeout_ms": get_or(resources, "timeout_ms", null), "read_only_root": get_or(filesystem, "read_only_root", null)},
+        "error": get_or(value, "error", "")
+    }
+}
+
 func inspect_command(parsed) {
     path := definition_path(parsed)
     loaded := load_workcell_definition(path)
@@ -337,7 +382,7 @@ func inspect_command(parsed) {
     }
     if get_or(loaded, "version", 1) == 2 {
         portable := inspect_portable_workcell(path, flag(parsed, "manifest", ""), flag(parsed, "profiles", ""), flag(parsed, "profile", ""), flag(parsed, "backend", ""))
-        if has_flag(parsed, "json") {print(to_json_pretty(portable))} else if portable["ok"] {print("Resolved portable Workcell policy"); print("Backend: " + portable["profile"]["backend"]); print("Controls: " + to_string(len(portable["controls"])))} else {print("Inspection failed: " + get_or(portable, "error", "capability resolution failed"))}
+        if has_flag(parsed, "summary") {print(to_json(inspect_summary(portable, true)))} else if has_flag(parsed, "json") {print(to_json_pretty(portable))} else if portable["ok"] {print("Resolved portable Workcell policy"); print("Backend: " + portable["profile"]["backend"]); print("Controls: " + to_string(len(portable["controls"])))} else {print("Inspection failed: " + get_or(portable, "error", "capability resolution failed"))}
         if portable["ok"] {return 0}
         return 2
     }
@@ -364,7 +409,9 @@ func inspect_command(parsed) {
         }
         return 3
     }
-    if has_flag(parsed, "json") {
+    if has_flag(parsed, "summary") {
+        print(to_json(inspect_summary(value, false)))
+    } else if has_flag(parsed, "json") {
         print(to_json_pretty(value))
     } else {
         print("Resolved Workcell policy")

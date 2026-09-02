@@ -101,7 +101,7 @@ Adapters export a tar containing only declared paths. Workcell treats the downlo
 
 JSONL events preserve per-stream order only. Receipt v2 says `buffered-protocol`; it does not claim global stdout/stderr ordering or provider timestamps. Provider adapters must not advertise real-time streaming until the core transport exposes it.
 
-Provision returns an owned handle before upload. Workcell immediately writes `workcell-recovery/v1`. If a client dies or cleanup fails, use:
+Before provision, Workcell writes `workcell-recovery/v1` with the run ID, nonce, backend identity, profile fingerprint, and idempotency key. It attaches the owned handle before upload. A lost provision response remains `recovery-required`; recovery inventories by the exact ownership tuple and can synthesize a one-use cleanup handle only from matching provider inventory. If a client dies or cleanup fails, use:
 
 ```bash
 ./bin/workcell recover \
@@ -111,7 +111,7 @@ Provision returns an owned handle before upload. Workcell immediately writes `wo
   --dry-run --json
 ```
 
-Recovery inventories first and refuses any resource whose run ID or ownership nonce differs. It never deletes persistent volumes, snapshots, images, or provider resources absent from the run handle.
+Recovery inventories first, requires a complete inventory response, and refuses any resource whose run ID or ownership nonce differs. It passes only explicitly referenced provider credentials to the adapter and redacts them at the protocol boundary. It never deletes persistent volumes, snapshots, images, or provider resources absent from the run handle or a handle-less intent's exact owned inventory.
 
 ## Adapter conformance and live gates
 

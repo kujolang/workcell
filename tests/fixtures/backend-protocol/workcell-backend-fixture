@@ -50,6 +50,11 @@ if [ "$operation" = "resolve" ]; then
 fi
 
 if [ "$operation" = "provision" ]; then
+    fail_provision="$(printf '%s' "$request" | jq -r '.profile.fail_provision // false')"
+    if [ "$fail_provision" = "true" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:true,data:{},error:{code:"PROVISION_UNKNOWN",message:"fixture provision response was lost",provider_code:"fixture",retryable:true}}'
+        exit 0
+    fi
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:{backend:"external-fixture",adapter_version:"1.0.0",provider:"workcell-fixture",profile_fingerprint:"sha256:fixture-profile",resource_ids:[{kind:"fixture",id:("fixture-"+$run_id)}],ownership:{run_id:$run_id,nonce:$nonce},provider_state:{state:"provisioned"}},resource_inventory:[{kind:"fixture",id:("fixture-"+$run_id),state:"provisioned",ownership:{run_id:$run_id,nonce:$nonce}}],actual_resolution:{}}}'
     exit 0

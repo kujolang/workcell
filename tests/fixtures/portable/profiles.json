@@ -6,6 +6,12 @@
       "credential_ref": "",
       "adapter_options": {"external-fixture": {"exit_code": 0}},
       "policy": {}
+    },
+    "fixture-fail-provision": {
+      "backend": "external-fixture",
+      "credential_ref": "",
+      "adapter_options": {"external-fixture": {"fail_provision": true}},
+      "policy": {}
     }
   }
 }

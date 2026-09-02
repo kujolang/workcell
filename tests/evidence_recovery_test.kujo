@@ -3,7 +3,7 @@ from src.backend.types import backend_contract_id, backend_handle, backend_ident
 from src.domain.definition import default_definition
 from src.evidence.controls import controls_have_false_enforcement_claim, controls_ledger, requirements_from_definition
 from src.receipts.v2 import checkpoint_v2, finish_v2, new_v2_receipt, receipt_v2_schema_version, verify_receipt_file
-from src.recovery.recovery import load_recovery_journal, plan_recovery, recover_with_adapter, recovery_schema_version, write_recovery_journal
+from src.recovery.recovery import attach_recovery_handle, load_recovery_journal, plan_recovery, recover_with_adapter, recovery_schema_version, write_recovery_intent, write_recovery_journal
 from src.util import get_or
 from src.workspace.workspace import temp_root
 
@@ -15,9 +15,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-    failed = failed + 1
-    print("FAIL " + label)
-}
+        failed = failed + 1
+        print("FAIL " + label)
+    }
 }
 
 definition := default_definition()
@@ -52,6 +52,20 @@ expect("receipt v2 rejects persisted signed transport URL", verify_receipt_file(
 
 handle := backend_handle("external-fixture", "1.0.0", "workcell-fixture", "sha256:fixture-profile", [{"kind": "fixture", "id": "fixture-" + run_identifier}], run_identifier, "nonce-1", {"state": "running"})
 journal_root := root + "/recovery"
+journal_intent_run := "wc-33333333333333333333333333333333"
+journal_intent := write_recovery_intent(journal_root, {"run_id": journal_intent_run, "identity": backend_identity("external-fixture", "1.0.0", "workcell-fixture", "fixture/v1", "process"), "profile_id": "fixture", "profile_fingerprint": "sha256:fixture-profile", "ownership": {"run_id": journal_intent_run, "nonce": "nonce-intent"}, "receipt_path": receipt_path, "idempotency_key": journal_intent_run + ":provision"})
+expect("provision intent is durable before a handle exists", journal_intent["ok"]&&type(journal_intent["journal"]["handle"]) == "null")
+intent_plan := plan_recovery(journal_intent["journal"], [{"kind": "fixture", "id": "fixture-" + journal_intent_run, "state": "running", "ownership": {"run_id": journal_intent_run, "nonce": "nonce-intent"}}])
+expect("provision intent can reconcile an inventory-owned orphan", intent_plan["ok"]&&intent_plan["intent_only"]&&intent_plan["items"][0]["status"] == "remove")
+attached_intent_run := "wc-44444444444444444444444444444444"
+attached_intent := write_recovery_intent(journal_root, {"run_id": attached_intent_run, "identity": backend_identity("external-fixture", "1.0.0", "workcell-fixture", "fixture/v1", "process"), "profile_id": "fixture", "profile_fingerprint": "sha256:fixture-profile", "ownership": {"run_id": attached_intent_run, "nonce": "nonce-attached"}, "receipt_path": receipt_path, "idempotency_key": attached_intent_run + ":provision"})
+expect("provision intent reloads before handle attachment", load_recovery_journal(attached_intent["path"])["ok"])
+attached_handle := backend_handle("external-fixture", "1.0.0", "workcell-fixture", "sha256:fixture-profile", [{"kind": "fixture", "id": "fixture-" + attached_intent_run}], attached_intent_run, "nonce-attached", {})
+expect("attached recovery test handle is valid", type(attached_handle) == "dict")
+attached := attach_recovery_handle(attached_intent["path"], attached_handle)
+if attached["ok"] == false {print(to_json_pretty(attached))}
+expect("provisioned handle attaches to its durable intent", attached["ok"])
+
 journal := write_recovery_journal(journal_root, {"run_id": run_identifier, "handle": handle, "profile_id": "fixture", "receipt_path": receipt_path})
 expect("provisioned handle creates durable recovery journal", journal["ok"]&&journal["journal"]["schema_version"] == recovery_schema_version())
 expect("recovery journal reload validates ownership", load_recovery_journal(journal["path"])["ok"])
@@ -60,6 +74,8 @@ mismatch := plan_recovery(journal["journal"], [{"kind": "fixture", "id": "fixtur
 expect("recovery plan refuses ownership mismatch", mismatch["ok"] == false&&get_or(mismatch, "code", "") == "OWNERSHIP_MISMATCH")
 
 manifest_path := "tests/fixtures/backend-protocol/manifest.json"
+intent_recovered := recover_with_adapter(journal_intent["path"], manifest_path, {"nonce": "nonce-intent"}, false)
+expect("recovery destroys an orphan found from provision intent", intent_recovered["ok"]&&intent_recovered["status"] == "cleaned")
 dry_run := recover_with_adapter(journal["path"], manifest_path, {"nonce": "nonce-1"}, true)
 expect("recovery dry run inventories without deleting", dry_run["ok"]&&dry_run["dry_run"]&&dry_run["plan"]["items"][0]["status"] == "remove")
 recovered := recover_with_adapter(journal["path"], manifest_path, {"nonce": "nonce-1"}, false)

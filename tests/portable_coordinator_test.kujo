@@ -1,7 +1,8 @@
 from src.execution.portable_coordinator import inspect_portable_workcell, run_portable_workcell
 from src.receipts.manifest import verify_manifest
 from src.receipts.v2 import verify_receipt_file
-from src.util import process_ok, run_argv
+from src.recovery.recovery import load_recovery_journal
+from src.util import get_or, process_ok, run_argv
 from src.workspace.workspace import temp_root
 
 mut passed := 0
@@ -26,7 +27,7 @@ expect("portable inspect negotiates before execution", inspection["ok"]&&len(ins
 
 result := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {})
 expect("portable lifecycle succeeds", result["ok"])
-if result["ok"] == false {run_argv(["rm", "-rf", repo], 30000); run_argv(["rm", "-rf", output], 30000); exit(1)}
+if result["ok"] == false {print(to_json_pretty(result)); run_argv(["rm", "-rf", repo], 30000); run_argv(["rm", "-rf", output], 30000); exit(1)}
 expect("portable lifecycle uses receipt v2", result["receipt"]["schema_version"] == "workcell-receipt/v2alpha1")
 expect("portable lifecycle records complete cleanup", result["cleanup_status"] == "complete")
 expect("portable lifecycle executes declarative verification", result["receipt"]["verification"]["status"] == "passed"&&len(result["receipt"]["verification"]["checks"]) == 1)
@@ -35,6 +36,12 @@ expect("portable manifest verifies offline", verify_manifest(result["output_dir"
 
 dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"dry_run": true})
 expect("portable dry run resolves without provisioning", dry["ok"]&&dry["receipt"]["cleanup"]["status"] == "not-provisioned")
+
+failed_provision := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture-fail-provision", "", {})
+failed_journal_path := get_or(get_or(failed_provision, "receipt", {}), "cleanup", {})["journal_path"]
+failed_journal := load_recovery_journal(failed_journal_path)
+expect("unknown provision result preserves a recovery-required intent", failed_provision["ok"] == false&&failed_provision["stage"] == "provisioning"&&failed_provision["cleanup_status"] == "recovery-required"&&failed_journal["ok"]&&failed_journal["journal"]["phase"] == "provision-unknown"&&type(failed_journal["journal"]["handle"]) == "null")
+expect("failed provision receipt remains offline-verifiable", verify_receipt_file(failed_provision["receipt_path"])["ok"])
 
 run_argv(["rm", "-rf", repo], 30000)
 run_argv(["rm", "-rf", output], 30000)

@@ -52,7 +52,7 @@ INVALID_COMMAND_OPTION="$($KUJO run "$ROOT/main.kujo" -- run --backend podman 2>
 INVALID_COMMAND_OPTION_CODE=$?
 set -e
 test "$INVALID_COMMAND_OPTION_CODE" -eq 2
-printf '%s' "$INVALID_COMMAND_OPTION" | grep -Fq 'not valid for command run'
+printf '%s' "$INVALID_COMMAND_OPTION" | grep -Fq 'portable backend flags require a v2 definition'
 
 set +e
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json" >/dev/null

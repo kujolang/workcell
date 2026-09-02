@@ -7,7 +7,7 @@
 
 Workcell 1.0 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
 
-The repository also contains an additive alpha provider-neutral contract: `workcell-definition/v2alpha1`, `workcell-backend/v1alpha1`, and `workcell-receipt/v2alpha1`. Docker and Podman remain the stable built-ins. Explicit external adapters for E2B, Vercel Sandbox, and Daytona are separately installed, capability-negotiated, and receipt-visible; fixture conformance is not live-provider or security certification. See [backend adapters](docs/backend-adapters.md).
+The repository also contains an additive alpha provider-neutral contract: `workcell-definition/v2alpha1`, `workcell-backend/v1alpha1`, and `workcell-receipt/v2alpha1`. Docker and Podman implement that contract through the existing stable OCI lifecycle. Digest-pinned external adapters for E2B, Vercel Sandbox, and Daytona are separately installed, strictly capability-negotiated, ownership-recoverable, and receipt-visible. gVisor and Kata are OCI runtime selections, not provider adapters. Offline conformance is not live-provider or security certification. See [backend adapters](docs/backend-adapters.md).
 
 > The container boundary defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
 
@@ -43,7 +43,7 @@ export KUJO=/path/to/kujo-1.2.1/kujo
 ./bin/workcell --version
 ```
 
-Before the tag exists, release-preparation checkouts use the exact approved commit instead of `git checkout v1.0.0`. The launcher reads `KUJO` and does not download or replace the runtime.
+The `v1.0.0` tag contains the stable release. Unreleased provider-neutral work on `main` must be pinned by exact commit until a later version is approved; do not treat `main` as the tagged release. The launcher reads `KUJO` and does not download or replace the runtime.
 
 ## Quick Start
 
@@ -60,6 +60,31 @@ docker build --tag kujolang/workcell-base:local docker/
 Agent hosts can use `workcell run ... --summary` for one compact `workcell-run-summary/v1` JSON object containing the verdict and evidence paths without embedding the full receipt. The receipt and integrity manifest remain authoritative.
 
 `workcell init` creates a restrictive starter definition. `inspect` resolves policy without starting a container. `run` creates a temporary Git workspace and writes evidence under `.workcell/runs/<run-id>/`. For Podman, set `runtime.backend` to `podman` and follow the identity guidance in [platform compatibility](docs/compatibility.md).
+
+## Portable backend quick start
+
+The v2 workload stays provider-neutral; the host profile selects compute. This example resolves through built-in Docker without installing an adapter:
+
+```bash
+./bin/workcell validate --file examples/portable/workcell.json
+./bin/workcell inspect \
+  --file examples/portable/workcell.json \
+  --profiles examples/portable/host-profiles.json \
+  --profile docker \
+  --summary
+./bin/workcell run \
+  --file examples/portable/workcell.json \
+  --repo . \
+  --profiles examples/portable/host-profiles.json \
+  --profile docker \
+  --summary
+```
+
+Switching profiles changes the provider, not the workload contract. Remote profiles and explicit adapter manifests are documented in [backend adapters](docs/backend-adapters.md). Unsupported security or resource requirements fail before provisioning; Workcell never silently substitutes provider defaults.
+
+## Agent-efficient interface
+
+Agents should use `inspect --summary` for a compact preflight and `run --summary` for the verdict and evidence pointers. These emit single-line `workcell-inspect-summary/v1` and `workcell-run-summary/v1` objects without commands, mounts, secrets, full capability ledgers, logs, or embedded receipts. Read `receipt.json` only when detailed evidence is needed, and use `verify --json` before trusting persisted evidence. Pass correlation through a bounded `workcell-caller-context/v1` file with `--context`; never put credentials or provider options in caller context.
 
 ## Stable CLI surface
 
@@ -156,11 +181,14 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 - [Architecture](docs/architecture.md)
 - [Backend adapters](docs/backend-adapters.md)
 - [Backend adapter authoring](docs/adapter-authoring.md)
+- [Backend matrix research and implementation package](docs/plans/backend-matrix/README.md)
+- [API compatibility and machine contracts](docs/api-compatibility.md)
 - [Workcell definition](docs/workcell-definition.md)
 - [Runtime lifecycle](docs/runtime-lifecycle.md)
 - [Platform compatibility](docs/compatibility.md)
 - [Security model](docs/security-model.md)
 - [Security review](docs/security-review.md)
+- [Known limitations](docs/known-limitations.md)
 - [Enterprise deployment boundary](docs/enterprise-deployment.md)
 - [Development](docs/development.md)
 - [Release process](docs/release-process.md)

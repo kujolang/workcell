@@ -1,6 +1,8 @@
 # Workcell Release Process
 
-This process prepares and publishes Workcell source releases without publishing a container image, package registry entry, hosted runner, or hosted execution service. Workcell 1.0.0 supports the local and CI Docker/Podman contract on the host classes in [platform compatibility](compatibility.md).
+This process prepares and publishes Workcell source releases without publishing a container image, package registry entry, hosted runner, or hosted execution service. The current released tag is `v1.0.0`, which supports the stable local and CI Docker/Podman contract on the host classes in [platform compatibility](compatibility.md). Provider-neutral changes on `main` are unreleased alpha work and must not be applied to the existing tag.
+
+Before preparing the next release, choose its version through normal review, update `VERSION`, package metadata, the README badge, changelog heading, filenames below, and compatibility notes together, then run the consistency gate. Never recreate or move `v1.0.0` to include unreleased work.
 
 ## Release inputs
 
@@ -18,11 +20,13 @@ Definition, receipt, manifest, report, provenance, CLI metadata, and other `/v1`
 - [ ] Confirm `kennel.toml` declares production, stable, public API status with the narrow local Docker/Podman scope note.
 - [ ] Confirm `RUNTIME_VERSION` is `692512a9070fdba713f160d795bbddb8077db7b5` and the test binary was built from that commit.
 - [ ] Run the offline, quality, version-consistency, release-report, Markdown-link, and whitespace gates below.
+- [ ] Run official-adapter installation, offline conformance, and integrity verification; confirm the lockfile and executable digests match the reviewed source.
 - [ ] Run Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup evidence.
 - [ ] Run Podman doctor, OCI smoke, integration, concurrent-load, and egress evidence on supported Linux.
 - [ ] Run ShipCheck with exit code `0`, zero errors, and no warning that contradicts the v1 contract.
 - [ ] Review the hosted CI run for the exact approved commit and confirm every job and step passed. Local evidence is not a substitute.
 - [ ] Review [the security model](security-model.md), [enterprise boundary](enterprise-deployment.md), and [known limitations](known-limitations.md) for claim accuracy.
+- [ ] If promoting an alpha remote adapter, retain credential-gated evidence for the exact account, plan, region, adapter/API/SDK version, capability probes, spend ceiling, and zero owned orphans. A core Workcell release does not automatically promote an adapter.
 - [ ] Confirm no generated `.workcell`, CaseFile, RunLedger, test output, or temporary release artifacts are tracked.
 - [ ] Obtain explicit human approval for the exact commit SHA before creating the tag.
 
@@ -40,6 +44,9 @@ KUJO="$KUJO" ./tests/quality.sh
 KUJO="$KUJO" ./tests/release_report.sh
 ./tests/markdown_links.sh
 git diff --check
+npm ci --ignore-scripts --prefix adapters/official
+npm test --prefix adapters/official
+npm run integrity:check --prefix adapters/official
 ```
 
 Docker:
@@ -52,6 +59,7 @@ REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/load_integration.sh docker
 REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh docker
 KUJO="$KUJO" ./bin/workcell run --file workcell.json --repo . --no-pull --json
 KUJO="$KUJO" ./bin/workcell verify --run <run-directory> --json
+WORKCELL_LIVE_PORTABLE_OCI=1 KUJO="$KUJO" ./tests/portable_oci_contract.sh
 ```
 
 Podman on supported Linux:

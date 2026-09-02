@@ -27,7 +27,9 @@ Workcell is a standalone sibling repository named `workcell`, with a thin `main.
 
 ### Module responsibilities
 
-The module tree keeps configuration parsing, domain validation, policy construction, runtime adapters, workspace handling, execution coordination, artifact export, receipts, diagnostics, and presentation separate. The Docker adapter is behind a runtime boundary so additional OCI-compatible backends can be added without moving lifecycle policy into the CLI.
+The module tree keeps configuration parsing, domain validation, policy construction, backend adapters, workspace transfer, execution coordination, artifact export, receipts, recovery, diagnostics, and presentation separate. Docker and Podman share the built-in OCI driver. Provider-neutral execution goes through the closed protocol in `src/backend/` and lifecycle in `src/execution/portable_coordinator.kujo`; provider SDKs stay in external adapter packages. Lifecycle policy must not move into the CLI or provider implementations.
+
+Agent-facing output is intentionally layered: `inspect --summary` and `run --summary` are compact decision/pointer contracts; full `inspect --json`, receipts, manifests, and logs are detailed evidence. Tests should consume the smallest contract that proves the behavior under test.
 
 ### Errors and results
 

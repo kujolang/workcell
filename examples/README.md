@@ -4,7 +4,7 @@ The JSON definitions below are intended to be copied into a clean Git fixture or
 
 For a real run, the repository passed to `--repo` must be clean. The default offline test suite does not require Docker; integration commands are documented in `docs/development.md`.
 
-Use Kujo 1.0.0 at the exact commit in `../RUNTIME_VERSION`. Docker examples run on supported Linux or macOS Docker hosts; Podman-compatible rows require supported Linux Podman and the backend/identity settings documented in [platform compatibility](../docs/compatibility.md).
+Use Kujo 1.2.1 at the exact commit in `../RUNTIME_VERSION`. Docker examples run on supported Linux or macOS Docker hosts; Podman-compatible rows require supported Linux Podman and the backend/identity settings documented in [platform compatibility](../docs/compatibility.md).
 
 Build the two local images used by the examples:
 
@@ -25,6 +25,7 @@ docker/kujo/build-local.sh /path/to/kujo-source
 - `provenance/workcell.json`: demonstrates fail-closed digest and registry policy; replace the placeholder digest before a successful run.
 - `signature/workcell.json`: demonstrates fail-closed cosign verification; replace `signature/workcell.pub` with an approved key and sign the selected image.
 - `artifact-policy/workcell.json`: demonstrates declared secret rejection during artifact export.
+- `portable/workcell.json`: keeps the v2 workload independent of the Docker/Podman choice in `portable/host-profiles.json`; use `inspect --summary` for compact capability preflight.
 
 The example matrix is intentionally explicit about dependencies:
 
@@ -37,3 +38,4 @@ The example matrix is intentionally explicit about dependencies:
 | `provenance` | yes | required; replace digest | compatible backend optional | no | no |
 | `signature` | yes | required; replace key and sign image | compatible backend optional | required | no |
 | `kujo-project-check` | yes | required | no | no | Kujo source checkout |
+| `portable` | yes | selected by host profile | selected by host profile | no | no |

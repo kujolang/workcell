@@ -27,6 +27,12 @@ The adversarial CLI suite rejects privileged, socket, host-mount, traversal, ima
 
 Docker and Podman integration gates cover successful and failed execution, timeout, exit-code classification, provenance failures, custom/internal networks, secrets, artifact policy, verification containers, receipts, manifests, tamper detection, image builds, inventory, and cleanup. Concurrent-load evidence checks run separation, source immutability, artifact and manifest integrity, and cleanup. Egress evidence checks an allowed internal destination and blocked external DNS on a temporary internal network.
 
+## Alpha provider-neutral surface
+
+The provider-neutral path is reviewed as an additive alpha contract, not as part of the stable v1 isolation claim. Core validates closed protocol envelopes and operation shapes, redacts bounded adapter output, packages only a clean Git commit, independently verifies transferred digests and archive paths, re-applies declared artifact policy, persists ownership intent before provisioning, and destroys only handles or inventory entries matching both run ID and nonce. Receipt v2 separates requested, accepted, enforcement authority, and observation, so a provider or operator assertion is never represented as Workcell enforcement.
+
+Offline conformance covers protocol framing, semantic drift, cancellation classification, unknown provision outcomes, recovery, transfer limits, malformed responses, credentials, concurrent ownership isolation, and adapter integrity. It does not verify a remote provider's tenant isolation, network enforcement, retention, billing, regional placement, cancellation latency, or deletion behavior. Those claims require exact-version credentialed promotion evidence and remain blocked when unknown.
+
 ## Residual risk and required interpretation
 
 Workcell cannot protect against a compromised daemon or host kernel. It does not provide a hardened microVM, hosted multi-tenant scheduler, controlled organization-wide proxy, image-governance program, key-custody system, evidence-retention policy, or compliance certification. Exact-value redaction cannot detect arbitrarily transformed secrets. An operator-selected seccomp/AppArmor profile is passed through but not installed or audited by Workcell. Local and CI test evidence must not be generalized beyond the host and backend actually tested.

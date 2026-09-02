@@ -28,6 +28,19 @@ The offline suite checks all Kujo sources, policy and definition validation, pat
 
 `tests/quality.sh` requires `kujo format --check`, zero Kujo lint findings for source modules, valid shell syntax, and `git diff --check`. `tests/release_report.sh` emits `workcell-report/v1` with `workcell_version`, suite counts, elapsed time, and explicit deployment-gate status.
 
+The provider-neutral and official-adapter gates are also offline by default:
+
+```bash
+npm ci --ignore-scripts --prefix adapters/official
+npm test --prefix adapters/official
+npm run integrity:check --prefix adapters/official
+KUJO="$KUJO" "$KUJO" run tests/portable_definition_test.kujo
+KUJO="$KUJO" "$KUJO" run tests/portable_coordinator_test.kujo
+KUJO="$KUJO" "$KUJO" run tests/official_adapters_test.kujo
+```
+
+Use `inspect --summary` and `run --summary` in agent tests. Assert the compact schema and evidence pointers, then verify the referenced receipt separately; do not snapshot full receipts into prompts or fixtures unless the receipt contract itself is under test.
+
 ## Docker gates
 
 Run on a supported host with a reachable Docker daemon:
@@ -41,6 +54,12 @@ REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh docker
 ```
 
 The integration suite exercises successful, failed, timed-out, digest/signature, custom-network, artifact, secret, verification, image-build, receipt-integrity, cleanup, and tamper-detection paths. Load evidence runs four isolated executions by default and verifies unique run IDs, unchanged source, artifacts, manifests, workspaces, and containers. Egress evidence proves one allowed internal destination and one blocked external DNS destination on a temporary internal network; it does not replace a host firewall or proxy acceptance test.
+
+The provider-neutral Docker vertical slice is deliberately opt-in because it requires a daemon and image availability:
+
+```bash
+WORKCELL_LIVE_PORTABLE_OCI=1 KUJO="$KUJO" ./tests/portable_oci_contract.sh
+```
 
 On macOS VM-backed engines, point `TMPDIR` at an existing host directory shared into the engine VM. The integration scripts create their temporary repositories and outputs beneath that exact directory instead of relying on the platform `mktemp` default.
 

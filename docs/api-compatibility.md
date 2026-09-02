@@ -10,6 +10,7 @@ The Workcell product version and contract identifiers are independent. Workcell 
 | --- | --- | --- | --- |
 | Definition | `workcell-definition/v1` | `validate --schema` | Unknown input fields are rejected; new fields require safe defaults and an additive schema update. |
 | CLI metadata | `workcell-cli/v1` | `help --json` | Commands, options, global `--help`/`--version`, and exit-code meanings are additive within v1; unsupported command options and extra positionals fail with usage code 2. |
+| Run summary | `workcell-run-summary/v1` | `run --summary` | Compact stable pointers/verdicts for agents and automation; the receipt remains authoritative evidence. |
 | Receipt | `workcell-receipt/v1` | `receipt.json` | `workcell_version` is the product version and `definition_version` is the input contract version; existing fields remain stable and new evidence fields are additive. |
 | Integrity manifest | `workcell-manifest/v1` | `manifest.json` | Relative paths, byte counts, and SHA-256 entries are verified by `workcell verify`. |
 | Portable definition | `workcell-definition/v2alpha1` | selected definition file | Alpha semantic workload contract; provider configuration is excluded. |

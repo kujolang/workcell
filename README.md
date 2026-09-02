@@ -57,6 +57,8 @@ docker build --tag kujolang/workcell-base:local docker/
 ./bin/workcell verify --run .workcell/runs/<run-id> --json
 ```
 
+Agent hosts can use `workcell run ... --summary` for one compact `workcell-run-summary/v1` JSON object containing the verdict and evidence paths without embedding the full receipt. The receipt and integrity manifest remain authoritative.
+
 `workcell init` creates a restrictive starter definition. `inspect` resolves policy without starting a container. `run` creates a temporary Git workspace and writes evidence under `.workcell/runs/<run-id>/`. For Podman, set `runtime.backend` to `podman` and follow the identity guidance in [platform compatibility](docs/compatibility.md).
 
 ## Stable CLI surface

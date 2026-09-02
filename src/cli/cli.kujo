@@ -39,7 +39,7 @@ func parse_args(tokens) {
     if type(tokens) != "array" {
         return {"error": "arguments must be an array"}
     }
-    bool_flags := ["json", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
+    bool_flags := ["json", "summary", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
     value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file"]
     mut positionals := []
     mut flags := {}
@@ -119,7 +119,7 @@ func options_for(command) {
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
     if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json"]}
-    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "dry-run", "keep-failed", "no-pull", "rebuild", "json"]}
+    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
     if command == "backends" {return ["json", "manifest"]}
@@ -170,7 +170,7 @@ func help_value() {
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json"]},
-        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
@@ -213,6 +213,7 @@ func print_help(json_mode) {
     "  --backend       Optional assertion matching the selected profile (v2)",
     "  --cancel-file   Cancel execution when this operator-owned path appears",
     "  --json          Emit one machine-readable JSON object",
+    "  --summary       Emit a compact machine summary without embedding the receipt",
     "  --schema        Emit the versioned Workcell definition schema (validate only)",
     "",
     "Security defaults:",
@@ -420,7 +421,28 @@ func display_value(value, fallback) {
     return to_string(value)
 }
 
-func print_run_result(result, json_mode) {
+func run_summary(result) {
+    receipt := get_or(result, "receipt", {})
+    backend := get_or(receipt, "backend", {})
+    verification := get_or(receipt, "verification", {})
+    changes := get_or(receipt, "changes", {})
+    artifact_section := get_or(receipt, "artifacts", {})
+    cost := get_or(receipt, "cost", {})
+    return {
+        "schema_version": "workcell-run-summary/v1", "ok": get_or(result, "ok", false), "run_id": get_or(result, "run_id", ""),
+        "stage": get_or(result, "stage", "unknown"), "exit_code": get_or(result, "exit_code", 10), "timed_out": get_or(result, "timed_out", false), "cancelled": get_or(result, "cancelled", false),
+        "backend": {"adapter_id": get_or(backend, "adapter_id", get_or(receipt, "runtime_backend", "")), "provider_id": get_or(backend, "provider_id", "")},
+        "verification": get_or(verification, "status", get_or(verification, "verification_succeeded", null)), "changed_files": len(get_or(changes, "files", get_or(receipt, "changed_files", []))),
+        "declared_artifacts": len(get_or(artifact_section, "declared", [])), "cost": {"status": get_or(cost, "status", "unknown"), "class": get_or(cost, "class", "unknown")},
+        "cleanup_status": get_or(result, "cleanup_status", "unknown"), "receipt_path": get_or(result, "receipt_path", null), "output_dir": get_or(result, "output_dir", null), "error": get_or(result, "error", "")
+    }
+}
+
+func print_run_result(result, json_mode, summary_mode) {
+    if summary_mode {
+        print(to_json(run_summary(result)))
+        return
+    }
     if json_mode {
         print(to_json_pretty(result))
         return
@@ -475,7 +497,7 @@ func run_command(parsed) {
             result = run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
         }
     }
-    print_run_result(result, has_flag(parsed, "json"))
+    print_run_result(result, has_flag(parsed, "json"), has_flag(parsed, "summary"))
     return run_exit_code(result)
 }
 

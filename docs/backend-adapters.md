@@ -80,6 +80,8 @@ Inspect and run with explicit inputs:
 
 Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The bundled adapters currently resolve only `env:` references. Workcell passes only the named environment variable to the adapter process; the value is not placed in the definition, profile, request payload, receipt, log, or artifact. Kujo Agent/OS-store resolution requires a host bridge and must fail rather than fall back to ambient credentials.
 
+Host routing fields are normalized identically by `inspect` and `run`. `region` and `provider_project` are bounded control-free strings. Custom endpoints require HTTPS; loopback HTTP is accepted only with `policy.allow_insecure_loopback_endpoint: true` for explicit local development. Embedded URL credentials, fragments, whitespace, backslashes, unknown policy keys, malformed credential names, and non-object adapter options fail during profile loading.
+
 ## Strict capability negotiation
 
 Every requested control is required by default. Unknown, unsupported, not enforceable, or unproved conditional controls reject before provision. There is no global best-effort mode and no backend-name shortcut. Only exact non-security evidence capabilities may use an operator-approved degradation list in future compatible versions.

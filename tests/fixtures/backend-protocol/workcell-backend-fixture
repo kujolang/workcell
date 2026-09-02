@@ -45,6 +45,17 @@ if [ "$operation" = "describe" ]; then
 fi
 
 if [ "$operation" = "resolve" ]; then
+    expected_region="$(printf '%s' "$request" | jq -r '.profile.expected_region // ""')"
+    expected_project="$(printf '%s' "$request" | jq -r '.profile.expected_provider_project // ""')"
+    expected_endpoint="$(printf '%s' "$request" | jq -r '.profile.expected_endpoint // ""')"
+    if [ -n "$expected_region" ] && [ "$expected_region" != "$(printf '%s' "$request" | jq -r '.profile.region // ""')" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"PROFILE_INVALID",message:"region was not resolved into adapter options",provider_code:"fixture",retryable:false}}'
+        exit 0
+    fi
+    if [ "$expected_project" != "$(printf '%s' "$request" | jq -r '.profile.provider_project // ""')" ] || [ "$expected_endpoint" != "$(printf '%s' "$request" | jq -r '.profile.endpoint // ""')" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"PROFILE_INVALID",message:"provider routing fields were not resolved into adapter options",provider_code:"fixture",retryable:false}}'
+        exit 0
+    fi
     printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{identity:{adapter:"external-fixture",adapter_version:"1.0.0",provider:"workcell-fixture",provider_api:"fixture/v1",substrate:"process"},capabilities:(.payload.requirements | map({id:.id,support:"supported",requested:(.requested // true),acceptance:"accepted",resolved:(.value // true),enforcement:{status:"workcell-enforced",authority:"fixture",evidence:"offline fixture"},observation:{status:"observed",method:"fixture",result:"configured"},limitations:[]})),resolved_plan:.payload.intent,volatile_fields:[]}}'
     exit 0
 fi

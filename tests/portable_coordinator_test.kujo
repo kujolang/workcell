@@ -24,6 +24,8 @@ expect("fixture repository commits", process_ok(commit))
 
 inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json", "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "")
 expect("portable inspect negotiates before execution", inspection["ok"]&&len(inspection["controls"]) >= 20)
+routing_inspection := inspect_portable_workcell("tests/fixtures/portable/workcell.json", "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture-routing", "")
+expect("portable inspect resolves region project and endpoint like run", routing_inspection["ok"])
 
 result := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {})
 expect("portable lifecycle succeeds", result["ok"])

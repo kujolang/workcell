@@ -36,6 +36,26 @@ expect("explicit host profile loads", profile["ok"]&&profile["backend"] == "exte
 expect("backend override conflict fails", load_host_profile(profile_path, "fixture", "e2b")["ok"] == false)
 run_argv(["rm", "-f", profile_path], 5000)
 
+unsafe_profile_path := "/tmp/workcell-portable-profile-unsafe-" + replace(uuid_v4(), "-", "") + ".json"
+unsafe_profiles := {"schema": host_profiles_schema_version(), "profiles": {"fixture": {"backend": "external-fixture", "endpoint": "http://metadata.internal/", "adapter_options": {}, "policy": {}}}}
+write_file_atomic(unsafe_profile_path, to_json(unsafe_profiles), true)
+expect("remote profile rejects insecure arbitrary endpoint", load_host_profile(unsafe_profile_path, "fixture", "")["ok"] == false)
+unsafe_profile := unsafe_profiles["profiles"]["fixture"]
+unsafe_profile["endpoint"] := "http://127.0.0.1:8080"
+unsafe_profile["policy"] := {"allow_insecure_loopback_endpoint": true}
+unsafe_profile_map := unsafe_profiles["profiles"]
+unsafe_profile_map["fixture"] := unsafe_profile
+unsafe_profiles["profiles"] := unsafe_profile_map
+write_file_atomic(unsafe_profile_path, to_json(unsafe_profiles), true)
+expect("profile permits explicit insecure loopback development endpoint", load_host_profile(unsafe_profile_path, "fixture", "")["ok"])
+unsafe_profile["endpoint"] := "https://api.example.invalid"
+unsafe_profile["policy"] := {"unexpected": true}
+unsafe_profile_map["fixture"] := unsafe_profile
+unsafe_profiles["profiles"] := unsafe_profile_map
+write_file_atomic(unsafe_profile_path, to_json(unsafe_profiles), true)
+expect("profile rejects unknown operator policy fields", load_host_profile(unsafe_profile_path, "fixture", "")["ok"] == false)
+run_argv(["rm", "-f", unsafe_profile_path], 5000)
+
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))
 if failed > 0 {exit(1)}

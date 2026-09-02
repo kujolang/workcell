@@ -12,6 +12,15 @@
       "credential_ref": "",
       "adapter_options": {"external-fixture": {"fail_provision": true}},
       "policy": {}
+    },
+    "fixture-routing": {
+      "backend": "external-fixture",
+      "credential_ref": "",
+      "region": "us-test-1",
+      "provider_project": "project-test",
+      "endpoint": "https://api.example.invalid",
+      "adapter_options": {"external-fixture": {"expected_region": "us-test-1", "expected_provider_project": "project-test", "expected_endpoint": "https://api.example.invalid"}},
+      "policy": {}
     }
   }
 }

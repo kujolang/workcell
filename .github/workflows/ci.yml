@@ -11,6 +11,50 @@ permissions:
   contents: read
 
 jobs:
+  macos-offline:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+
+      - name: Build pinned Kujo runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          KUJO_RUNTIME_REF="$(cat RUNTIME_VERSION)"
+          git init "$RUNNER_TEMP/kujo-runtime"
+          git -C "$RUNNER_TEMP/kujo-runtime" remote add origin https://github.com/kujolang/kujo.git
+          git -C "$RUNNER_TEMP/kujo-runtime" fetch --depth 1 origin "$KUJO_RUNTIME_REF"
+          git -C "$RUNNER_TEMP/kujo-runtime" checkout --detach "$KUJO_RUNTIME_REF"
+          test "$(git -C "$RUNNER_TEMP/kujo-runtime" rev-parse HEAD)" = "$KUJO_RUNTIME_REF"
+          cargo build --release --locked --manifest-path "$RUNNER_TEMP/kujo-runtime/Cargo.toml" --bin kujo
+          echo "KUJO_BIN=$RUNNER_TEMP/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+
+      - name: Run macOS offline contract suite
+        shell: bash
+        run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Exercise interpreter compatibility for portable contracts
+        shell: bash
+        run: |
+          "$KUJO_BIN" run --interpreter tests/backend_test.kujo
+          "$KUJO_BIN" run --interpreter tests/portable_definition_test.kujo
+          "$KUJO_BIN" run --interpreter tests/evidence_recovery_test.kujo
+
+      - name: Run official adapter suite and integrity gate
+        shell: bash
+        run: |
+          npm ci --ignore-scripts --prefix adapters/official
+          npm run integrity:check --prefix adapters/official
+          npm test --prefix adapters/official
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -44,6 +88,13 @@ jobs:
       - name: Run offline and CLI contract suite
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Exercise interpreter compatibility for portable contracts
+        shell: bash
+        run: |
+          "$KUJO_BIN" run --interpreter tests/backend_test.kujo
+          "$KUJO_BIN" run --interpreter tests/portable_definition_test.kujo
+          "$KUJO_BIN" run --interpreter tests/evidence_recovery_test.kujo
 
       - name: Run formatting and lint gates
         shell: bash

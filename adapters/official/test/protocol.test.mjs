@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { test } from 'node:test';
@@ -19,6 +19,24 @@ function call(provider, operation, payload = {}, profile = { fixture_mode: true 
   assert.equal(result.status, 0);
   const lines = result.stdout.trim().split('\n').map(JSON.parse);
   return { req, events: lines.filter((x) => x.type === 'event'), result: lines.at(-1) };
+}
+
+function callAsync(provider, runId, operation, payload, profile = { fixture_mode: true }) {
+  const req = { contract: 'workcell-backend/v1alpha1', request_id: `load-${runId}-${operation}`, run_id: runId, operation, deadline_ms: 10000, profile, payload };
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [adapterEntry, provider, 'protocol'], { stdio: ['pipe', 'pipe', 'pipe'], env: {} });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code !== 0) return reject(new Error(`fixture adapter exited ${code}: ${stderr}`));
+      const lines = stdout.trim().split('\n').map(JSON.parse);
+      resolve(lines.at(-1));
+    });
+    child.stdin.end(`${JSON.stringify(req)}\n`);
+  });
 }
 
 for (const provider of ['e2b', 'vercel-sandbox', 'daytona']) {
@@ -149,4 +167,20 @@ test('protocol parser fails closed for a deterministic malformed corpus', () => 
     assert.ok(['PROTOCOL_VIOLATION', 'PROFILE_INVALID'].includes(frame.error.code));
     assert.equal(result.stderr, '');
   }
+});
+
+test('concurrent fixture lifecycles remain ownership-isolated and leak-free', async () => {
+  const runs = Array.from({ length: 8 }, (_, index) => {
+    const runId = `wc-${String(index + 1).padStart(32, '0')}`;
+    return { runId, ownership: { run_id: runId, nonce: `load-${index + 1}` } };
+  });
+  const provisioned = await Promise.all(runs.map(({ runId, ownership }) => callAsync('e2b', runId, 'provision', { ownership, resolved_plan: {}, idempotency_key: `${runId}:provision` })));
+  assert.ok(provisioned.every((frame) => frame.ok));
+  assert.equal(new Set(provisioned.map((frame) => frame.data.handle.resource_ids[0].id)).size, runs.length);
+  const inventories = await Promise.all(runs.map(({ runId, ownership }) => callAsync('e2b', runId, 'inventory', { ownership })));
+  assert.ok(inventories.every((frame) => frame.ok && frame.data.complete && frame.data.resources.length === 1));
+  const destroyed = await Promise.all(runs.map(({ runId, ownership }, index) => callAsync('e2b', runId, 'destroy', { handle: provisioned[index].data.handle, expected_ownership: ownership, idempotency_key: `${runId}:destroy` })));
+  assert.ok(destroyed.every((frame) => frame.ok && frame.data.remaining.length === 0));
+  const empty = await Promise.all(runs.map(({ runId, ownership }) => callAsync('e2b', runId, 'inventory', { ownership })));
+  assert.ok(empty.every((frame) => frame.ok && frame.data.complete && frame.data.resources.length === 0));
 });

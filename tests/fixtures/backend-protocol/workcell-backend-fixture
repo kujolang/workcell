@@ -31,7 +31,8 @@ fi
 
 if [ "$operation" = "inventory" ]; then
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce // .profile.nonce // "nonce-1"')"
-    if [ -f "$state_path" ] && [ "$(cat "$state_path")" = "$nonce" ]; then
+    simulate_resource="$(printf '%s' "$request" | jq -r '.profile.simulate_resource // false')"
+    if { [ -f "$state_path" ] && [ "$(cat "$state_path")" = "$nonce" ]; } || [ "$simulate_resource" = "true" ]; then
         jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
     else
         jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[],complete:true}}'

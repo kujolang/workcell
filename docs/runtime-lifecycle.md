@@ -35,3 +35,9 @@ Timeouts are distinct from ordinary workload failures. The process API returns a
 | 10 | Internal Workcell failure. |
 
 The workload's own exit code remains in `receipt.json`; the CLI code identifies the category of failure. A Docker/Podman startup error is distinct from a workload command failure.
+
+## Portable v2 lifecycle
+
+Remote execution uses `resolve → provision → prepare → execute → collect → export → destroy → record`. Resolve must accept every required semantic control before provision. A successful provision is checkpointed to an ownership-bound recovery journal before any workspace upload. Prepare verifies the observed workspace package digest. Execute and declarative verification produce normalized terminal results; a nonzero workload exit is a result, not an adapter transport failure. Collect may report incomplete deltas or unknown metrics but cannot invent evidence. Export returns only declared paths, which core revalidates and re-hashes. Destroy must return itemized cleanup and zero remaining run-owned resources for a clean success.
+
+Cancel and inventory are mandatory protocol operations used by control and recovery paths. Pause, resume, snapshot, and metrics remain optional capabilities and do not alter the canonical success lifecycle. Workcell does not retry workloads; Dispatch or Relay may start a new correlated Workcell attempt under their own policy.

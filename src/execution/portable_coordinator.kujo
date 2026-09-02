@@ -26,9 +26,9 @@ func safe_output_root(repo_root, requested, receipt_path) {
             if path_within(temp_root(), requested) == false&&path_within(repo_root + "/.workcell", requested) == false {return {"ok": false, "error": "absolute output must be inside TMPDIR or repository .workcell"}}
             root = requested
         } else {root = repo_root + "/" + requested}
-    }
-    if path_has_symlink(root)||ensure_dir(root) == false||path_is_dir(root) == false {return {"ok": false, "error": "output path is unsafe or not writable"}}
-    return {"ok": true, "path": root}
+}
+if path_has_symlink(root)||ensure_dir(root) == false||path_is_dir(root) == false {return {"ok": false, "error": "output path is unsafe or not writable"}}
+return {"ok": true, "path": root}
 }
 
 func request(run_identifier, operation, profile, payload, deadline) {
@@ -68,11 +68,13 @@ export func inspect_portable_workcell(definition_path, manifest_path, profiles_p
     definition := loaded["definition"]
     profile_state := load_host_profile(profiles_path, profile_id, backend_override)
     if profile_state["ok"] == false {return profile_state}
+    profile := profile_state["profile"]
     manifest_state := load_backend_manifest(manifest_path)
     if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile")}}
+    required_digest := get_or(profile["policy"], "required_adapter_digest", "")
+    if required_digest != ""&&get_or(manifest_state["manifest"], "digest", "") != required_digest {return {"ok": false, "error": "adapter manifest does not satisfy required_adapter_digest"}}
     executable_state := backend_executable(manifest_state["manifest"])
     if executable_state["ok"] == false {return executable_state}
-    profile := profile_state["profile"]
     adapter_options := get_or(profile["adapter_options"], profile_state["backend"], {})
     adapter_options["credential_ref"] := get_or(profile, "credential_ref", "")
     adapter_options["policy"] := profile["policy"]
@@ -93,14 +95,14 @@ func finalize_failure(executable, run_identifier, profile, definition, output_di
             cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": get_or(destroyed["result"]["data"], "remaining", [])}
             if journal_path != "" {update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
         } else {
-            cleanup = {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
-            if journal_path != "" {update_recovery_journal(journal_path, "destroy", "failed", {"time": now_utc(), "operation": "destroy", "ok": false}, get_or(destroyed["result"], "error", {}))}
-        }
+        cleanup = {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
+        if journal_path != "" {update_recovery_journal(journal_path, "destroy", "failed", {"time": now_utc(), "operation": "destroy", "ok": false}, get_or(destroyed["result"], "error", {}))}
     }
-    finished := finish_v2(receipt, output_dir + "/receipt.json", stage, stage, cleanup)
-    if finished["ok"] {receipt = finished["receipt"]}
-    write_manifest(output_dir, run_identifier)
-    return result_value(run_identifier, output_dir, receipt, false, stage, message, exit_code)
+}
+finished := finish_v2(receipt, output_dir + "/receipt.json", stage, stage, cleanup)
+if finished["ok"] {receipt = finished["receipt"]}
+write_manifest(output_dir, run_identifier)
+return result_value(run_identifier, output_dir, receipt, false, stage, message, exit_code)
 }
 
 export func run_portable_workcell(definition_path, repo_path, requested_output, manifest_path, profiles_path, profile_id, backend_override, flags) {
@@ -116,123 +118,125 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     if starts_with(adapter_options["credential_ref"], "env:") {
         adapter_options["credential_env"] := substring(adapter_options["credential_ref"], 4, len(adapter_options["credential_ref"]))
     }
-    adapter_options["region"] := get_or(profile, "region", "")
-    adapter_options["provider_project"] := get_or(profile, "provider_project", "")
-    adapter_options["endpoint"] := get_or(profile, "endpoint", "")
-    adapter_options["policy"] := profile["policy"]
-    manifest_state := load_backend_manifest(manifest_path)
-    if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile"), "exit_code": 2}}
-    executable_state := backend_executable(manifest_state["manifest"])
-    if executable_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": executable_state["error"], "exit_code": 2}}
-    executable := executable_state["path"]
-    source := inspect_repository(repo_path)
-    if source["ok"] == false||source["clean"] == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": get_or(source, "error", "portable execution requires a clean Git source"), "exit_code": 3}}
-    output_root := safe_output_root(source["root"], requested_output, definition["receipt"]["path"])
-    if output_root["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": output_root["error"], "exit_code": 3}}
-    output_dir := output_root["path"] + "/" + run_identifier
-    if ensure_dir(output_dir) == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "run output directory could not be created", "exit_code": 3}}
+adapter_options["region"] := get_or(profile, "region", "")
+adapter_options["provider_project"] := get_or(profile, "provider_project", "")
+adapter_options["endpoint"] := get_or(profile, "endpoint", "")
+adapter_options["policy"] := profile["policy"]
+manifest_state := load_backend_manifest(manifest_path)
+if manifest_state["ok"] == false||manifest_state["manifest"]["id"] != profile_state["backend"] {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": get_or(manifest_state, "error", "adapter manifest does not match selected profile"), "exit_code": 2}}
+required_digest := get_or(profile["policy"], "required_adapter_digest", "")
+if required_digest != ""&&get_or(manifest_state["manifest"], "digest", "") != required_digest {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "adapter manifest does not satisfy required_adapter_digest", "exit_code": 2}}
+executable_state := backend_executable(manifest_state["manifest"])
+if executable_state["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": executable_state["error"], "exit_code": 2}}
+executable := executable_state["path"]
+source := inspect_repository(repo_path)
+if source["ok"] == false||source["clean"] == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": get_or(source, "error", "portable execution requires a clean Git source"), "exit_code": 3}}
+output_root := safe_output_root(source["root"], requested_output, definition["receipt"]["path"])
+if output_root["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": output_root["error"], "exit_code": 3}}
+output_dir := output_root["path"] + "/" + run_identifier
+if ensure_dir(output_dir) == false {return {"ok": false, "run_id": run_identifier, "stage": "preparing", "error": "run output directory could not be created", "exit_code": 3}}
 
-    requirements_state := requirements_from_definition(definition)
-    resolved := invoke(executable, run_identifier, "resolve", adapter_options, {"requirements": requirements_state["requirements"], "intent": {"workload": definition["workload"], "workspace": definition["workspace"], "requirements": definition["requirements"], "artifacts": definition["artifacts"]}}, definition)
-    if resolved["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": provider_failure(resolved, "backend capability resolution failed"), "output_dir": output_dir, "exit_code": 2}}
-    identity := get_or(resolved["result"]["data"], "identity", null)
-    if validate_backend_identity(identity)["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend returned invalid identity", "output_dir": output_dir, "exit_code": 2}}
-    ledger := controls_ledger(requirements_state["requirements"], get_or(resolved["result"]["data"], "capabilities", []))
-    if ledger["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend rejected required capabilities: " + to_string(get_or(ledger, "rejected", [])), "output_dir": output_dir, "exit_code": 2}}
-    receipt := new_v2_receipt({"run_id": run_identifier, "backend": identity, "profile_id": profile_id, "profile_fingerprint": profile_state["fingerprint"], "definition": {"schema": definition["schema"], "name": definition["name"]}, "source": {"commit": source["commit"], "clean": true}, "workspace": {"source": "clean-git-commit", "materialization": "portable-clone"}, "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment_names": keys(definition["environment"]["set"]), "secret_names": definition["secrets"], "artifact_declarations": definition["artifacts"]["export"], "controls": ledger["controls"], "journal_path": output_dir + "/recovery/" + run_identifier + ".json"})
-    if get_or(receipt, "ok", true) == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": receipt["error"], "output_dir": output_dir, "exit_code": 10}}
-    initial := checkpoint_v2(receipt, output_dir + "/receipt.json", "resolve", "resolved", {})
-    if initial["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": initial["error"], "output_dir": output_dir, "exit_code": 10}}
-    receipt = initial["receipt"]
-    if option(flags, "dry_run", false) {
-        finished := finish_v2(receipt, output_dir + "/receipt.json", "dry-run", null, {"status": "not-provisioned", "journal_path": "", "items": [], "remaining": []})
-        if finished["ok"] {receipt = finished["receipt"]}
-        write_manifest(output_dir, run_identifier)
-        return result_value(run_identifier, output_dir, receipt, true, "completed", "", 0)
-    }
-
-    package_dir := output_dir + "/input"
-    package := create_workspace_package(source["root"], package_dir, run_identifier, definition["workspace"]["scan"])
-    if package["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "preparing", package["error"], 3)}
-    nonce := "nonce-" + replace(uuid_v4(), "-", "")
-    provisioned := invoke(executable, run_identifier, "provision", adapter_options, {"resolved_plan": get_or(resolved["result"]["data"], "resolved_plan", {}), "ownership": {"run_id": run_identifier, "nonce": nonce}, "idempotency_key": run_identifier + ":provision"}, definition)
-    if provisioned["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "provisioning", provider_failure(provisioned, "backend provision failed"), 4)}
-    handle := get_or(provisioned["result"]["data"], "handle", null)
-    if validate_backend_handle(handle, run_identifier)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "provisioning", "backend returned invalid owned handle", 4)}
-    journal := write_recovery_journal(output_dir + "/recovery", {"run_id": run_identifier, "handle": handle, "profile_id": profile_id, "receipt_path": output_dir + "/receipt.json", "phase": "provisioned"})
-    if journal["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", handle, "recording", journal["error"], 10)}
-    journal_path := journal["path"]
-    prepared := invoke(executable, run_identifier, "prepare", adapter_options, {"handle": handle, "workspace_package": package, "idempotency_key": run_identifier + ":prepare"}, definition)
-    if prepared["ok"] == false||get_or(prepared["result"]["data"], "observed_package_digest", "") != package["sha256"] {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "preparing", provider_failure(prepared, "backend prepare failed or package digest mismatched"), 4)}
-    update_recovery_journal(journal_path, "prepared", "active", {"time": now_utc(), "operation": "prepare", "ok": true}, null)
-    environment := definition["environment"]["set"]
-    mut allow_i := 0
-    while allow_i < len(definition["environment"]["allow"]) {
-        name := definition["environment"]["allow"][allow_i]
-        value := env(name)
-        if type(value) == "string" {environment[name] := value}
-        allow_i = allow_i + 1
-    }
-    executed := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "attempt-1", "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
-    if executed["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", provider_failure(executed, "backend execute failed"), 10)}
-    terminal := get_or(executed["result"]["data"], "terminal", null)
-    if validate_terminal_result(terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", "backend returned invalid terminal result", 10)}
-    mut log_events := executed["events"]
-    mut verification_checks := []
-    mut verification_ok := get_or(terminal, "exit_code", 1) == 0
-    checks := definition["verification"]["commands"]
-    mut check_i := 0
-    while check_i < len(checks) {
-        check := checks[check_i]
-        if verification_ok == false {
-            verification_checks = push(verification_checks, {"name": check["name"], "status": "skipped", "exit_code": null})
-            check_i = check_i + 1
-            continue
-        }
-        checked_call := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "verify-" + to_string(check_i + 1), "argv": check["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
-        if checked_call["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", provider_failure(checked_call, "verification command failed to execute"), 8)}
-        check_terminal := get_or(checked_call["result"]["data"], "terminal", null)
-        if validate_terminal_result(check_terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", "backend returned invalid verification terminal result", 8)}
-        mut event_i := 0
-        while event_i < len(checked_call["events"]) {
-            entry := checked_call["events"][event_i]
-            entry["sequence"] := len(log_events)
-            entry["attempt_id"] := "verify-" + to_string(check_i + 1)
-            log_events = push(log_events, entry)
-            event_i = event_i + 1
-        }
-        check_status := terminal_exit(check_terminal)
-        verification_checks = push(verification_checks, {"name": check["name"], "status": check_status["stage"], "exit_code": get_or(check_terminal, "exit_code", null)})
-        if check_status["exit_code"] != 0 {verification_ok = false}
-        check_i = check_i + 1
-    }
-    save_json(output_dir + "/log-events.json", {"schema_version": "workcell-log-events/v1", "events": log_events})
-    collected := invoke(executable, run_identifier, "collect", adapter_options, {"handle": handle, "attempt_id": "attempt-1", "stream_cursor": null}, definition)
-    if collected["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "collecting", provider_failure(collected, "backend collect failed"), 10)}
-    exported := invoke(executable, run_identifier, "export", adapter_options, {"handle": handle, "declarations": definition["artifacts"]["export"], "limits": definition["artifacts"], "exporter_version": "workcell-artifacts/v1", "destination": output_dir + "/remote-transfer", "idempotency_key": run_identifier + ":export"}, definition)
-    if exported["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", provider_failure(exported, "backend artifact export failed"), 8)}
-    mut accepted_artifacts := {"ok": true, "manifest": {"declared": [], "files": []}, "archive_path": null, "sha256": null, "archive_bytes": 0}
-    if len(definition["artifacts"]["export"]) > 0 {
-        remote_archive := get_or(get_or(exported["result"]["data"], "archive", {}), "path", "")
-        accepted_artifacts = accept_remote_artifact_archive(remote_archive, output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
-        if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
-    }
-    destroyed := invoke(executable, run_identifier, "destroy", adapter_options, {"handle": handle, "expected_ownership": handle["ownership"]}, definition)
-    cleanup := {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
-    if destroyed["ok"]&&len(get_or(destroyed["result"]["data"], "remaining", [])) == 0 {cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": []}; update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
-    status := terminal_exit(terminal)
-    if status["exit_code"] == 0&&verification_ok == false {status = {"stage": "verification-failed", "exit_code": 8}}
-    if cleanup["status"] != "complete" {status = {"stage": "cleanup-failed", "exit_code": 9}}
-    logs := get_or(executed["result"]["data"], "logs", {})
-    verification_status := "passed"
-    if len(checks) == 0 {verification_status = "not-requested"} else if verification_ok == false {verification_status = "failed"}
-    receipt_update := checkpoint_v2(receipt, output_dir + "/receipt.json", "collect", status["stage"], {"backend": {"resource_ids": handle["resource_ids"]}, "execution": {"terminal": terminal}, "logs": {"capture": "buffered-protocol", "stdout_stderr": "separate", "ordering": get_or(logs, "ordering", "unknown"), "timestamps": "provider-dependent", "completeness": get_or(logs, "complete", false), "truncated": get_or(logs, "truncated", false), "bytes": {"stdout": get_or(logs, "stdout_bytes", 0), "stderr": get_or(logs, "stderr_bytes", 0)}, "paths": {"events": "log-events.json"}}, "changes": {"status": "collected", "files": get_or(get_or(collected["result"]["data"], "workspace_delta", {}), "files", [])}, "verification": {"status": verification_status, "offline": true, "checks": verification_checks}, "artifacts": {"status": "collected", "declared": definition["artifacts"]["export"], "results": get_or(accepted_artifacts["manifest"], "files", []), "archive": {"path": get_or(accepted_artifacts, "archive_path", null), "sha256": get_or(accepted_artifacts, "sha256", null), "bytes": get_or(accepted_artifacts, "archive_bytes", 0)}}, "resources": {"inventory": get_or(collected["result"]["data"], "attempt_inventory", []), "metrics": get_or(collected["result"]["data"], "metrics", {}), "provider_reported": len(keys(get_or(collected["result"]["data"], "metrics", {}))) > 0}})
-    if receipt_update["ok"] {receipt = receipt_update["receipt"]}
-    failure_category := null
-    if status["exit_code"] != 0 {failure_category = status["stage"]}
-    finished := finish_v2(receipt, output_dir + "/receipt.json", status["stage"], failure_category, cleanup)
+requirements_state := requirements_from_definition(definition)
+resolved := invoke(executable, run_identifier, "resolve", adapter_options, {"requirements": requirements_state["requirements"], "intent": {"workload": definition["workload"], "workspace": definition["workspace"], "requirements": definition["requirements"], "artifacts": definition["artifacts"]}}, definition)
+if resolved["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": provider_failure(resolved, "backend capability resolution failed"), "output_dir": output_dir, "exit_code": 2}}
+identity := get_or(resolved["result"]["data"], "identity", null)
+if validate_backend_identity(identity)["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend returned invalid identity", "output_dir": output_dir, "exit_code": 2}}
+ledger := controls_ledger(requirements_state["requirements"], get_or(resolved["result"]["data"], "capabilities", []))
+if ledger["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "validated", "error": "backend rejected required capabilities: " + to_string(get_or(ledger, "rejected", [])), "output_dir": output_dir, "exit_code": 2}}
+receipt := new_v2_receipt({"run_id": run_identifier, "backend": identity, "profile_id": profile_id, "profile_fingerprint": profile_state["fingerprint"], "definition": {"schema": definition["schema"], "name": definition["name"]}, "source": {"commit": source["commit"], "clean": true}, "workspace": {"source": "clean-git-commit", "materialization": "portable-clone"}, "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment_names": keys(definition["environment"]["set"]), "secret_names": definition["secrets"], "artifact_declarations": definition["artifacts"]["export"], "controls": ledger["controls"], "journal_path": output_dir + "/recovery/" + run_identifier + ".json"})
+if get_or(receipt, "ok", true) == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": receipt["error"], "output_dir": output_dir, "exit_code": 10}}
+initial := checkpoint_v2(receipt, output_dir + "/receipt.json", "resolve", "resolved", {})
+if initial["ok"] == false {return {"ok": false, "run_id": run_identifier, "stage": "recording", "error": initial["error"], "output_dir": output_dir, "exit_code": 10}}
+receipt = initial["receipt"]
+if option(flags, "dry_run", false) {
+    finished := finish_v2(receipt, output_dir + "/receipt.json", "dry-run", null, {"status": "not-provisioned", "journal_path": "", "items": [], "remaining": []})
     if finished["ok"] {receipt = finished["receipt"]}
-    manifest := write_manifest(output_dir, run_identifier)
-    if manifest["ok"] == false {return result_value(run_identifier, output_dir, receipt, false, "recording", manifest["error"], 10)}
-    return result_value(run_identifier, output_dir, receipt, status["exit_code"] == 0, status["stage"], "", status["exit_code"])
+    write_manifest(output_dir, run_identifier)
+    return result_value(run_identifier, output_dir, receipt, true, "completed", "", 0)
+}
+
+package_dir := output_dir + "/input"
+package := create_workspace_package(source["root"], package_dir, run_identifier, definition["workspace"]["scan"])
+if package["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "preparing", package["error"], 3)}
+nonce := "nonce-" + replace(uuid_v4(), "-", "")
+provisioned := invoke(executable, run_identifier, "provision", adapter_options, {"resolved_plan": get_or(resolved["result"]["data"], "resolved_plan", {}), "ownership": {"run_id": run_identifier, "nonce": nonce}, "idempotency_key": run_identifier + ":provision"}, definition)
+if provisioned["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "provisioning", provider_failure(provisioned, "backend provision failed"), 4)}
+handle := get_or(provisioned["result"]["data"], "handle", null)
+if validate_backend_handle(handle, run_identifier)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", null, "provisioning", "backend returned invalid owned handle", 4)}
+journal := write_recovery_journal(output_dir + "/recovery", {"run_id": run_identifier, "handle": handle, "profile_id": profile_id, "receipt_path": output_dir + "/receipt.json", "phase": "provisioned"})
+if journal["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, "", handle, "recording", journal["error"], 10)}
+journal_path := journal["path"]
+prepared := invoke(executable, run_identifier, "prepare", adapter_options, {"handle": handle, "workspace_package": package, "idempotency_key": run_identifier + ":prepare"}, definition)
+if prepared["ok"] == false||get_or(prepared["result"]["data"], "observed_package_digest", "") != package["sha256"] {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "preparing", provider_failure(prepared, "backend prepare failed or package digest mismatched"), 4)}
+update_recovery_journal(journal_path, "prepared", "active", {"time": now_utc(), "operation": "prepare", "ok": true}, null)
+environment := definition["environment"]["set"]
+mut allow_i := 0
+while allow_i < len(definition["environment"]["allow"]) {
+    name := definition["environment"]["allow"][allow_i]
+    value := env(name)
+    if type(value) == "string" {environment[name] := value}
+    allow_i = allow_i + 1
+}
+executed := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "attempt-1", "argv": definition["workload"]["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
+if executed["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", provider_failure(executed, "backend execute failed"), 10)}
+terminal := get_or(executed["result"]["data"], "terminal", null)
+if validate_terminal_result(terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "executing", "backend returned invalid terminal result", 10)}
+mut log_events := executed["events"]
+mut verification_checks := []
+mut verification_ok := get_or(terminal, "exit_code", 1) == 0
+checks := definition["verification"]["commands"]
+mut check_i := 0
+while check_i < len(checks) {
+    check := checks[check_i]
+    if verification_ok == false {
+        verification_checks = push(verification_checks, {"name": check["name"], "status": "skipped", "exit_code": null})
+        check_i = check_i + 1
+        continue
+    }
+checked_call := invoke(executable, run_identifier, "execute", adapter_options, {"handle": handle, "attempt_id": "verify-" + to_string(check_i + 1), "argv": check["command"], "workdir": definition["workload"]["working_directory"], "environment": environment, "secret_channel": definition["secrets"], "timeout_ms": definition["requirements"]["execution"]["timeout_ms"], "max_output_bytes": definition["requirements"]["execution"]["max_output_bytes"]}, definition)
+if checked_call["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", provider_failure(checked_call, "verification command failed to execute"), 8)}
+check_terminal := get_or(checked_call["result"]["data"], "terminal", null)
+if validate_terminal_result(check_terminal)["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "verification-failed", "backend returned invalid verification terminal result", 8)}
+mut event_i := 0
+while event_i < len(checked_call["events"]) {
+    entry := checked_call["events"][event_i]
+    entry["sequence"] := len(log_events)
+    entry["attempt_id"] := "verify-" + to_string(check_i + 1)
+    log_events = push(log_events, entry)
+    event_i = event_i + 1
+}
+check_status := terminal_exit(check_terminal)
+verification_checks = push(verification_checks, {"name": check["name"], "status": check_status["stage"], "exit_code": get_or(check_terminal, "exit_code", null)})
+if check_status["exit_code"] != 0 {verification_ok = false}
+check_i = check_i + 1
+}
+save_json(output_dir + "/log-events.json", {"schema_version": "workcell-log-events/v1", "events": log_events})
+collected := invoke(executable, run_identifier, "collect", adapter_options, {"handle": handle, "attempt_id": "attempt-1", "stream_cursor": null}, definition)
+if collected["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "collecting", provider_failure(collected, "backend collect failed"), 10)}
+exported := invoke(executable, run_identifier, "export", adapter_options, {"handle": handle, "declarations": definition["artifacts"]["export"], "limits": definition["artifacts"], "exporter_version": "workcell-artifacts/v1", "destination": output_dir + "/remote-transfer", "idempotency_key": run_identifier + ":export"}, definition)
+if exported["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", provider_failure(exported, "backend artifact export failed"), 8)}
+mut accepted_artifacts := {"ok": true, "manifest": {"declared": [], "files": []}, "archive_path": null, "sha256": null, "archive_bytes": 0}
+if len(definition["artifacts"]["export"]) > 0 {
+    remote_archive := get_or(get_or(exported["result"]["data"], "archive", {}), "path", "")
+    accepted_artifacts = accept_remote_artifact_archive(remote_archive, output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
+    if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
+}
+destroyed := invoke(executable, run_identifier, "destroy", adapter_options, {"handle": handle, "expected_ownership": handle["ownership"]}, definition)
+cleanup := {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
+if destroyed["ok"]&&len(get_or(destroyed["result"]["data"], "remaining", [])) == 0 {cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": []}; update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
+status := terminal_exit(terminal)
+if status["exit_code"] == 0&&verification_ok == false {status = {"stage": "verification-failed", "exit_code": 8}}
+if cleanup["status"] != "complete" {status = {"stage": "cleanup-failed", "exit_code": 9}}
+logs := get_or(executed["result"]["data"], "logs", {})
+verification_status := "passed"
+if len(checks) == 0 {verification_status = "not-requested"} else if verification_ok == false {verification_status = "failed"}
+receipt_update := checkpoint_v2(receipt, output_dir + "/receipt.json", "collect", status["stage"], {"backend": {"resource_ids": handle["resource_ids"]}, "execution": {"terminal": terminal}, "logs": {"capture": "buffered-protocol", "stdout_stderr": "separate", "ordering": get_or(logs, "ordering", "unknown"), "timestamps": "provider-dependent", "completeness": get_or(logs, "complete", false), "truncated": get_or(logs, "truncated", false), "bytes": {"stdout": get_or(logs, "stdout_bytes", 0), "stderr": get_or(logs, "stderr_bytes", 0)}, "paths": {"events": "log-events.json"}}, "changes": {"status": "collected", "files": get_or(get_or(collected["result"]["data"], "workspace_delta", {}), "files", [])}, "verification": {"status": verification_status, "offline": true, "checks": verification_checks}, "artifacts": {"status": "collected", "declared": definition["artifacts"]["export"], "results": get_or(accepted_artifacts["manifest"], "files", []), "archive": {"path": get_or(accepted_artifacts, "archive_path", null), "sha256": get_or(accepted_artifacts, "sha256", null), "bytes": get_or(accepted_artifacts, "archive_bytes", 0)}}, "resources": {"inventory": get_or(collected["result"]["data"], "attempt_inventory", []), "metrics": get_or(collected["result"]["data"], "metrics", {}), "provider_reported": len(keys(get_or(collected["result"]["data"], "metrics", {}))) > 0}})
+if receipt_update["ok"] {receipt = receipt_update["receipt"]}
+failure_category := null
+if status["exit_code"] != 0 {failure_category = status["stage"]}
+finished := finish_v2(receipt, output_dir + "/receipt.json", status["stage"], failure_category, cleanup)
+if finished["ok"] {receipt = finished["receipt"]}
+manifest := write_manifest(output_dir, run_identifier)
+if manifest["ok"] == false {return result_value(run_identifier, output_dir, receipt, false, "recording", manifest["error"], 10)}
+return result_value(run_identifier, output_dir, receipt, status["exit_code"] == 0, status["stage"], "", status["exit_code"])
 }

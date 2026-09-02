@@ -284,22 +284,22 @@ export func accept_remote_artifact_archive(archive_path, target_dir, policy, sec
     if type(archive_path) != "string"||trim(archive_path) == ""||file_exists(archive_path) == false||path_has_symlink(archive_path)||type(target_dir) != "string"||trim(target_dir) == ""||type(policy) != "dict"||type(secret_names) != "array" {
         return {"ok": false, "error": "remote artifact archive inputs are invalid"}
     }
-    bounds := artifact_bounds(policy)
-    max_entries := bounds["max_files"]
-    if max_entries <= 0 {max_entries = 100000}
-    inspected := inspect_artifact_tar(archive_path, max_entries)
-    if inspected["ok"] == false {return inspected}
-    parent := parent_of(target_dir)
-    if path_has_symlink(parent)||ensure_dir(parent) == false {return {"ok": false, "error": "remote artifact target parent is unsafe"}}
-    staging := parent + "/workcell-artifacts-remote-" + replace(uuid_v4(), "-", "")
-    if path_has_symlink(staging)||ensure_dir(staging) == false {return {"ok": false, "error": "remote artifact staging is unsafe"}}
-    extracted := run_argv(["tar", "-xf", archive_path, "-C", staging], 120000)
-    if process_ok(extracted) == false {
-        remove_staging(staging, parent)
-        return {"ok": false, "error": process_error(extracted, "extract remote artifact archive")}
-    }
-    accepted := create_artifact_archive(staging, target_dir, policy, secret_names)
-    removed := remove_staging(staging, parent)
-    if removed == false {return {"ok": false, "error": "remote artifact staging cleanup failed"}}
-    return accepted
+bounds := artifact_bounds(policy)
+max_entries := bounds["max_files"]
+if max_entries <= 0 {max_entries = 100000}
+inspected := inspect_artifact_tar(archive_path, max_entries)
+if inspected["ok"] == false {return inspected}
+parent := parent_of(target_dir)
+if path_has_symlink(parent)||ensure_dir(parent) == false {return {"ok": false, "error": "remote artifact target parent is unsafe"}}
+staging := parent + "/workcell-artifacts-remote-" + replace(uuid_v4(), "-", "")
+if path_has_symlink(staging)||ensure_dir(staging) == false {return {"ok": false, "error": "remote artifact staging is unsafe"}}
+extracted := run_argv(["tar", "-xf", archive_path, "-C", staging], 120000)
+if process_ok(extracted) == false {
+    remove_staging(staging, parent)
+    return {"ok": false, "error": process_error(extracted, "extract remote artifact archive")}
+}
+accepted := create_artifact_archive(staging, target_dir, policy, secret_names)
+removed := remove_staging(staging, parent)
+if removed == false {return {"ok": false, "error": "remote artifact staging cleanup failed"}}
+return accepted
 }

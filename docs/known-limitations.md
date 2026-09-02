@@ -1,6 +1,9 @@
 # Known Limitations
 
-- Docker is the default backend; Podman is supported through the same OCI policy boundary, while remote and microVM service provisioning remain deployment-owned.
+- Docker and Podman are the stable built-ins. The executable backend protocol, v2 definition/receipt, and E2B/Vercel/Daytona adapters are alpha; offline conformance does not replace credential-gated live provider evidence.
+- Official remote adapters currently require Node 20+ and resolve `env:` credential references. Kujo Agent and OS credential-store bridges are not silently emulated.
+- External adapter log events are bounded and buffered by the current core client. Receipts do not claim real-time delivery, global stdout/stderr order, or provider timestamps.
+- Provider API versions and pricing can drift. Receipts preserve provider/API identity and unknown cost rather than estimating charges.
 - The Kujo example image builds Kujo from a pinned upstream commit and therefore needs network access during its one-time Docker image build.
 - The current Kujo process API has no working-directory option; Workcell uses `git -C` and Docker `--workdir` instead.
 - Dirty repositories are rejected rather than snapshotting uncommitted changes.

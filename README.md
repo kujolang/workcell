@@ -7,6 +7,8 @@
 
 Workcell 1.0 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
 
+The repository also contains an additive alpha provider-neutral contract: `workcell-definition/v2alpha1`, `workcell-backend/v1alpha1`, and `workcell-receipt/v2alpha1`. Docker and Podman remain the stable built-ins. Explicit external adapters for E2B, Vercel Sandbox, and Daytona are separately installed, capability-negotiated, and receipt-visible; fixture conformance is not live-provider or security certification. See [backend adapters](docs/backend-adapters.md).
+
 > The container boundary defines what is physically reachable. Kujo defines what is authorized, observable, verifiable, and exportable.
 
 The v1 guarantee is deliberately narrow. It covers the local Docker/Podman CLI, definition, receipt, verification, artifact, cleanup, and recovery contracts documented in this repository. It does not protect against a compromised daemon or host kernel, provide microVM isolation or hosted multi-tenant execution, provision organization-specific egress infrastructure, govern operator images or signing keys, set retention policy, or confer compliance or enterprise certification.
@@ -68,6 +70,8 @@ docker build --tag kujolang/workcell-base:local docker/
 | `run` | Execute validate, prepare, launch, collect, verify, export, record, and clean. |
 | `verify` | Verify a run directory's `workcell-manifest/v1` hashes offline. |
 | `clean` | Inventory or remove only Workcell-owned containers and workspaces; images require `--prune-images`. |
+| `backends` | List built-ins and explicitly supplied external adapter manifests. |
+| `recover` | Reconcile a durable external-backend journal without deleting resources whose ownership does not match. |
 
 Global `--help` and `--version` are stable. Command-specific options and unexpected positional arguments fail with usage code `2`. The machine-readable CLI and exit-code contract is available from `workcell help --json`.
 
@@ -88,6 +92,8 @@ Each completed lifecycle writes the applicable evidence:
 ```
 
 The receipt separates Workcell product version, definition version, execution, verification, artifact export, and cleanup results. It records secret names but never intentionally stores secret values. `workcell verify` detects changes to immutable evidence.
+
+Portable runs use receipt v2. Its controls ledger distinguishes requested, accepted, enforced or provider-claimed, observed, unsupported, and unknown state. A provider name or marketing claim never upgrades an enforcement status.
 
 | Exit | Meaning |
 | --- | --- |
@@ -146,6 +152,7 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Backend adapters](docs/backend-adapters.md)
 - [Workcell definition](docs/workcell-definition.md)
 - [Runtime lifecycle](docs/runtime-lifecycle.md)
 - [Platform compatibility](docs/compatibility.md)

@@ -22,10 +22,10 @@ func keys_allowed(value, allowed, label) {
             if names[i] == allowed[j] {found = true}
             j = j + 1
         }
-        if found == false {return {"ok": false, "error": "unknown field " + label + "." + names[i]}}
-        i = i + 1
-    }
-    return {"ok": true}
+    if found == false {return {"ok": false, "error": "unknown field " + label + "." + names[i]}}
+    i = i + 1
+}
+return {"ok": true}
 }
 
 func nonempty(value) {
@@ -39,7 +39,7 @@ func string_array(value, label) {
         if nonempty(value[i]) == false {return {"ok": false, "error": label + " must contain non-empty strings"}}
         i = i + 1
     }
-    return {"ok": true}
+return {"ok": true}
 }
 
 func validate_relative_list(values, label) {
@@ -52,10 +52,10 @@ func validate_relative_list(values, label) {
         if path["ok"] == false||path["path"] != values[i]||has_key(seen, values[i]) == 1 {
             return {"ok": false, "error": label + " contains an unsafe or duplicate path"}
         }
-        seen[values[i]] := true
-        i = i + 1
-    }
-    return {"ok": true}
+    seen[values[i]] := true
+    i = i + 1
+}
+return {"ok": true}
 }
 
 export func validate_portable_definition(raw) {
@@ -85,58 +85,58 @@ export func validate_portable_definition(raw) {
         return {"ok": false, "error": "v2alpha1 workspace requires clean-git-commit, portable-clone, and /workspace"}
     }
 
-    environment := get_or(raw, "environment", null)
-    checked = keys_allowed(environment, ["allow", "set"], "environment")
-    if checked["ok"] == false {return checked}
-    checked = string_array(get_or(environment, "allow", null), "environment.allow")
-    if checked["ok"] == false||type(get_or(environment, "set", null)) != "dict" {return {"ok": false, "error": "environment allow/set are invalid"}}
-    checked = string_array(get_or(raw, "secrets", null), "secrets")
-    if checked["ok"] == false {return checked}
+environment := get_or(raw, "environment", null)
+checked = keys_allowed(environment, ["allow", "set"], "environment")
+if checked["ok"] == false {return checked}
+checked = string_array(get_or(environment, "allow", null), "environment.allow")
+if checked["ok"] == false||type(get_or(environment, "set", null)) != "dict" {return {"ok": false, "error": "environment allow/set are invalid"}}
+checked = string_array(get_or(raw, "secrets", null), "secrets")
+if checked["ok"] == false {return checked}
 
-    requirements := get_or(raw, "requirements", null)
-    checked = keys_allowed(requirements, ["compute", "execution", "network", "filesystem"], "requirements")
+requirements := get_or(raw, "requirements", null)
+checked = keys_allowed(requirements, ["compute", "execution", "network", "filesystem"], "requirements")
+if checked["ok"] == false {return checked}
+compute := get_or(requirements, "compute", null)
+execution := get_or(requirements, "execution", null)
+network := get_or(requirements, "network", null)
+filesystem := get_or(requirements, "filesystem", null)
+for pair in [[compute, ["cpus", "memory", "pids"], "requirements.compute"], [execution, ["timeout_ms", "max_output_bytes"], "requirements.execution"], [network, ["mode", "allow"], "requirements.network"], [filesystem, ["read_only_root", "writable", "tmpfs"], "requirements.filesystem"]] {
+    checked = keys_allowed(pair[0], pair[1], pair[2])
     if checked["ok"] == false {return checked}
-    compute := get_or(requirements, "compute", null)
-    execution := get_or(requirements, "execution", null)
-    network := get_or(requirements, "network", null)
-    filesystem := get_or(requirements, "filesystem", null)
-    for pair in [[compute, ["cpus", "memory", "pids"], "requirements.compute"], [execution, ["timeout_ms", "max_output_bytes"], "requirements.execution"], [network, ["mode", "allow"], "requirements.network"], [filesystem, ["read_only_root", "writable", "tmpfs"], "requirements.filesystem"]] {
-        checked = keys_allowed(pair[0], pair[1], pair[2])
-        if checked["ok"] == false {return checked}
-    }
-    if type(get_or(compute, "cpus", null)) != "int"||compute["cpus"] <= 0||nonempty(get_or(compute, "memory", null)) == false||type(get_or(compute, "pids", null)) != "int"||compute["pids"] <= 0 {return {"ok": false, "error": "compute requirements are invalid"}}
-    if type(get_or(execution, "timeout_ms", null)) != "int"||execution["timeout_ms"] <= 0||type(get_or(execution, "max_output_bytes", null)) != "int"||execution["max_output_bytes"] <= 0 {return {"ok": false, "error": "execution requirements are invalid"}}
-    if get_or(network, "mode", "") != "none"&&get_or(network, "mode", "") != "default"&&get_or(network, "mode", "") != "allowlist" {return {"ok": false, "error": "network mode must be none, default, or allowlist"}}
-    if get_or(network, "mode", "") == "allowlist"&&len(get_or(network, "allow", [])) == 0 {return {"ok": false, "error": "network allowlist mode requires entries"}}
-    if type(get_or(filesystem, "read_only_root", null)) != "bool" {return {"ok": false, "error": "filesystem.read_only_root must be boolean"}}
-    checked = string_array(get_or(filesystem, "writable", []), "requirements.filesystem.writable")
-    if checked["ok"] == false {return checked}
-    checked = string_array(get_or(filesystem, "tmpfs", []), "requirements.filesystem.tmpfs")
-    if checked["ok"] == false {return checked}
+}
+if type(get_or(compute, "cpus", null)) != "int"||compute["cpus"] <= 0||nonempty(get_or(compute, "memory", null)) == false||type(get_or(compute, "pids", null)) != "int"||compute["pids"] <= 0 {return {"ok": false, "error": "compute requirements are invalid"}}
+if type(get_or(execution, "timeout_ms", null)) != "int"||execution["timeout_ms"] <= 0||type(get_or(execution, "max_output_bytes", null)) != "int"||execution["max_output_bytes"] <= 0 {return {"ok": false, "error": "execution requirements are invalid"}}
+if get_or(network, "mode", "") != "none"&&get_or(network, "mode", "") != "default"&&get_or(network, "mode", "") != "allowlist" {return {"ok": false, "error": "network mode must be none, default, or allowlist"}}
+if get_or(network, "mode", "") == "allowlist"&&len(get_or(network, "allow", [])) == 0 {return {"ok": false, "error": "network allowlist mode requires entries"}}
+if type(get_or(filesystem, "read_only_root", null)) != "bool" {return {"ok": false, "error": "filesystem.read_only_root must be boolean"}}
+checked = string_array(get_or(filesystem, "writable", []), "requirements.filesystem.writable")
+if checked["ok"] == false {return checked}
+checked = string_array(get_or(filesystem, "tmpfs", []), "requirements.filesystem.tmpfs")
+if checked["ok"] == false {return checked}
 
-    artifacts := get_or(raw, "artifacts", null)
-    checked = keys_allowed(artifacts, ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"], "artifacts")
-    if checked["ok"] == false {return checked}
-    checked = validate_relative_list(get_or(artifacts, "export", null), "artifacts.export")
-    if checked["ok"] == false {return checked}
-    if type(get_or(raw, "verification", null)) != "dict"||type(get_or(raw, "cleanup", null)) != "dict"||type(get_or(raw, "receipt", null)) != "dict" {return {"ok": false, "error": "verification, cleanup, and receipt must be objects"}}
-    verification := raw["verification"]
-    checked = keys_allowed(verification, ["version", "commands"], "verification")
-    if checked["ok"] == false {return checked}
-    commands := get_or(verification, "commands", null)
-    if get_or(verification, "version", null) != 1||type(commands) != "array"||len(commands) > 32 {return {"ok": false, "error": "verification requires version 1 and at most 32 commands"}}
-    mut check_i := 0
-    while check_i < len(commands) {
-        check := commands[check_i]
-        checked = keys_allowed(check, ["name", "command"], "verification.commands")
-        if checked["ok"] == false||nonempty(get_or(check, "name", null)) == false {return {"ok": false, "error": "verification command name is invalid"}}
-        checked = string_array(get_or(check, "command", null), "verification command")
-        if checked["ok"] == false||len(check["command"]) == 0 {return {"ok": false, "error": "verification command argv is invalid"}}
-        check_i = check_i + 1
-    }
-    if type(get_or(raw["cleanup"], "keep_failed", null)) != "bool" {return {"ok": false, "error": "cleanup.keep_failed must be boolean"}}
-    if nonempty(get_or(raw["receipt"], "path", null)) == false {return {"ok": false, "error": "receipt.path must be a non-empty string"}}
-    return {"ok": true}
+artifacts := get_or(raw, "artifacts", null)
+checked = keys_allowed(artifacts, ["export", "limits", "max_bytes", "max_files", "max_depth", "allowed_extensions", "secret_action"], "artifacts")
+if checked["ok"] == false {return checked}
+checked = validate_relative_list(get_or(artifacts, "export", null), "artifacts.export")
+if checked["ok"] == false {return checked}
+if type(get_or(raw, "verification", null)) != "dict"||type(get_or(raw, "cleanup", null)) != "dict"||type(get_or(raw, "receipt", null)) != "dict" {return {"ok": false, "error": "verification, cleanup, and receipt must be objects"}}
+verification := raw["verification"]
+checked = keys_allowed(verification, ["version", "commands"], "verification")
+if checked["ok"] == false {return checked}
+commands := get_or(verification, "commands", null)
+if get_or(verification, "version", null) != 1||type(commands) != "array"||len(commands) > 32 {return {"ok": false, "error": "verification requires version 1 and at most 32 commands"}}
+mut check_i := 0
+while check_i < len(commands) {
+    check := commands[check_i]
+    checked = keys_allowed(check, ["name", "command"], "verification.commands")
+    if checked["ok"] == false||nonempty(get_or(check, "name", null)) == false {return {"ok": false, "error": "verification command name is invalid"}}
+    checked = string_array(get_or(check, "command", null), "verification command")
+    if checked["ok"] == false||len(check["command"]) == 0 {return {"ok": false, "error": "verification command argv is invalid"}}
+    check_i = check_i + 1
+}
+if type(get_or(raw["cleanup"], "keep_failed", null)) != "bool" {return {"ok": false, "error": "cleanup.keep_failed must be boolean"}}
+if nonempty(get_or(raw["receipt"], "path", null)) == false {return {"ok": false, "error": "receipt.path must be a non-empty string"}}
+return {"ok": true}
 }
 
 export func resolve_portable_definition(raw) {
@@ -167,9 +167,9 @@ export func load_workcell_definition(path) {
     if type(loaded["value"]) == "dict"&&get_or(loaded["value"], "schema", "") == portable_definition_schema_version() {
         return resolve_portable_definition(loaded["value"])
     }
-    legacy := load_definition(path)
-    if legacy["ok"] {legacy["version"] := 1}
-    return legacy
+legacy := load_definition(path)
+if legacy["ok"] {legacy["version"] := 1}
+return legacy
 }
 
 export func load_host_profile(path, profile_id, backend_override) {
@@ -193,18 +193,18 @@ export func load_host_profile(path, profile_id, backend_override) {
             if nonempty(name) == false||len(name) > 128 {
                 return {"ok": false, "error": "environment credential reference is invalid"}
             }
-            mut env_i := 0
-            while env_i < len(name) {
-                if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_", substring(name, env_i, env_i + 1)) == 0 {return {"ok": false, "error": "environment credential reference is invalid"}}
-                env_i = env_i + 1
-            }
-        } else if starts_with(credential_ref, "kujo-agent:") == false&&starts_with(credential_ref, "os-store:") == false {
-            return {"ok": false, "error": "credential_ref must use env:, kujo-agent:, or os-store:"}
+        mut env_i := 0
+        while env_i < len(name) {
+            if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_", substring(name, env_i, env_i + 1)) == 0 {return {"ok": false, "error": "environment credential reference is invalid"}}
+            env_i = env_i + 1
         }
-    }
-    profile["adapter_options"] := get_or(profile, "adapter_options", {})
-    profile["policy"] := get_or(profile, "policy", {})
-    fingerprint := ""
-    try {fingerprint = sha256(to_json(profile))} except err {return {"ok": false, "error": "host profile could not be fingerprinted"}}
-    return {"ok": true, "id": profile_id, "profile": profile, "backend": profile["backend"], "fingerprint": fingerprint}
+} else if starts_with(credential_ref, "kujo-agent:") == false&&starts_with(credential_ref, "os-store:") == false {
+return {"ok": false, "error": "credential_ref must use env:, kujo-agent:, or os-store:"}
+}
+}
+profile["adapter_options"] := get_or(profile, "adapter_options", {})
+profile["policy"] := get_or(profile, "policy", {})
+fingerprint := ""
+try {fingerprint = sha256(to_json(profile))} except err {return {"ok": false, "error": "host profile could not be fingerprinted"}}
+return {"ok": true, "id": profile_id, "profile": profile, "backend": profile["backend"], "fingerprint": fingerprint}
 }

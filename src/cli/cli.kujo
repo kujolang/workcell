@@ -271,8 +271,8 @@ if loaded["ok"] {
     if get_or(loaded, "version", 1) == 2 {
         result["definition"] := {"schema": loaded["definition"]["schema"], "name": loaded["definition"]["name"], "workload_kind": loaded["definition"]["workload"]["kind"], "network": loaded["definition"]["requirements"]["network"]["mode"]}
     } else {
-        result["definition"] := definition_summary(loaded["definition"])
-    }
+    result["definition"] := definition_summary(loaded["definition"])
+}
 } else {
 result["error"] := loaded["error"]
 }
@@ -284,7 +284,7 @@ print("Valid Workcell definition: " + path)
 if get_or(loaded, "version", 1) == 2 {
     print("Name: " + loaded["definition"]["name"] + "  Backend: host profile  Network: " + loaded["definition"]["requirements"]["network"]["mode"])
 } else {
-    print("Name: " + loaded["definition"]["name"] + "  Backend: " + loaded["definition"]["runtime"]["backend"] + "  Network: " + loaded["definition"]["network"]["mode"])
+print("Name: " + loaded["definition"]["name"] + "  Backend: " + loaded["definition"]["runtime"]["backend"] + "  Network: " + loaded["definition"]["network"]["mode"])
 }
 } else {
 print("Validation failed: " + loaded["error"])
@@ -444,10 +444,10 @@ if has_key(result, "receipt") {
         print("Changed files:  " + to_string(len(get_or(receipt["changes"], "files", []))))
         print("Artifacts:      " + to_string(len(get_or(receipt["artifacts"], "declared", []))))
     } else {
-        print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
-        print("Changed files:  " + to_string(len(receipt["changed_files"])))
-        print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
-    }
+    print("Verification:   " + to_string(receipt["verification"]["verification_succeeded"]))
+    print("Changed files:  " + to_string(len(receipt["changed_files"])))
+    print("Artifacts:      " + to_string(receipt["exported_artifacts"]))
+}
 }
 }
 
@@ -466,11 +466,11 @@ mut result := null
 if loaded["ok"]&&get_or(loaded, "version", 1) == 2 {
     result = run_portable_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), flag(parsed, "manifest", ""), flag(parsed, "profiles", ""), flag(parsed, "profile", ""), flag(parsed, "backend", ""), run_flags)
 } else {
-    if has_flag(parsed, "manifest")||has_flag(parsed, "profiles")||has_flag(parsed, "profile")||has_flag(parsed, "backend") {
-        result = {"ok": false, "run_id": "", "stage": "validated", "error": "portable backend flags require a v2 definition", "exit_code": 2}
-    } else {
-        result = run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
-    }
+if has_flag(parsed, "manifest")||has_flag(parsed, "profiles")||has_flag(parsed, "profile")||has_flag(parsed, "backend") {
+    result = {"ok": false, "run_id": "", "stage": "validated", "error": "portable backend flags require a v2 definition", "exit_code": 2}
+} else {
+result = run_workcell(definition_path(parsed), repo_path(parsed), flag(parsed, "output", ""), run_flags)
+}
 }
 print_run_result(result, has_flag(parsed, "json"))
 return run_exit_code(result)

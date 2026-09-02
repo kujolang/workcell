@@ -49,6 +49,12 @@ jobs:
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/quality.sh
 
+      - name: Run official adapter offline suite
+        shell: bash
+        run: |
+          npm ci --ignore-scripts --prefix adapters/official
+          npm test --prefix adapters/official
+
       - name: Audit local Markdown links
         shell: bash
         run: ./tests/markdown_links.sh

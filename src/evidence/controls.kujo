@@ -11,20 +11,20 @@ export func requirements_from_definition(definition) {
     if type(definition) != "dict" {
         return {"ok": false, "error": "definition must be an object"}
     }
-    runtime := get_or(definition, "runtime", {})
-    resources := get_or(definition, "resources", {})
-    network := get_or(definition, "network", {})
-    filesystem := get_or(definition, "filesystem", {})
-    if get_or(definition, "schema", "") == "workcell-definition/v2alpha1" {
-        workload := get_or(definition, "workload", {})
-        requirements := get_or(definition, "requirements", {})
-        runtime = {"image": get_or(get_or(workload, "image", {}), "reference", ""), "image_digest": get_or(get_or(workload, "image", {}), "digest", ""), "signature_key": get_or(get_or(workload, "image", {}), "signature_key", "")}
-        compute := get_or(requirements, "compute", {})
-        execution := get_or(requirements, "execution", {})
-        resources = {"cpus": get_or(compute, "cpus", null), "memory": get_or(compute, "memory", null), "pids": get_or(compute, "pids", null), "timeout_ms": get_or(execution, "timeout_ms", null), "max_output_bytes": get_or(execution, "max_output_bytes", null)}
-        network = get_or(requirements, "network", {})
-        filesystem = get_or(requirements, "filesystem", {})
-    }
+runtime := get_or(definition, "runtime", {})
+resources := get_or(definition, "resources", {})
+network := get_or(definition, "network", {})
+filesystem := get_or(definition, "filesystem", {})
+if get_or(definition, "schema", "") == "workcell-definition/v2alpha1" {
+    workload := get_or(definition, "workload", {})
+    requirements := get_or(definition, "requirements", {})
+    runtime = {"image": get_or(get_or(workload, "image", {}), "reference", ""), "image_digest": get_or(get_or(workload, "image", {}), "digest", ""), "signature_key": get_or(get_or(workload, "image", {}), "signature_key", "")}
+    compute := get_or(requirements, "compute", {})
+    execution := get_or(requirements, "execution", {})
+    resources = {"cpus": get_or(compute, "cpus", null), "memory": get_or(compute, "memory", null), "pids": get_or(compute, "pids", null), "timeout_ms": get_or(execution, "timeout_ms", null), "max_output_bytes": get_or(execution, "max_output_bytes", null)}
+    network = get_or(requirements, "network", {})
+    filesystem = get_or(requirements, "filesystem", {})
+}
 mut requirements := []
 mandatory := [
 "lifecycle.provision",
@@ -54,18 +54,18 @@ requirements = push(requirements, requirement("logs.bounded", get_or(resources, 
 network_mode := get_or(network, "mode", "none")
 if network_mode == "none" {
     requirements = push(requirements, requirement("network.none", {"mode": "deny-all"}, true))
-    } else if network_mode == "custom"||network_mode == "allowlist" {
-        requirements = push(requirements, requirement("network.custom", {"name": get_or(network, "name", ""), "allow": get_or(network, "allow", [])}, true))
+} else if network_mode == "custom"||network_mode == "allowlist" {
+requirements = push(requirements, requirement("network.custom", {"name": get_or(network, "name", ""), "allow": get_or(network, "allow", [])}, true))
 }
 if get_or(filesystem, "read_only_root", false) {
     requirements = push(requirements, requirement("filesystem.read_only_root", true, true))
 }
-    if len(get_or(filesystem, "tmpfs", [])) > 0 {
-        requirements = push(requirements, requirement("filesystem.tmpfs", filesystem["tmpfs"], true))
-    }
-    if len(get_or(filesystem, "writable", [])) > 0 {
-        requirements = push(requirements, requirement("filesystem.writable_paths", filesystem["writable"], true))
-    }
+if len(get_or(filesystem, "tmpfs", [])) > 0 {
+    requirements = push(requirements, requirement("filesystem.tmpfs", filesystem["tmpfs"], true))
+}
+if len(get_or(filesystem, "writable", [])) > 0 {
+    requirements = push(requirements, requirement("filesystem.writable_paths", filesystem["writable"], true))
+}
 requirements = push(requirements, requirement("image.oci", get_or(runtime, "image", ""), true))
 if get_or(runtime, "require_digest", false)||get_or(runtime, "image_digest", "") != "" {
     requirements = push(requirements, requirement("image.digest", get_or(runtime, "image_digest", ""), true))

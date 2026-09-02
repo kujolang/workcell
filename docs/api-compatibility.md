@@ -12,6 +12,10 @@ The Workcell product version and contract identifiers are independent. Workcell 
 | CLI metadata | `workcell-cli/v1` | `help --json` | Commands, options, global `--help`/`--version`, and exit-code meanings are additive within v1; unsupported command options and extra positionals fail with usage code 2. |
 | Receipt | `workcell-receipt/v1` | `receipt.json` | `workcell_version` is the product version and `definition_version` is the input contract version; existing fields remain stable and new evidence fields are additive. |
 | Integrity manifest | `workcell-manifest/v1` | `manifest.json` | Relative paths, byte counts, and SHA-256 entries are verified by `workcell verify`. |
+| Portable definition | `workcell-definition/v2alpha1` | selected definition file | Alpha semantic workload contract; provider configuration is excluded. |
+| Backend protocol | `workcell-backend/v1alpha1` | adapter stdin/stdout | Alpha bounded JSONL executable protocol. |
+| Portable receipt | `workcell-receipt/v2alpha1` | `receipt.json` | Alpha controls ledger, provider identity, recovery, log quality, resources, cost, and cleanup. |
+| Recovery journal | `workcell-recovery/v1` | run `recovery/` directory | Ownership-bound external resource handle and cleanup attempts. |
 | Runtime inventory | `workcell-runtime-inventory/v1` | `clean --dry-run --json` | Backend-neutral inventory fields are canonical; `docker` remains a compatibility alias. `containers` retains the ID list, while additive `container_details[]` provides `{id,name}` records. |
 | Cleanup result | `workcell-clean/v1` | `clean --json` | `runtime_backend` and `runtime` are canonical; legacy aliases remain during the v1 compatibility period. |
 | Integration evidence | `workcell-integration/v1` | `receipt.integrations[]` and `integrations/*.json` | Adapter reports are isolated, bounded, and additive to the primary result. |

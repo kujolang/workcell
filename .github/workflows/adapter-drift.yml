@@ -1,0 +1,39 @@
+name: Adapter drift
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: adapters/official/package-lock.json
+      - name: Install exact SDK versions
+        run: npm ci --ignore-scripts --prefix adapters/official
+      - name: Run offline protocol fixtures
+        run: npm test --prefix adapters/official
+      - name: Record available SDK updates without changing runtime behavior
+        shell: bash
+        run: |
+          set +e
+          npm outdated --json --prefix adapters/official > adapter-drift.json
+          status=$?
+          set -e
+          if [ ! -s adapter-drift.json ]; then printf '{}\n' > adapter-drift.json; fi
+          jq . adapter-drift.json
+          exit 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: adapter-drift-${{ github.run_id }}
+          path: adapter-drift.json

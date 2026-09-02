@@ -29,6 +29,22 @@ func client_failure(request, code, message, retryable) {
     return {"ok": false, "events": [], "result": protocol_result(request, false, "failed", retryable, {}, backend_error(code, message, retryable, ""))}
 }
 
+func adapter_env_allow(options) {
+    allowed := get_or(options, "env_allow", [])
+    if type(allowed) != "array" {
+        return allowed
+    }
+    mut names := ["PATH"]
+    mut i := 0
+    while i < len(allowed) {
+        if allowed[i] != "PATH" {
+            names = push(names, allowed[i])
+        }
+        i = i + 1
+    }
+    return names
+}
+
 func executable_check(path) {
     if type(path) != "string"||trim(path) == ""||contains(path, "\n") == 1||contains(path, "\r") == 1 {
         return {"ok": false, "error": "adapter executable path is invalid"}
@@ -231,7 +247,7 @@ export func invoke_backend(executable, request, options) {
     mut output := ""
     mut invocation_error := ""
     try {
-        mut process_options := {"timeout_ms": timeout_ms, "max_output_bytes": output_limit, "inherit_env": get_or(options, "inherit_env", false), "env_allow": get_or(options, "env_allow", []), "env": get_or(options, "env", {})}
+        mut process_options := {"timeout_ms": timeout_ms, "max_output_bytes": output_limit, "inherit_env": get_or(options, "inherit_env", false), "env_allow": adapter_env_allow(options), "env": get_or(options, "env", {})}
         cancel_file := get_or(options, "cancel_file", "")
         if type(cancel_file) == "string"&&cancel_file != "" {process_options["cancel_file"] = cancel_file}
         output = pipe_commands([["cat", request_path], [executable, "protocol"]], process_options)

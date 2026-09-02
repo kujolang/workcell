@@ -80,7 +80,7 @@ Inspect and run with explicit inputs:
   --json
 ```
 
-Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The bundled adapters currently resolve only `env:` references. Workcell passes only the named environment variable to the adapter process; the value is not placed in the definition, profile, request payload, receipt, log, or artifact. Kujo Agent/OS-store resolution requires a host bridge and must fail rather than fall back to ambient credentials.
+Credential references may use `env:`, `kujo-agent:`, or `os-store:` syntax. The bundled adapters currently resolve only `env:` references. Workcell passes only the named environment variable plus `PATH` to the adapter process; `PATH` keeps script and runtime entrypoints portable without inheriting the rest of the host environment. Credential values are not placed in the definition, profile, request payload, receipt, log, or artifact. Kujo Agent/OS-store resolution requires a host bridge and must fail rather than fall back to ambient credentials.
 
 Orchestrators may pass `--context <path>` with a `workcell-caller-context/v1` JSON object. Only bounded identifiers (`caller`, required `correlation_id`, and optional workflow, step, attempt, and causation IDs) are accepted. Context is copied into receipt evidence; it cannot carry provider options, credentials, retry policy, or workload semantics.
 

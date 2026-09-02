@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { archiveDownloadLimit, writeBoundedStream } from '../runtime/protocol.mjs';
+import { boundLogs, ownedMetadata, parseWorkspaceStatus } from '../runtime/providers.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const adapterEntry = path.join(root, 'runtime', 'adapter.mjs');
@@ -88,6 +89,14 @@ test('live resolution keeps operator guarantees claimed and unobserved', () => {
   assert.equal(state.observation.status, 'not-observed');
 });
 
+test('vercel memory requires an exact operator guarantee', () => {
+  const wanted = [{ id: 'compute.memory_limit', requested: true, required: true, value: '512m' }];
+  const rejected = call('vercel-sandbox', 'resolve', { requirements: wanted, intent: {} }, {});
+  assert.equal(rejected.result.data.capabilities[0].acceptance, 'rejected');
+  const accepted = call('vercel-sandbox', 'resolve', { requirements: wanted, intent: {} }, { guarantees: { 'compute.memory_limit': '512m' } });
+  assert.equal(accepted.result.data.capabilities[0].enforcement.status, 'operator-claimed');
+});
+
 test('adapter errors redact workload and provider secrets', () => {
   const req = { contract: 'workcell-backend/v1alpha1', request_id: 'test-redaction', run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation: 'execute', deadline_ms: 10000, profile: { credential_ref: 'env:E2B_API_KEY' }, payload: { handle: {}, attempt_id: 'attempt-1', argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: ['WORKLOAD_TOKEN'], timeout_ms: 1000, max_output_bytes: 65536 } };
   const result = spawnSync(path.join(root, 'e2b', 'workcell-backend-e2b'), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: { E2B_API_KEY: 'provider-secret-value', WORKLOAD_TOKEN: 'workload-secret-value' } });
@@ -122,6 +131,26 @@ test('artifact transport aborts and removes an oversized partial file', async ()
   const destination = path.join(directory, 'artifacts.tar');
   await assert.rejects(writeBoundedStream(destination, Readable.from([Buffer.alloc(4), Buffer.alloc(4)]), 7), { code: 'ARTIFACT_LIMIT' });
   await assert.rejects(access(destination));
+});
+
+test('provider log normalization enforces one combined byte bound', () => {
+  const bounded = boundLogs('abcdef', 'ghij', 8);
+  assert.equal(Buffer.byteLength(bounded.stdout) + Buffer.byteLength(bounded.stderr), 8);
+  assert.equal(bounded.stdout, 'abcdef');
+  assert.equal(bounded.stderr, 'gh');
+  assert.equal(bounded.truncated, true);
+});
+
+test('workspace delta parser preserves modified, untracked, and rename paths', () => {
+  assert.deepEqual(parseWorkspaceStatus(' M changed.txt\0?? new.txt\0R  old.txt\0renamed.txt\0'), ['changed.txt', 'new.txt', 'old.txt', 'renamed.txt']);
+  assert.throws(() => parseWorkspaceStatus('malformed\0'), { code: 'WORKSPACE_COLLECT' });
+});
+
+test('recovery inventory requires both run and nonce ownership markers', () => {
+  const ownership = { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' };
+  assert.equal(ownedMetadata({ run: ownership.run_id, nonce: ownership.nonce }, ownership, 'run', 'nonce'), true);
+  assert.equal(ownedMetadata({ run: ownership.run_id, nonce: 'wrong' }, ownership, 'run', 'nonce'), false);
+  assert.equal(ownedMetadata(undefined, ownership, 'run', 'nonce'), false);
 });
 
 test('official manifests pin their executable wrapper digests', async () => {

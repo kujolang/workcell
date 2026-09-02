@@ -1,6 +1,7 @@
 # Known Limitations
 
 - Docker and Podman are the stable built-ins. The executable backend protocol, v2 definition/receipt, and E2B/Vercel/Daytona adapters are alpha; offline conformance does not replace credential-gated live provider evidence.
+- Official adapters bound evidence emitted to Workcell, but some provider SDK command methods buffer output before returning it. Account/provider-side output and workload bounds remain required until each live SDK path proves backpressure under the release smoke gate.
 - Official remote adapters currently require Node 20+ and resolve `env:` credential references. Kujo Agent and OS credential-store bridges are not silently emulated.
 - External adapter log events are bounded and buffered by the current core client. Receipts do not claim real-time delivery, global stdout/stderr order, or provider timestamps.
 - Provider API versions and pricing can drift. Receipts preserve provider/API identity and unknown cost rather than estimating charges.

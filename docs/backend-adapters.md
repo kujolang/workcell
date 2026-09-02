@@ -129,6 +129,8 @@ Recovery inventories first, requires a complete inventory response, and refuses 
 
 `tests/official_adapters_test.kujo` runs the base suite against all official adapters in deterministic fixture mode. It proves repeated provisioning is idempotent, timeout normalization is terminal, unsafe artifact paths fail, and owned inventory is empty after destroy in addition to the complete mandatory lifecycle. `npm test --prefix adapters/official` tests protocol framing, ownership, lifecycle results, credential failure, integrity tampering, a deterministic malformed-request corpus, and concurrent ownership-isolated fixture lifecycles with zero leaks. Linux CI exercises Docker and Podman; macOS CI runs the offline VM/interpreter and official-adapter contracts. Capability-specific and live tests must be gated by explicit credentials and should preserve a verified receipt plus zero-resource inventory for the exact adapter/provider version.
 
+Live official adapters independently hash the uploaded workspace archive before extraction, collect a complete Git status delta, bound normalized log evidence, and require both the run ID and nonce on recovery inventory. A provider listing that omits either ownership marker is ignored rather than treated as Workcell-owned. Vercel's native resource request directly represents vCPU but not arbitrary memory; memory is rejected unless the selected operator profile supplies an exact reviewed guarantee.
+
 Conformance proves the adapter follows the tested machine contract. It does not certify the provider, host, network, tenant isolation, data retention, or operator profile.
 
 ## Built-in and support decisions

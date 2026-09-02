@@ -24,5 +24,6 @@ try {
   process.stdout.write(`${JSON.stringify(envelope(req, true, value?.data || value))}\n`);
 } catch (error) {
   const fallback = req || { request_id: '', run_id: '', operation: '' };
-  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || 'ADAPTER_INTERNAL', message: redactError(req, error, provider), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
+  const timedOut = req?.operation === 'execute' && /(?:timed?\s*out|timeout)/i.test(String(error?.name || '') + ' ' + String(error?.message || ''));
+  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || (timedOut ? 'ADAPTER_TIMEOUT' : 'ADAPTER_INTERNAL'), message: redactError(req, error, provider), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
 }

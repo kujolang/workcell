@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { access, mkdtemp, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { access, copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { Readable } from 'node:stream';
 import os from 'node:os';
@@ -86,4 +87,26 @@ test('artifact transport aborts and removes an oversized partial file', async ()
   const destination = path.join(directory, 'artifacts.tar');
   await assert.rejects(writeBoundedStream(destination, Readable.from([Buffer.alloc(4), Buffer.alloc(4)]), 7), { code: 'ARTIFACT_LIMIT' });
   await assert.rejects(access(destination));
+});
+
+test('official manifests pin their executable wrapper digests', async () => {
+  for (const provider of ['e2b', 'vercel-sandbox', 'daytona']) {
+    const manifest = JSON.parse(await readFile(path.join(root, provider, 'manifest.json'), 'utf8'));
+    const executable = await readFile(path.join(root, provider, manifest.executable));
+    assert.equal(manifest.digest, `sha256:${createHash('sha256').update(executable).digest('hex')}`);
+  }
+});
+
+test('official runtime integrity verification fails closed on tampering', async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'workcell-adapter-integrity-'));
+  await mkdir(path.join(temporaryRoot, 'runtime'));
+  for (const relative of ['runtime/adapter.mjs', 'runtime/protocol.mjs', 'runtime/providers.mjs', 'package.json', 'package-lock.json']) {
+    await copyFile(path.join(root, relative), path.join(temporaryRoot, relative));
+  }
+  const verifier = path.join(root, 'runtime', 'verify-integrity.sh');
+  assert.equal(spawnSync(verifier, [temporaryRoot], { encoding: 'utf8' }).status, 0);
+  await writeFile(path.join(temporaryRoot, 'runtime', 'protocol.mjs'), '// tampered\n');
+  const tampered = spawnSync(verifier, [temporaryRoot], { encoding: 'utf8' });
+  assert.equal(tampered.status, 70);
+  assert.match(tampered.stderr, /integrity check failed/);
 });

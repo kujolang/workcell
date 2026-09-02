@@ -1,4 +1,23 @@
 #!/usr/bin/env sh
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+VERIFY="$ROOT/runtime/verify-integrity.sh"
+EXPECTED_VERIFY="6aafdb7424eb58ce8122d8868252895f894f8a106581b83cf8641506744a69db"
+if [ ! -f "$VERIFY" ]; then
+  echo "WorkCell adapter integrity verifier is missing" >&2
+  exit 70
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL_VERIFY="$(sha256sum "$VERIFY" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  ACTUAL_VERIFY="$(shasum -a 256 "$VERIFY" | awk '{print $1}')"
+else
+  echo "WorkCell adapter integrity check requires sha256sum or shasum" >&2
+  exit 70
+fi
+if [ "$ACTUAL_VERIFY" != "$EXPECTED_VERIFY" ]; then
+  echo "WorkCell adapter integrity verifier failed validation" >&2
+  exit 70
+fi
+"$VERIFY" "$ROOT"
 exec node "$ROOT/runtime/adapter.mjs" vercel-sandbox "${1:-}"

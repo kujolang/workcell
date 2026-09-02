@@ -134,7 +134,7 @@ WORKCELL_ARTIFACT_SECRET="artifact-example-secret" KUJO="$KUJO" "$ROOT/bin/workc
 ARTIFACT_POLICY_CODE=$?
 set -e
 test "$ARTIFACT_POLICY_CODE" -eq 8
-jq -e '.stage == "artifact-failed" and (.error | contains("secret"))' "$OUT_ROOT/artifact-policy-example.json" >/dev/null
+jq -e '.stage == "verification-failed" and .patch_path == null and (.receipt.errors | any(.stage == "collecting" and (.message | contains("declared secret"))))' "$OUT_ROOT/artifact-policy-example.json" >/dev/null
 
 set +e
 KUJO="$KUJO" "$ROOT/bin/workcell" run --file "$EXAMPLES_ROOT/provenance/workcell.json" --repo "$TMP_REPO" --output "$OUT_ROOT/provenance-example" --json > "$OUT_ROOT/provenance-example.json"

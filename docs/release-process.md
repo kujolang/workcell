@@ -5,7 +5,7 @@ This process prepares and publishes Workcell source releases without publishing 
 ## Release inputs
 
 - Product version: `VERSION`, mirrored by `kujo.toml` and `kennel.toml`.
-- Runtime: Kujo 1.0.0 at the exact commit in `RUNTIME_VERSION`.
+- Runtime: Kujo 1.2.1 at the exact commit in `RUNTIME_VERSION`.
 - Release commit: one reviewed, clean commit that has passed local gates and hosted CI.
 - Tag: annotated `v1.0.0`, created only after human approval.
 
@@ -16,7 +16,7 @@ Definition, receipt, manifest, report, provenance, CLI metadata, and other `/v1`
 - [ ] Confirm `git status --short` is empty and the approved commit is on `main`.
 - [ ] Confirm `VERSION`, `kujo.toml`, `kennel.toml`, the CLI, README badge, changelog, release report, and artifact names agree on `1.0.0`.
 - [ ] Confirm `kennel.toml` declares production, stable, public API status with the narrow local Docker/Podman scope note.
-- [ ] Confirm `RUNTIME_VERSION` is `2b3e07d398016e92008d8399e79c441e012dce38` and the test binary was built from that commit.
+- [ ] Confirm `RUNTIME_VERSION` is `692512a9070fdba713f160d795bbddb8077db7b5` and the test binary was built from that commit.
 - [ ] Run the offline, quality, version-consistency, release-report, Markdown-link, and whitespace gates below.
 - [ ] Run Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup evidence.
 - [ ] Run Podman doctor, OCI smoke, integration, concurrent-load, and egress evidence on supported Linux.
@@ -29,8 +29,8 @@ Definition, receipt, manifest, report, provenance, CLI metadata, and other `/v1`
 ## Reproduce release gates
 
 ```bash
-export KUJO=/path/to/kujo-1.0.0/target/release/kujo
-test "$(git -C /path/to/kujo-1.0.0 rev-parse HEAD)" = "$(cat RUNTIME_VERSION)"
+export KUJO=/path/to/kujo-1.2.1/target/release/kujo
+test "$(git -C /path/to/kujo-1.2.1 rev-parse HEAD)" = "$(cat RUNTIME_VERSION)"
 ./bin/workcell --help
 ./bin/workcell --version
 ./bin/workcell validate --file workcell.json

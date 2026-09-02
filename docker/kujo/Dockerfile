@@ -1,7 +1,7 @@
 # Pinned Kujo tool image for the project-check example.
 FROM rust:1.96.0-alpine3.22@sha256:8c6ab6493f2e93ee7c21781bc599a7e07278aceb15fefb968144d7e4cf8c9a04 AS builder
 
-ARG KUJO_COMMIT=2b3e07d398016e92008d8399e79c441e012dce38
+ARG KUJO_COMMIT=692512a9070fdba713f160d795bbddb8077db7b5
 
 RUN apk add --no-cache git musl-dev openssl-dev pkgconfig
 RUN git clone https://github.com/kujolang/kujo.git /src/kujo \

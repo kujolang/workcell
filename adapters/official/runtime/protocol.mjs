@@ -37,7 +37,7 @@ const DIRECT = {
   daytona: new Set([...BASE, 'compute.cpu_limit', 'compute.memory_limit', 'network.none', 'network.custom', 'image.oci'])
 };
 
-const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_exit_code', 'fixture_mode', 'guarantees', 'policy', 'provider_project', 'region']);
+const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_exit_code', 'fixture_mode', 'fixture_stderr', 'fixture_stdout', 'guarantees', 'policy', 'provider_project', 'region']);
 const PROVIDER_PROFILE_KEYS = {
   e2b: new Set(['sandbox_timeout_ms', 'template']),
   'vercel-sandbox': new Set(['image']),
@@ -97,16 +97,26 @@ export function executionEnvironment(req) {
   return result;
 }
 
-export function redactError(req, error) {
-  let message = String(error?.message || error).slice(0, 2048);
+function secretValues(req, provider) {
   const names = [...(req?.payload?.secret_channel || [])];
   const credentialRef = req?.profile?.credential_ref || '';
   if (credentialRef.startsWith('env:')) names.push(credentialRef.slice(4));
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) message = message.replaceAll(value, '[REDACTED]');
+  else if (provider && PROVIDERS[provider]) names.push(PROVIDERS[provider].credential);
+  return names.map((name) => process.env[name]).filter(Boolean);
+}
+
+export function redactOutput(req, output, provider) {
+  let value = String(output ?? '');
+  for (const secret of secretValues(req, provider)) {
+    value = value.replaceAll(secret, '[REDACTED]');
+    if (secret.length >= 8) value = value.replaceAll(Buffer.from(secret).toString('base64'), '[REDACTED]');
   }
-  return message;
+  return value;
+}
+
+export function redactError(req, error, provider) {
+  let message = String(error?.message || error).slice(0, 2048);
+  return redactOutput(req, message, provider);
 }
 
 export function shellQuote(value) { return `'${String(value).replaceAll("'", "'\\''")}'`; }
@@ -128,7 +138,11 @@ export async function fixture(provider, req) {
   const owned = handle(provider, req, resourceId, { fixture: true });
   if (req.operation === 'provision') return { handle: owned, resource_inventory: [{ kind: 'sandbox', id: resourceId, state: 'running', ownership: owned.ownership }], actual_resolution: {} };
   if (req.operation === 'prepare') return { handle: req.payload.handle, workspace_root: '/workspace', observed_package_digest: req.payload.workspace_package.sha256 };
-  if (req.operation === 'execute') return { events: [{ stream: 'stdout', bytes: `${provider} fixture\n` }], data: { handle: req.payload.handle, command_id: 'fixture-command', terminal: { status: 'exited', exit_code: Number(req.profile.fixture_exit_code || 0), signal: null, reason: 'fixture-exit', timed_out: false, cancelled: false, certainty: 'terminal' }, logs: { stdout_bytes: provider.length + 9, stderr_bytes: 0, truncated: false, complete: true, ordering: 'per-stream' } } };
+  if (req.operation === 'execute') {
+    const stdout = redactOutput(req, req.profile.fixture_stdout ?? `${provider} fixture\n`, provider);
+    const stderr = redactOutput(req, req.profile.fixture_stderr ?? '', provider);
+    return { events: [stdout ? { stream: 'stdout', bytes: stdout } : null, stderr ? { stream: 'stderr', bytes: stderr } : null].filter(Boolean), data: { handle: req.payload.handle, command_id: 'fixture-command', terminal: { status: 'exited', exit_code: Number(req.profile.fixture_exit_code || 0), signal: null, reason: 'fixture-exit', timed_out: false, cancelled: false, certainty: 'terminal' }, logs: { stdout_bytes: Buffer.byteLength(stdout), stderr_bytes: Buffer.byteLength(stderr), truncated: false, complete: true, ordering: 'per-stream' } } };
+  }
   if (req.operation === 'collect') return { terminal: { status: 'exited', exit_code: 0, signal: null, reason: 'fixture-exit', timed_out: false, cancelled: false, certainty: 'terminal' }, logs: { complete: true, ordering: 'per-stream' }, workspace_delta: { files: [], complete: true }, metrics: {}, attempt_inventory: [] };
   if (req.operation === 'export') return { archive: null, manifest: { declared: req.payload.declarations || [], files: [] }, failures: [], cleanup_resources: [] };
   if (req.operation === 'inventory') return { resources: [{ kind: 'sandbox', id: resourceId, state: 'running', ownership: req.payload.ownership }], complete: true };

@@ -2,15 +2,15 @@
 
 ## Runtime
 
-Use Kujo 1.0.0 built from the exact commit in `RUNTIME_VERSION`, not the unrelated Python package named `kujo` and not a newer checkout that happens to report the same semantic version.
+Use Kujo 1.2.1 built from the exact commit in `RUNTIME_VERSION`, not the unrelated Python package named `kujo` and not a newer checkout that happens to report the same semantic version.
 
 ```bash
-export KUJO=/path/to/kujo-1.0.0/target/release/kujo
-test "$(git -C /path/to/kujo-1.0.0 rev-parse HEAD)" = "$(cat RUNTIME_VERSION)"
+export KUJO=/path/to/kujo-1.2.1/target/release/kujo
+test "$(git -C /path/to/kujo-1.2.1 rev-parse HEAD)" = "$(cat RUNTIME_VERSION)"
 "$KUJO" --version
 ```
 
-The v1.0.0 runtime commit is `2b3e07d398016e92008d8399e79c441e012dce38`.
+The v1.2.1 runtime commit is `692512a9070fdba713f160d795bbddb8077db7b5`.
 
 ## Offline and quality gates
 

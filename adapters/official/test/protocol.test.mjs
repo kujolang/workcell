@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requirements = ['lifecycle.provision','lifecycle.terminate','lifecycle.destroy','lifecycle.inventory','workspace.stage','workspace.collect_delta','process.argv','process.exit_status','execution.timeout','logs.bounded','artifact.selective_export','environment.explicit','credentials.redacted_transport','evidence.provider_identity','ownership.markers'].map((id) => ({ id, requested: true, required: true, value: true }));
 
-function call(provider, operation, payload = {}, profile = { fixture_mode: true }) {
+function call(provider, operation, payload = {}, profile = { fixture_mode: true }, environment = {}) {
   const req = { contract: 'workcell-backend/v1alpha1', request_id: `test-${operation}`, run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation, deadline_ms: 10000, profile, payload };
-  const result = spawnSync(path.join(root, provider, `workcell-backend-${provider}`), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: {} });
+  const result = spawnSync(path.join(root, provider, `workcell-backend-${provider}`), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: environment });
   assert.equal(result.status, 0);
   const lines = result.stdout.trim().split('\n').map(JSON.parse);
   return { req, events: lines.filter((x) => x.type === 'event'), result: lines.at(-1) };
@@ -53,4 +53,17 @@ test('adapter errors redact workload and provider secrets', () => {
   const result = spawnSync(path.join(root, 'e2b', 'workcell-backend-e2b'), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: { E2B_API_KEY: 'provider-secret-value', WORKLOAD_TOKEN: 'workload-secret-value' } });
   assert.equal(result.stdout.includes('provider-secret-value'), false);
   assert.equal(result.stdout.includes('workload-secret-value'), false);
+});
+
+test('adapter log events redact raw and encoded workload secrets', () => {
+  const secret = 'workload-secret-value';
+  const providerSecret = 'provider-secret-value';
+  const encoded = Buffer.from(secret).toString('base64');
+  const execution = call('e2b', 'execute', { handle: { resource_ids: [], ownership: {} }, argv: ['true'], workdir: '/workspace', environment: {}, secret_channel: ['WORKLOAD_TOKEN'], timeout_ms: 1000 }, { fixture_mode: true, fixture_stdout: `raw=${secret} encoded=${encoded} provider=${providerSecret}` }, { E2B_API_KEY: providerSecret, WORKLOAD_TOKEN: secret });
+  assert.equal(execution.events.length, 1);
+  const decoded = Buffer.from(execution.events[0].bytes_base64, 'base64').toString('utf8');
+  assert.equal(decoded.includes(secret), false);
+  assert.equal(decoded.includes(encoded), false);
+  assert.equal(decoded.includes(providerSecret), false);
+  assert.equal(decoded, 'raw=[REDACTED] encoded=[REDACTED] provider=[REDACTED]');
 });

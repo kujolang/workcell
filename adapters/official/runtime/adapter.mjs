@@ -23,5 +23,5 @@ try {
   process.stdout.write(`${JSON.stringify(envelope(req, true, value?.data || value))}\n`);
 } catch (error) {
   const fallback = req || { request_id: '', run_id: '', operation: '' };
-  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || 'ADAPTER_INTERNAL', message: redactError(req, error), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
+  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || 'ADAPTER_INTERNAL', message: redactError(req, error, provider), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
 }

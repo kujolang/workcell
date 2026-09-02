@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
-RELEASED_KUJO_COMMIT="2b3e07d398016e92008d8399e79c441e012dce38"
+RELEASED_KUJO_COMMIT="692512a9070fdba713f160d795bbddb8077db7b5"
 
 toml_value() {
   local file="$1"
@@ -28,7 +28,7 @@ test "$(toml_value "$ROOT/kennel.toml" package version)" = "$VERSION"
 test "$(toml_value "$ROOT/kennel.toml" package.status stage)" = "production"
 test "$(toml_value "$ROOT/kennel.toml" package.status stability)" = "stable"
 test "$(toml_value "$ROOT/kennel.toml" package.status public_api)" = "true"
-test "$(toml_value "$ROOT/kennel.toml" kujo minimum_version)" = "1.0.0"
+test "$(toml_value "$ROOT/kennel.toml" kujo minimum_version)" = "1.2.1"
 grep -Eq "^## ${VERSION} - [0-9]{4}-[0-9]{2}-[0-9]{2}$" "$ROOT/CHANGELOG.md"
 grep -Fq "version-${VERSION}" "$ROOT/README.md"
 grep -Fq "workcell-${VERSION}-source.tar.gz" "$ROOT/docs/release-process.md"
@@ -41,6 +41,6 @@ test "$(grep -Fc "ARG KUJO_COMMIT=$KUJO_COMMIT" "$ROOT/docker/kujo/Dockerfile.lo
 test "$(grep -Fc "KUJO_COMMIT=\"$KUJO_COMMIT\"" "$ROOT/docker/kujo/build-local.sh")" -eq 1
 
 test "$(KUJO="$KUJO" "$ROOT/bin/workcell" --version)" = "Workcell $VERSION"
-test "$("$KUJO" --version)" = "kujo 1.0.0"
+test "$("$KUJO" --version)" = "kujo 1.2.1"
 
 echo "Version consistency passed: Workcell $VERSION on Kujo $KUJO_COMMIT"

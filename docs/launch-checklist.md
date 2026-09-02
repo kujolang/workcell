@@ -5,7 +5,7 @@ Workcell 1.0 is stable for the documented local and CI Docker/Podman execution c
 ## Preparation acceptance
 
 - [ ] Product version surfaces and release artifact names agree on `1.0.0`.
-- [ ] Released Kujo 1.0.0 commit `2b3e07d398016e92008d8399e79c441e012dce38` is pinned and used for every gate.
+- [ ] Released Kujo 1.2.1 commit `692512a9070fdba713f160d795bbddb8077db7b5` is pinned and used for every gate.
 - [ ] Offline, CLI, format, lint, version, release-report, Markdown-link, and whitespace gates pass.
 - [ ] Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup pass.
 - [ ] Podman doctor, OCI smoke, integration, concurrent-load, egress, and cleanup pass on supported Linux.
@@ -18,7 +18,7 @@ The commands, expected artifacts, rollback plan, tag procedure, and GitHub Relea
 
 ## Local preparation evidence — 2026-08-08
 
-The released Kujo 1.0.0 commit was built in a detached worktree and verified as `kujo 1.0.0`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck all passed locally. ShipCheck reported 16 of 16 checks passed, zero errors, and zero warnings. Docker 29.5.2 ran through the local Colima profile with seccomp and AppArmor; its rootful state remained an explicit doctor warning rather than evidence of rootless isolation.
+The released Kujo runtime must be built from the exact `RUNTIME_VERSION` revision and verified as `kujo 1.2.1`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck must pass locally. Docker isolation characteristics remain explicit doctor evidence rather than implied security guarantees.
 
 Podman gates are externally blocked on this host because the `podman` executable and engine are absent. `workcell doctor --backend podman --json` exited `3` with three blocked checks: CLI unavailable, engine unreachable, and security inspection unavailable. The safe resume action is to install and start rootless Podman on a supported Linux host, then run the Podman doctor, OCI smoke, integration, concurrent-load, and egress commands in [the release process](release-process.md). No Docker result is treated as Podman evidence.
 

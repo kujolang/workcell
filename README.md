@@ -28,7 +28,7 @@ Supported host classes are Linux with Docker Engine or rootless Docker/Podman, a
 
 ## Requirements and installation
 
-- Kujo 1.0.0 at commit `2b3e07d398016e92008d8399e79c441e012dce38` (the exact pin is in `RUNTIME_VERSION`).
+- Kujo 1.2.1 at commit `692512a9070fdba713f160d795bbddb8077db7b5` (the exact pin is in `RUNTIME_VERSION`).
 - Git and `jq`.
 - Docker for the default backend, or Podman on a supported Linux host.
 - A clean Git source repository for execution. Workcell refuses dirty sources by default so it cannot silently omit user changes.
@@ -39,7 +39,7 @@ Workcell is distributed as a source archive and can also run directly from a che
 git clone https://github.com/kujolang/workcell.git
 cd workcell
 git checkout v1.0.0
-export KUJO=/path/to/kujo-1.0.0/kujo
+export KUJO=/path/to/kujo-1.2.1/kujo
 ./bin/workcell --version
 ```
 
@@ -48,7 +48,7 @@ Before the tag exists, release-preparation checkouts use the exact approved comm
 ## Quick Start
 
 ```bash
-export KUJO=/path/to/kujo-1.0.0/kujo
+export KUJO=/path/to/kujo-1.2.1/kujo
 docker build --tag kujolang/workcell-base:local docker/
 ./bin/workcell init
 ./bin/workcell validate --file workcell.json
@@ -129,7 +129,7 @@ Patch releases contain compatible fixes. Minor releases may add optional CLI or 
 Run the offline release gates with the pinned runtime:
 
 ```bash
-export KUJO=/path/to/kujo-1.0.0/kujo
+export KUJO=/path/to/kujo-1.2.1/kujo
 ./bin/workcell --help
 ./bin/workcell --version
 ./bin/workcell validate --file workcell.json

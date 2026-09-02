@@ -9,7 +9,7 @@ from src.evidence.controls import controls_ledger, requirements_from_definition
 from src.receipts.manifest import write_manifest
 from src.receipts.v2 import add_v2_error, checkpoint_v2, finish_v2, new_v2_receipt
 from src.recovery.recovery import update_recovery_journal, write_recovery_journal
-from src.util import ensure_dir, get_or, path_has_symlink, path_within, run_id, save_json
+from src.util import ensure_dir, env_secret_values, get_or, path_has_symlink, path_within, run_id, save_json
 from src.workspace.package import create_workspace_package
 from src.workspace.workspace import inspect_repository, temp_root
 
@@ -43,7 +43,7 @@ func invoke(executable, run_identifier, operation, profile, payload, definition)
     credential_env := get_or(profile, "credential_env", "")
     env_allow := secret_names
     if credential_env != "" {env_allow = push(env_allow, credential_env)}
-    return invoke_backend(executable, request(run_identifier, operation, profile, payload, deadline), {"timeout_ms": deadline, "max_output_bytes": get_or(execution, "max_output_bytes", 4000000), "inherit_env": false, "env_allow": env_allow, "redact_values": []})
+    return invoke_backend(executable, request(run_identifier, operation, profile, payload, deadline), {"timeout_ms": deadline, "max_output_bytes": get_or(execution, "max_output_bytes", 4000000), "inherit_env": false, "env_allow": env_allow, "redact_values": env_secret_values(env_allow)})
 }
 
 func terminal_exit(terminal) {

@@ -17,9 +17,9 @@ func expect(label, condition) {
         passed = passed + 1
         print("PASS " + label)
     } else {
-    failed = failed + 1
-    print("FAIL " + label)
-}
+        failed = failed + 1
+        print("FAIL " + label)
+    }
 }
 
 run_identifier := "wc-0123456789abcdef0123456789abcdef"
@@ -147,6 +147,27 @@ expect("external adapter duplicate result is rejected", duplicate["ok"] == false
 
 wrong_echo := to_json({"contract": backend_contract_id(), "request_id": "wrong", "run_id": run_identifier, "operation": "describe", "type": "result", "ok": true, "status": "ok", "retryable": false, "data": {}})
 expect("protocol parser rejects request echo mismatch", parse_backend_frames(external_request, wrong_echo, {})["ok"] == false)
+
+secret := "portable-secret-value"
+log_frame := {"contract": backend_contract_id(), "request_id": external_request["request_id"], "run_id": run_identifier, "operation": "describe", "type": "event", "event": "log", "sequence": 0, "stream": "stdout", "bytes_base64": encode_base64("token=" + secret), "provider_timestamp": null, "ordering": "per-stream"}
+result_frame := {"contract": backend_contract_id(), "request_id": external_request["request_id"], "run_id": run_identifier, "operation": "describe", "type": "result", "ok": false, "status": "failed", "retryable": false, "data": {"diagnostic": secret}, "error": {"code": "TEST", "message": "failed with " + secret, "provider_code": secret}}
+redacted_frames := parse_backend_frames(external_request, to_json(log_frame) + "\n" + to_json(result_frame), {"redact_values": [secret]})
+redacted_log := decode_base64_utf8(redacted_frames["events"][0]["bytes_base64"])
+expect("protocol parser redacts decoded workload logs", contains(redacted_log, secret) == 0&&contains(redacted_log, "[REDACTED]") == 1)
+expect("protocol parser redacts result diagnostics recursively", contains(to_json(redacted_frames["result"]), secret) == 0)
+
+split_first := log_frame
+split_first["bytes_base64"] = encode_base64("token=portable-")
+split_second := log_frame
+split_second["sequence"] = 1
+split_second["bytes_base64"] = encode_base64("secret-value")
+split_frames := parse_backend_frames(external_request, to_json(split_first) + "\n" + to_json(split_second) + "\n" + to_json(result_frame), {"redact_values": [secret]})
+split_log := decode_base64_utf8(split_frames["events"][0]["bytes_base64"])
+expect("protocol parser redacts secrets split across log events", contains(split_log, secret) == 0&&contains(split_log, "[REDACTED]") == 1)
+
+invalid_log := log_frame
+invalid_log["bytes_base64"] = "/w=="
+expect("protocol parser rejects non-UTF-8 log bytes", parse_backend_frames(external_request, to_json(invalid_log) + "\n" + to_json(result_frame), {"redact_values": [secret]})["ok"] == false)
 
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { describe, envelope, event, fixture, readRequest, resolve } from './protocol.mjs';
+import { describe, envelope, event, fixture, readRequest, redactError, resolve } from './protocol.mjs';
 import { daytona, e2b, vercel } from './providers.mjs';
 
 const provider = process.argv[2];
@@ -23,5 +23,5 @@ try {
   process.stdout.write(`${JSON.stringify(envelope(req, true, value?.data || value))}\n`);
 } catch (error) {
   const fallback = req || { request_id: '', run_id: '', operation: '' };
-  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || 'ADAPTER_INTERNAL', message: String(error.message || error).slice(0, 2048), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
+  process.stdout.write(`${JSON.stringify(envelope(fallback, false, {}, { code: error.code || 'ADAPTER_INTERNAL', message: redactError(req, error), provider_code: error.name || '', retryable: Boolean(error.retryable) }))}\n`);
 }

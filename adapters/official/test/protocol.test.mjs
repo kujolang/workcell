@@ -41,3 +41,16 @@ test('live mode never accepts missing provider credentials', () => {
   assert.equal(result.result.error.code, 'AUTH_MISSING');
   assert.equal(result.stdout?.includes?.('secret'), undefined);
 });
+
+test('profile validation rejects unknown provider fields before provisioning', () => {
+  const result = call('e2b', 'resolve', { requirements, intent: {} }, { fixture_mode: true, vendor_escape_hatch: true });
+  assert.equal(result.result.ok, false);
+  assert.equal(result.result.error.code, 'PROFILE_INVALID');
+});
+
+test('adapter errors redact workload and provider secrets', () => {
+  const req = { contract: 'workcell-backend/v1alpha1', request_id: 'test-redaction', run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', operation: 'execute', deadline_ms: 10000, profile: { credential_ref: 'env:E2B_API_KEY' }, payload: { secret_channel: ['WORKLOAD_TOKEN'] } };
+  const result = spawnSync(path.join(root, 'e2b', 'workcell-backend-e2b'), ['protocol'], { input: `${JSON.stringify(req)}\n`, encoding: 'utf8', env: { E2B_API_KEY: 'provider-secret-value', WORKLOAD_TOKEN: 'workload-secret-value' } });
+  assert.equal(result.stdout.includes('provider-secret-value'), false);
+  assert.equal(result.stdout.includes('workload-secret-value'), false);
+});

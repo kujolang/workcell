@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 export const CONTRACT = 'workcell-backend/v1alpha1';
@@ -36,7 +37,21 @@ const DIRECT = {
   daytona: new Set([...BASE, 'compute.cpu_limit', 'compute.memory_limit', 'network.none', 'network.custom', 'image.oci'])
 };
 
+const COMMON_PROFILE_KEYS = new Set(['credential_ref', 'endpoint', 'fixture_exit_code', 'fixture_mode', 'guarantees', 'policy', 'provider_project', 'region']);
+const PROVIDER_PROFILE_KEYS = {
+  e2b: new Set(['sandbox_timeout_ms', 'template']),
+  'vercel-sandbox': new Set(['image']),
+  daytona: new Set([])
+};
+
+function validateProfile(provider, profile) {
+  const allowed = new Set([...COMMON_PROFILE_KEYS, ...PROVIDER_PROFILE_KEYS[provider]]);
+  const unknown = Object.keys(profile).filter((key) => !allowed.has(key));
+  if (unknown.length > 0) throw Object.assign(new Error(`unknown ${provider} profile field(s): ${unknown.sort().join(', ')}`), { code: 'PROFILE_INVALID' });
+}
+
 export function resolve(provider, req) {
+  validateProfile(provider, req.profile);
   const fixture = req.profile.fixture_mode === true;
   const guarantees = req.profile.guarantees || {};
   const caps = (req.payload.requirements || []).map((wanted) => {
@@ -68,7 +83,30 @@ export function credential(req, provider) {
 }
 
 export function handle(provider, req, resourceId, state = {}) {
-  return { backend: provider, adapter_version: PROVIDERS[provider].version, provider, profile_fingerprint: `sha256:${Buffer.from(JSON.stringify(req.profile)).toString('hex').slice(0, 64).padEnd(64, '0')}`, resource_ids: [{ kind: 'sandbox', id: resourceId }], ownership: req.payload.ownership || req.payload.handle?.ownership, provider_state: state };
+  const digest = createHash('sha256').update(JSON.stringify(req.profile)).digest('hex');
+  return { backend: provider, adapter_version: PROVIDERS[provider].version, provider, profile_fingerprint: `sha256:${digest}`, resource_ids: [{ kind: 'sandbox', id: resourceId }], ownership: req.payload.ownership || req.payload.handle?.ownership, provider_state: state };
+}
+
+export function executionEnvironment(req) {
+  const result = { ...(req.payload.environment || {}) };
+  for (const name of req.payload.secret_channel || []) {
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw Object.assign(new Error('secret environment reference is invalid'), { code: 'AUTH_INVALID' });
+    if (!process.env[name]) throw Object.assign(new Error(`required secret ${name} is unavailable`), { code: 'AUTH_MISSING' });
+    result[name] = process.env[name];
+  }
+  return result;
+}
+
+export function redactError(req, error) {
+  let message = String(error?.message || error).slice(0, 2048);
+  const names = [...(req?.payload?.secret_channel || [])];
+  const credentialRef = req?.profile?.credential_ref || '';
+  if (credentialRef.startsWith('env:')) names.push(credentialRef.slice(4));
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) message = message.replaceAll(value, '[REDACTED]');
+  }
+  return message;
 }
 
 export function shellQuote(value) { return `'${String(value).replaceAll("'", "'\\''")}'`; }

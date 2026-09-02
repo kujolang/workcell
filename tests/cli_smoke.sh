@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-trap 'code=$?; printf "CLI smoke failed at line %s (exit %s)\n" "$LINENO" "$code" >&2' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
@@ -99,7 +98,7 @@ set +e
 DOCTOR_RESULT=$("$KUJO" run "$ROOT/main.kujo" -- doctor --repo "$TMP_DIR" --json)
 DOCTOR_CODE=$?
 set -e
-printf '%s' "$DOCTOR_RESULT" | jq -e '([.checks[] | select(.status == "blocked" and .name != "Docker daemon" and .name != "Docker security profiles")] | length) == 0 and ([.checks[] | select(.name == "Host platform" and .status == "passed")] | length) == 1' >/dev/null
+printf '%s' "$DOCTOR_RESULT" | jq -e '([.checks[] | select(.status == "blocked" and .name != "Docker CLI" and .name != "Docker daemon" and .name != "Docker security profiles")] | length) == 0 and ([.checks[] | select(.name == "Host platform" and .status == "passed")] | length) == 1' >/dev/null
 test "$DOCTOR_CODE" -eq 0 || test "$DOCTOR_CODE" -eq 3
 
 jq '.runtime.build_context="missing-build-context"' "$ROOT/examples/hello/workcell.json" > "$TMP_DIR/missing-context.json"

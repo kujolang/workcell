@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: workcell-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' }}
+
 jobs:
   macos-offline:
     runs-on: macos-14

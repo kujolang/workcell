@@ -22,6 +22,7 @@
 ### Conformance, operations, and agent efficiency
 
 - Added offline adapter conformance, lifecycle/failure/archive fixtures, malformed-protocol corpus tests, credential-redaction tests, integrity-tamper tests, concurrent ownership-isolation tests, portable Docker/Podman contract coverage, and macOS offline CI.
+- Hardened loaded-runner timing fixtures, aligned Docker integration expectations with secret-reject patch semantics, and cancel superseded branch/PR CI runs without cancelling release workflow calls.
 - Added profile policy ceilings, compact phase/performance and cost evidence, adapter integrity refresh/check tooling, enterprise deployment gates, and a bounded third-party adapter authoring contract.
 - Added single-line `workcell-run-summary/v1` and `workcell-inspect-summary/v1` outputs so agents can consume verdicts, backend identity, policy/capability counts, and evidence paths without embedding full receipts or resolved policies in context.
 - Added the complete backend landscape, taxonomy, capability and security matrices, target architecture, contract proposal, risk register, acceptance criteria, and dependency-ordered implementation package under `docs/plans/backend-matrix/`.

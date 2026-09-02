@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'code=$?; printf "CLI smoke failed at line %s (exit %s)\n" "$LINENO" "$code" >&2' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"

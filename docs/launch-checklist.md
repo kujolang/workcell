@@ -32,18 +32,11 @@ Apple-silicon host, then run the Podman doctor, OCI smoke, integration,
 concurrent-load, and egress commands in [the release process](release-process.md).
 No Docker result is treated as Podman evidence.
 
-## Hosted CI blocker record
+## Hosted CI evidence
 
-The latest main-branch runs inspected during v1 preparation were [CI run 30376854891](https://github.com/kujolang/workcell/actions/runs/30376854891) and [artifact-guard run 30376854914](https://github.com/kujolang/workcell/actions/runs/30376854914). Both jobs completed as failures before a runner was assigned: `runner_name` was empty and the GitHub API returned an empty `steps` array. No repository command or workflow step started.
+Hosted runner allocation is restored. [CI run 33906164588](https://github.com/kujolang/workcell/actions/runs/33906164588) passed both the Ubuntu verification job and the macOS offline job for commit `7af5623370a63b038f233e8f37dc221f6a522ba6`; [artifact-guard run 33906164613](https://github.com/kujolang/workcell/actions/runs/33906164613) also passed for that commit. The receipt includes pinned-runtime construction, offline contracts, official-adapter integrity, Docker and Podman lifecycle/load/egress evidence, ShipCheck, and whitespace checks.
 
-The account's hosted Actions billing or spending-limit state is the known external prerequisite. A repository or organization administrator must restore hosted runner allocation, then safely resume the baseline CI receipt with:
-
-```bash
-gh run rerun 30376854891 --repo kujolang/workcell
-gh run rerun 30376854914 --repo kujolang/workcell
-```
-
-For the preparation branch or final approved commit, rerun its newer workflow IDs instead. The closest local evidence is the pinned-runtime gate set above and the dated [rootless Docker/Podman evidence](compatibility/rootless-docker-colima-2026-07-13.md). Local passes do not satisfy the hosted CI checkbox.
+The old pre-runner billing failure is no longer an active blocker. A later release candidate still needs a successful hosted CI and artifact-guard receipt for its own exact commit before the hosted-CI checkbox can be signed off.
 
 ## Prohibited before approval
 

@@ -34,7 +34,7 @@ Last reviewed: 2026-09-04
 
 | Phase | Status | Current evidence and remaining gate |
 | --- | --- | --- |
-| 0 — audit and freeze | verified offline; Docker refreshed live | Exact Kujo gates pass; the contract inventory, task Spec, Eval suite, Loop Engineering evidence, and 10-sample local diagnostic baseline are recorded. Rootless Docker on the local Colima Linux VM passed doctor, OCI smoke, integration, four-run load, and egress gates on 2026-09-04. Podman installation is blocked because current Homebrew Podman requires Apple silicon on this Intel host. |
+| 0 — audit and freeze | verified offline, local Docker, and hosted OCI matrix | Exact Kujo gates pass; the contract inventory, task Spec, Eval suite, Loop Engineering evidence, and 10-sample local diagnostic baseline are recorded. Rootless Docker on the local Colima Linux VM passed doctor, OCI smoke, integration, four-run load, and egress gates on 2026-09-04. Hosted CI run 33906164588 passed Ubuntu Docker/Podman and macOS offline jobs for commit `7af5623370a63b038f233e8f37dc221f6a522ba6`. Local Podman installation remains unavailable because current Homebrew Podman requires Apple silicon on this Intel host. |
 | 1 — protected live certification harness | implemented; verified offline | `tests/live_certification.sh`, its contract test, schema, protected workflow, bounded fixture profiles, explicit authorization/credential/identity/spend gates, external evidence directory, offline verification, and recovery status are present. Negative security probes remain a mandatory live step and cannot be claimed by fixture mode. |
 | 2 — E2B | implemented alpha; verified offline; live blocked | SDK `e2b@2.46.1`; adapter manifest and fixture conformance exist. Live capability, account/plan/region, performance, cost, security-probe, and zero-orphan certification are absent. |
 | 3 — Vercel Sandbox | implemented alpha; verified offline; live blocked | SDK `@vercel/sandbox@3.2.1`; adapter manifest and fixture conformance exist. Exact OIDC/account/plan/region behavior, live negative probes, performance/cost, and zero-orphan certification are absent. |
@@ -156,9 +156,12 @@ before deploying anything.
 
 ### Hosted CI and release effects
 
-Hosted CI must pass for the exact pushed commit. Publishing, tagging, signing,
-marketplace submission, partnership claims, and production promotion remain
-human-authorized actions and have no automatic resume command in this ledger.
+Hosted CI and artifact guard passed for commit
+`7af5623370a63b038f233e8f37dc221f6a522ba6` in runs 33906164588 and
+33906164613. Any later release candidate needs its own exact-commit receipt.
+Publishing, tagging, signing, marketplace submission, partnership claims, and
+production promotion remain human-authorized actions and have no automatic
+resume command in this ledger.
 
 ## Phase 0 measurements
 

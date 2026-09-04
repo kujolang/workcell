@@ -1,0 +1,55 @@
+{
+  "name": "Productionize the WorkCell backend matrix",
+  "description": "Complete every locally implementable requirement in MEGA_PROMPT.md while preserving the stable Docker/Podman contract and recording credential-, release-, and operator-owned gates as explicit blockers with safe resume commands.",
+  "tests": [
+    {
+      "name": "WorkCell offline suite passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "./tests/run.sh"
+      }
+    },
+    {
+      "name": "WorkCell check-only suite passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "./tests/run.sh --check-only"
+      }
+    },
+    {
+      "name": "WorkCell quality gate passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "./tests/quality.sh"
+      }
+    },
+    {
+      "name": "Official adapter tests pass",
+      "check": "command_succeeds",
+      "params": {
+        "command": "npm test --prefix adapters/official"
+      }
+    },
+    {
+      "name": "Official adapter integrity passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "npm run integrity:check --prefix adapters/official"
+      }
+    },
+    {
+      "name": "Implementation status ledger exists",
+      "check": "file_exists",
+      "params": {
+        "path": "docs/plans/backend-matrix/IMPLEMENTATION_STATUS.md"
+      }
+    },
+    {
+      "name": "Repository diff has no whitespace errors",
+      "check": "command_succeeds",
+      "params": {
+        "command": "git diff --check"
+      }
+    }
+  ]
+}

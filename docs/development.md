@@ -37,7 +37,10 @@ npm run integrity:check --prefix adapters/official
 KUJO="$KUJO" "$KUJO" run tests/portable_definition_test.kujo
 KUJO="$KUJO" "$KUJO" run tests/portable_coordinator_test.kujo
 KUJO="$KUJO" "$KUJO" run tests/official_adapters_test.kujo
+KUJO="$KUJO" ./tests/live_certification_contract.sh
 ```
+
+Do not run live mode during normal development. It is a manual protected-environment gate documented in [live provider certification](live-provider-certification.md).
 
 Use `inspect --summary` and `run --summary` in agent tests. Assert the compact schema and evidence pointers, then verify the referenced receipt separately; do not snapshot full receipts into prompts or fixtures unless the receipt contract itself is under test.
 

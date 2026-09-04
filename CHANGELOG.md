@@ -21,6 +21,7 @@
 
 ### Conformance, operations, and agent efficiency
 
+- Added a provider-independent, double-gated live-certification entrypoint, a protected manual CI workflow, bounded external evidence reports, and an end-to-end credential-free fixture contract for every official adapter.
 - Added offline adapter conformance, lifecycle/failure/archive fixtures, malformed-protocol corpus tests, credential-redaction tests, integrity-tamper tests, concurrent ownership-isolation tests, portable Docker/Podman contract coverage, and macOS offline CI.
 - Hardened loaded-runner timing fixtures and macOS offline runtime expectations, aligned Docker integration expectations with secret-reject patch semantics, and cancel superseded branch/PR CI runs without cancelling release workflow calls.
 - Preserved only `PATH` alongside explicitly allowlisted adapter credentials so script and runtime entrypoints work consistently on Linux and macOS without inheriting the rest of the host environment.

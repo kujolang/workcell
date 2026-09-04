@@ -286,21 +286,20 @@ export func recover_with_adapter(journal_path, manifest_path, profile, dry_run) 
         update_recovery_journal(journal_path, "inventory", "active", {"time": now_utc(), "operation": "dry-run", "ok": true, "items": planned["items"]}, null)
         return {"ok": true, "dry_run": true, "journal_path": journal_path, "plan": planned}
     }
-    if len(planned["items"]) == 0 {
-        update := update_recovery_journal(journal_path, "destroy", "cleaned", {"time": now_utc(), "operation": "destroy", "ok": true, "items": [], "remaining": []}, null)
-        if update["ok"] == false {return update}
-        return {"ok": true, "dry_run": false, "journal_path": journal_path, "items": [], "remaining": [], "status": "cleaned"}
-    }
-    mut cleanup_handle := journal["handle"]
-    if type(cleanup_handle) == "null" {
-        mut resource_ids := []
-        mut item_i := 0
-        while item_i < len(planned["items"]) {
+    mut resource_ids := []
+    mut item_i := 0
+    while item_i < len(planned["items"]) {
+        if planned["items"][item_i]["status"] == "remove" {
             resource_ids = push(resource_ids, {"kind": planned["items"][item_i]["kind"], "id": planned["items"][item_i]["id"]})
-            item_i = item_i + 1
         }
-        cleanup_handle = backend_handle(journal["adapter_id"], journal["adapter_version"], journal["provider_id"], journal["profile_fingerprint"], resource_ids, journal["run_id"], journal["ownership"]["nonce"], {"recovered_from": "provision-intent"})
+        item_i = item_i + 1
     }
+    if len(resource_ids) == 0 {
+        update := update_recovery_journal(journal_path, "destroy", "cleaned", {"time": now_utc(), "operation": "destroy", "ok": true, "items": planned["items"], "remaining": []}, null)
+        if update["ok"] == false {return update}
+        return {"ok": true, "dry_run": false, "journal_path": journal_path, "items": planned["items"], "remaining": [], "status": "cleaned"}
+    }
+    cleanup_handle := backend_handle(journal["adapter_id"], journal["adapter_version"], journal["provider_id"], journal["profile_fingerprint"], resource_ids, journal["run_id"], journal["ownership"]["nonce"], {"recovered_from": "verified-inventory"})
     destroy_request := recovery_request(journal, "destroy", profile, {"handle": cleanup_handle, "expected_ownership": journal["ownership"], "idempotency_key": journal["run_id"] + ":recover-destroy"})
     destroy_call := invoke_backend(executable["path"], destroy_request, invoke_options)
     if destroy_call["ok"] == false {

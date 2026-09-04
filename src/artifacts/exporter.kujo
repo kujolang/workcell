@@ -140,6 +140,8 @@ func scan_artifact(path, relative, depth, policy, limit, secrets) {
     } except err {
         return {"ok": false, "error": "artifact could not inspect file " + relative + ": " + to_string(err)}
     }
+    bounded := enforce_artifact_limits(relative, bytes, 1, policy, limit)
+    if bounded["ok"] == false {return bounded}
     secret_action := get_or(policy, "secret_action", "allow")
     if secret_action != "allow"&&len(secrets) > 0 {
         text_result := read_text(path)
@@ -151,7 +153,7 @@ func scan_artifact(path, relative, depth, policy, limit, secrets) {
             return {"ok": false, "error": "artifact contains a declared secret: " + relative}
         }
     }
-    return enforce_artifact_limits(relative, bytes, 1, policy, limit)
+    return bounded
 }
 
 func enforce_artifact_limits(relative, bytes, files, policy, limit) {

@@ -22,6 +22,8 @@ grep -Fq 'workcell-load-evidence/v1' "$ROOT/tests/load_integration.sh"
 grep -Fq 'workcell-load-evidence/v1' "$ROOT/docs/api-compatibility.md"
 grep -Fq 'workcell-run-summary/v1' "$ROOT/docs/api-compatibility.md"
 grep -Fq 'workcell-inspect-summary/v1' "$ROOT/docs/api-compatibility.md"
+jq -e '.properties.schema_version.const == "workcell-backend-conformance/v1" and .additionalProperties == false' "$ROOT/schemas/workcell-backend-conformance-v1.schema.json" >/dev/null
+jq -e '.properties.schema_version.const == "workcell-live-certification/v1"' "$ROOT/schemas/workcell-live-certification-v1.schema.json" >/dev/null
 grep -Fq 'docs/api-compatibility.md' "$ROOT/README.md"
 
 echo "Schema compatibility contract passed"

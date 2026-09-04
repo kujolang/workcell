@@ -1,7 +1,20 @@
 {
   "name": "@kujolang/workcell-official-adapters",
   "version": "0.1.0",
-  "private": true,
+  "description": "Integrity-pinned official E2B, Vercel Sandbox, and Daytona adapters for WorkCell",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kujolang/workcell.git",
+    "directory": "adapters/official"
+  },
+  "files": ["LICENSE", "README.md", "runtime/", "e2b/", "vercel-sandbox/", "daytona/"],
+  "bin": {
+    "workcell-backend-e2b": "e2b/workcell-backend-e2b",
+    "workcell-backend-vercel-sandbox": "vercel-sandbox/workcell-backend-vercel-sandbox",
+    "workcell-backend-daytona": "daytona/workcell-backend-daytona"
+  },
+  "publishConfig": {"access": "public", "provenance": true},
   "type": "module",
   "engines": {"node": ">=20"},
   "dependencies": {
@@ -12,6 +25,7 @@
   "scripts": {
     "integrity:check": "node scripts/update-integrity.mjs --check",
     "integrity:update": "node scripts/update-integrity.mjs",
+    "release:candidate": "./scripts/release-candidate.sh",
     "test": "node --test test/*.test.mjs"
   }
 }

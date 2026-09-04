@@ -135,6 +135,8 @@ The portable Docker vertical slice is also explicit: run `WORKCELL_LIVE_PORTABLE
 
 Live official adapters independently hash the uploaded workspace archive before extraction, collect a complete Git status delta, bound normalized log evidence, and require both the run ID and nonce on recovery inventory. A provider listing that omits either ownership marker is ignored rather than treated as Workcell-owned. Vercel's native resource request directly represents vCPU but not arbitrary memory; memory is rejected unless the selected operator profile supplies an exact reviewed guarantee.
 
+The protected live entrypoint is `tests/live_certification.sh`. It requires a global authorization gate, an exact provider gate, an explicit approved profile, account/plan/region/image metadata, a spend-ceiling reference, and an absolute evidence directory outside the checkout. Its hard caps are five minutes, one concurrent run, 10 MiB upload/download, and 1 MiB logs. See [live provider certification](live-provider-certification.md). The fixture mode tests the harness and coordinator but never upgrades adapter or provider status.
+
 Conformance proves the adapter follows the tested machine contract. It does not certify the provider, host, network, tenant isolation, data retention, or operator profile.
 
 ## Built-in and support decisions

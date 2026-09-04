@@ -195,7 +195,8 @@ export func validate_portable_definition(raw) {
         check_i = check_i + 1
     }
     if type(get_or(raw["cleanup"], "keep_failed", null)) != "bool" {return {"ok": false, "error": "cleanup.keep_failed must be boolean"}}
-    if nonempty(get_or(raw["receipt"], "path", null)) == false {return {"ok": false, "error": "receipt.path must be a non-empty string"}}
+    receipt_path := normalized_relative(get_or(raw["receipt"], "path", null))
+    if receipt_path["ok"] == false {return {"ok": false, "error": "receipt.path: " + receipt_path["error"]}}
     return {"ok": true}
 }
 

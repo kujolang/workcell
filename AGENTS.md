@@ -49,6 +49,7 @@ docker build --tag kujolang/workcell-base:local docker/
 - If Docker image pull/build is blocked by local daemon, credential helper, or network/DNS state, write a blocker receipt with the failed command, reason, closest passing local proof, and safe resume command.
 - Workcell v1 is stable only for the documented local and CI Docker/Podman contract. Do not claim universal sandboxing, hosted-service readiness, enterprise certification, or target-environment acceptance without the operator-owned host, egress, image-governance, retention, key-custody, and compliance evidence.
 - Remote adapter promotion additionally requires exact account/plan/region/API/SDK evidence for every advertised control, bounded execution and transfer, cancellation, recovery, cost/performance, and zero owned orphans.
+- Run `tests/live_certification.sh` only after reading `docs/live-provider-certification.md`. Live mode requires both `WORKCELL_LIVE_AUTHORIZED=1` and the exact provider gate; fixture mode is the only normal development path.
 
 ## Prohibited Without Approval
 

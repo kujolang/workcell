@@ -52,7 +52,8 @@ func invoke(executable, run_identifier, operation, profile, payload, definition)
     execution := definition["requirements"]["execution"]
     deadline := get_or(execution, "timeout_ms", 300000)
     if operation != "execute" {deadline = 120000}
-    secret_names := definition["secrets"]
+    mut secret_names := []
+    if operation == "execute" {secret_names = definition["secrets"]}
     credential_env := get_or(profile, "credential_env", "")
     env_allow := secret_names
     if credential_env != "" {env_allow = push(env_allow, credential_env)}
@@ -100,6 +101,19 @@ func execute_failure(call) {
     return {"stage": "executing", "exit_code": 10}
 }
 
+func destroy_and_inventory(executable, run_identifier, profile, definition, handle, idempotency_suffix) {
+    destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + idempotency_suffix}, definition)
+    if destroyed["ok"] == false {
+        return {"ok": false, "items": [], "remaining": handle["resource_ids"], "error": get_or(destroyed["result"], "error", {})}
+    }
+    inventory := invoke(executable, run_identifier, "inventory", profile, {"ownership": handle["ownership"]}, definition)
+    if inventory["ok"] == false||get_or(inventory["result"]["data"], "complete", false) != true {
+        return {"ok": false, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": handle["resource_ids"], "error": {"code": "INVENTORY_INCOMPLETE", "message": "post-destroy inventory was incomplete"}}
+    }
+    remaining := get_or(inventory["result"]["data"], "resources", [])
+    return {"ok": len(remaining) == 0, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": remaining, "error": null}
+}
+
 export func inspect_portable_workcell(definition_path, manifest_path, profiles_path, profile_id, backend_override) {
     loaded := load_workcell_definition(definition_path)
     if loaded["ok"] == false||get_or(loaded, "version", 1) != 2 {return {"ok": false, "error": get_or(loaded, "error", "portable inspect requires a v2 definition")}}
@@ -138,14 +152,14 @@ func finalize_failure(executable, run_identifier, profile, definition, output_di
     }
     if type(handle) == "dict" {
         cleanup_started := performance_now()
-        destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"}, definition)
+        destroyed := destroy_and_inventory(executable, run_identifier, profile, definition, handle, ":destroy")
         receipt = add_timing(receipt, "cleanup", cleanup_started)
         if destroyed["ok"] {
-            cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": get_or(destroyed["result"]["data"], "remaining", [])}
+            cleanup = {"status": "complete", "journal_path": journal_path, "items": destroyed["items"], "remaining": []}
             if journal_path != "" {update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
         } else {
             cleanup = {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
-            if journal_path != "" {update_recovery_journal(journal_path, "destroy", "failed", {"time": now_utc(), "operation": "destroy", "ok": false}, get_or(destroyed["result"], "error", {}))}
+            if journal_path != "" {update_recovery_journal(journal_path, "destroy", "failed", {"time": now_utc(), "operation": "destroy", "ok": false}, get_or(destroyed, "error", {}))}
         }
     }
     finished := finish_v2(receipt, output_dir + "/receipt.json", stage, stage, cleanup)
@@ -302,16 +316,20 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     mut accepted_artifacts := {"ok": true, "manifest": {"declared": [], "files": []}, "archive_path": null, "sha256": null, "archive_bytes": 0}
     if len(definition["artifacts"]["export"]) > 0 {
         remote_archive := get_or(get_or(exported["result"]["data"], "archive", {}), "path", "")
+        if path_within(output_dir + "/remote-transfer", remote_archive) == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", "backend artifact transfer path escaped its untrusted staging directory", 8)}
         artifact_verify_started := performance_now()
         accepted_artifacts = accept_remote_artifact_archive(remote_archive, output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
         receipt = add_timing(receipt, "artifact_verify", artifact_verify_started)
         if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
+        mut transfer_removed := false
+        try {remove_file(remote_archive); transfer_removed = file_exists(remote_archive) == false} except err {transfer_removed = false}
+        if transfer_removed == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", "untrusted provider artifact transfer could not be removed", 8)}
     }
     cleanup_started := performance_now()
-    destroyed := invoke(executable, run_identifier, "destroy", adapter_options, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + ":destroy"}, definition)
+    destroyed := destroy_and_inventory(executable, run_identifier, adapter_options, definition, handle, ":destroy")
     receipt = add_timing(receipt, "cleanup", cleanup_started)
     cleanup := {"status": "failed", "journal_path": journal_path, "items": [], "remaining": handle["resource_ids"]}
-    if destroyed["ok"]&&len(get_or(destroyed["result"]["data"], "remaining", [])) == 0 {cleanup = {"status": "complete", "journal_path": journal_path, "items": get_or(destroyed["result"]["data"], "items", []), "remaining": []}; update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)}
+    if destroyed["ok"] {cleanup = {"status": "complete", "journal_path": journal_path, "items": destroyed["items"], "remaining": []}; update_recovery_journal(journal_path, "destroy", "complete", {"time": now_utc(), "operation": "destroy", "ok": true}, null)} else {cleanup["remaining"] = destroyed["remaining"]}
     status := terminal_exit(terminal)
     if status["exit_code"] == 0&&verification_ok == false {status = {"stage": "verification-failed", "exit_code": 8}}
     if cleanup["status"] != "complete" {status = {"stage": "cleanup-failed", "exit_code": 9}}

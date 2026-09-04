@@ -69,9 +69,14 @@ oversized_caller := parse_json(to_json(caller))
 oversized_caller["correlation_id"] := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 expect("caller context rejects oversized identifiers", validate_caller_context(oversized_caller)["ok"] == false)
 
-bad := definition
+bad := parse_json(to_json(definition))
 bad["e2b"] := {}
 expect("provider blocks are rejected", validate_portable_definition(bad)["ok"] == false)
+unsafe_receipt := parse_json(to_json(definition))
+unsafe_receipt_value := unsafe_receipt["receipt"]
+unsafe_receipt_value["path"] := "../outside"
+unsafe_receipt["receipt"] := unsafe_receipt_value
+expect("portable receipt path traversal is rejected", validate_portable_definition(unsafe_receipt)["ok"] == false)
 
 profile_path := "/tmp/workcell-portable-profile-" + replace(uuid_v4(), "-", "") + ".json"
 profiles := {"schema": host_profiles_schema_version(), "profiles": {"fixture": {"backend": "external-fixture", "credential_ref": "", "adapter_options": {"external-fixture": {"mode": "success"}}, "policy": {}}}}

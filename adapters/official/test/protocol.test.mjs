@@ -153,6 +153,15 @@ test('recovery inventory requires both run and nonce ownership markers', () => {
   assert.equal(ownedMetadata(undefined, ownership, 'run', 'nonce'), false);
 });
 
+test('official destroy rejects a mismatched ownership tuple before deletion', () => {
+  const ownership = { run_id: 'wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', nonce: 'nonce-test' };
+  const provisioned = call('e2b', 'provision', { ownership, resolved_plan: {}, idempotency_key: 'ownership-provision' }).result.data;
+  const result = call('e2b', 'destroy', { handle: provisioned.handle, expected_ownership: { ...ownership, nonce: 'wrong' }, idempotency_key: 'ownership-destroy' });
+  assert.equal(result.result.ok, false);
+  assert.equal(result.result.error.code, 'OWNERSHIP_MISMATCH');
+  call('e2b', 'destroy', { handle: provisioned.handle, expected_ownership: ownership, idempotency_key: 'ownership-cleanup' });
+});
+
 test('official manifests pin their executable wrapper digests', async () => {
   for (const provider of ['e2b', 'vercel-sandbox', 'daytona']) {
     const manifest = JSON.parse(await readFile(path.join(root, provider, 'manifest.json'), 'utf8'));

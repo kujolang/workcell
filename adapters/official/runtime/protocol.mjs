@@ -92,6 +92,18 @@ export function handle(provider, req, resourceId, state = {}) {
   return { backend: provider, adapter_version: PROVIDERS[provider].version, provider, profile_fingerprint: `sha256:${digest}`, resource_ids: [{ kind: 'sandbox', id: resourceId }], ownership: req.payload.ownership || req.payload.handle?.ownership, provider_state: state };
 }
 
+export function assertDestroyOwnership(provider, req) {
+  const handleValue = req.payload.handle;
+  const expected = req.payload.expected_ownership;
+  const actual = handleValue?.ownership;
+  if (!plainObject(handleValue) || handleValue.backend !== provider || handleValue.provider !== provider || !ownership(actual, req.run_id) || !ownership(expected, req.run_id) || actual.nonce !== expected.nonce) {
+    throw Object.assign(new Error('destroy handle ownership does not match expected ownership'), { code: 'OWNERSHIP_MISMATCH' });
+  }
+  if (!Array.isArray(handleValue.resource_ids) || handleValue.resource_ids.length === 0 || handleValue.resource_ids.some((item) => !ownFields(item, ['kind', 'id']) || !text(item.kind) || !text(item.id))) {
+    throw Object.assign(new Error('destroy handle resource identity is invalid'), { code: 'OWNERSHIP_MISMATCH' });
+  }
+}
+
 export function executionEnvironment(req) {
   const result = { ...(req.payload.environment || {}) };
   for (const name of req.payload.secret_channel || []) {

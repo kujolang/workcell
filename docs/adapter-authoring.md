@@ -46,3 +46,10 @@ Keep heavyweight SDKs outside Workcell core. Pin dependency versions and lockfil
 Run the offline conformance suite and adapter-specific malformed-input, secret-canary, ownership-collision, timeout, output-bound, artifact traversal, digest-mismatch, partial-cleanup, and concurrent lifecycle tests. Live tests are opt-in and credential gated. They must use a tiny immutable fixture, strict resource/time/spend ceilings, unconditional destroy, final complete inventory with zero resources, and retained redacted evidence for the exact account, plan, region, adapter, SDK, and API version.
 
 An adapter is eligible for official status only after offline conformance, clean-machine installation, live lifecycle evidence, capability-specific enforcement probes, orphan recovery, dependency review, and a named maintainer and deprecation policy all pass.
+# Machine-readable conformance evidence
+
+Offline conformance reports use `workcell-backend-conformance/v1`; the published
+JSON Schema is [`schemas/workcell-backend-conformance-v1.schema.json`](../schemas/workcell-backend-conformance-v1.schema.json).
+Passing this format proves bounded protocol behavior for the exercised fixture.
+It does not certify provider isolation, network enforcement, tenancy, compliance,
+retention, credential handling outside the adapter boundary, or operator security.

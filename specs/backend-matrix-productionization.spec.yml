@@ -1,0 +1,96 @@
+# WorkCell backend-matrix productionization contract
+
+name: "Productionize the WorkCell backend matrix"
+goal: "Complete every locally implementable requirement in MEGA_PROMPT.md while preserving the stable Docker/Podman contract and recording credential-, release-, and operator-owned gates as explicit blockers with safe resume commands."
+version: "1.0.0"
+status: "in-progress"
+background: "WorkCell already has an additive provider-neutral alpha contract and offline official adapters. The remaining program must add protected live certification, provider productization gates, contract hardening, robustness, distribution candidates, onboarding, integrations, and enterprise operations without overstating unverified provider behavior."
+scope: "The WorkCell repository and separately scoped Kujo repositories only where the mega prompt requires integration. Includes deterministic offline fixtures, tests, schemas, CI gates, documentation, release-candidate artifacts, execution status, and external-blocker resume paths."
+non_goals:
+  - "Using live provider credentials without explicit authorization"
+  - "Publishing, tagging, signing, deploying, or submitting marketplace integrations"
+  - "Automatic provider routing, hidden retries, or a hosted Kujo control plane"
+  - "Weakening stable Docker or Podman semantics to accommodate remote providers"
+relevant_systems:
+  - "WorkCell core"
+  - "Official E2B, Vercel Sandbox, and Daytona adapters"
+  - "Kujo Spec and Eval"
+  - "Kujo Agent, Dispatch, Relay, RunLedger, and Casefile integration boundaries"
+likely_files:
+  - "docs/plans/backend-matrix/IMPLEMENTATION_STATUS.md"
+  - "tests/live-certification.sh"
+  - "tests/backend_matrix_productionization.json"
+  - "schemas/"
+  - "adapters/official/"
+  - ".github/workflows/"
+acceptance_criteria:
+  - "The pinned offline WorkCell and official-adapter gates pass from a clean checkout"
+  - "A provider-independent live-certification harness is fail-closed, bounded, redacted, exact-versioned, fixture-tested, and incapable of accidental billable execution"
+  - "E2B, Vercel Sandbox, and Daytona each have independent certification, limitations, onboarding, recovery, uninstall, support, performance, and cost evidence contracts"
+  - "Unverified live-provider, publishing, signing, marketplace, partnership, and production-promotion claims remain blocked and are never presented as passed"
+  - "Provider-neutral contracts, schemas, golden fixtures, compatibility policy, migration notes, and permanent v1 Docker/Podman regression gates remain coherent"
+  - "Core robustness covers malformed adapters, archive/path attacks, ownership races, checkpoint failures, bounded diagnostics, and concurrency without unexplained leaks"
+  - "Official adapter release candidates are integrity-verifiable with checksums, provenance, SBOM/license gates, clean-install tests, rollback, revocation, and emergency-disable procedures"
+  - "Credential references and onboarding keep secret values outside definitions, protocol messages, argv, receipts, logs, manifests, artifacts, and fixtures"
+  - "Third-party conformance is machine-readable and clearly separated from provider security certification"
+  - "Enterprise threat models, deployment, IAM, retention, audit, incident, recovery, rollback, support, privacy, legal, and compliance-mapping inputs are explicit"
+  - "The implementation status ledger classifies every phase and provider with exact evidence and safe resume commands"
+  - "All touched repositories are committed in small meaningful commits, pushed, and left clean"
+eval_requirements:
+  - description: "WorkCell offline suite passes"
+    check_type: "command_succeeds"
+    params:
+      command: "./tests/run.sh"
+  - description: "WorkCell check-only suite passes"
+    check_type: "command_succeeds"
+    params:
+      command: "./tests/run.sh --check-only"
+  - description: "WorkCell quality gate passes"
+    check_type: "command_succeeds"
+    params:
+      command: "./tests/quality.sh"
+  - description: "Official adapter tests pass"
+    check_type: "command_succeeds"
+    params:
+      command: "npm test --prefix adapters/official"
+  - description: "Official adapter integrity passes"
+    check_type: "command_succeeds"
+    params:
+      command: "npm run integrity:check --prefix adapters/official"
+  - description: "Implementation status ledger exists"
+    check_type: "file_exists"
+    params:
+      path: "docs/plans/backend-matrix/IMPLEMENTATION_STATUS.md"
+  - description: "Repository diff has no whitespace errors"
+    check_type: "command_succeeds"
+    params:
+      command: "git diff --check"
+risks:
+  - risk: "Offline fixtures could be mistaken for live provider certification"
+    mitigation: "Use separate status values, credential-gated live entrypoints, exact evidence metadata, and claim-wording tests."
+    severity: "critical"
+  - risk: "Cleanup or recovery could delete unowned or billable provider resources"
+    mitigation: "Require run ID, ownership nonce, profile/account agreement, complete inventory, and itemized zero-orphan evidence."
+    severity: "critical"
+  - risk: "The implementation program could expand into prohibited hosted control-plane or scheduler scope"
+    mitigation: "Keep WorkCell execution-only and classify cross-repository, external, release, and human-approval work explicitly."
+    severity: "high"
+dependencies:
+  - "Kujo 1.2.1 at the exact RUNTIME_VERSION commit"
+  - "Live provider credentials, approved accounts, plans, regions, and spend ceilings for certification"
+  - "Human approval for publishing, signing, tagging, deployment, marketplace actions, and production promotion"
+review_expectations:
+  - "Security review of credentials, protocol transport, archives, ownership cleanup, and supply chain"
+  - "Compatibility review proving stable Docker/Podman behavior is equivalent or stronger"
+  - "Claim review ensuring provider and compliance language does not exceed evidence"
+human_approval_points:
+  - "Before any live-provider execution"
+  - "Before publishing, signing, tagging, deployment, marketplace submission, or partnership claim"
+  - "Before production promotion of any provider"
+priority: "high"
+tags:
+  - "workcell"
+  - "backend-matrix"
+  - "productionization"
+  - "security"
+  - "release"

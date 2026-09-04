@@ -15,6 +15,11 @@ nonce="$(printf '%s' "$request" | jq -r '.profile.nonce // "nonce-1"')"
 state_root="${TMPDIR:-/tmp}/workcell-backend-fixture-state"
 state_path="$state_root/$run_id"
 
+if [ "$operation" != "execute" ] && [ -n "${WORKCELL_SECRET_SCOPE_CANARY:-}" ]; then
+    jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"SECRET_SCOPE",message:"workload secret reached a non-execute adapter operation",provider_code:"fixture",retryable:false}}'
+    exit 0
+fi
+
 if [ "$mode" = "noise" ]; then
     printf 'sdk debug output\n'
     exit 0
@@ -94,6 +99,11 @@ if [ "$operation" = "prepare" ]; then
 fi
 
 if [ "$operation" = "execute" ]; then
+    require_secret="$(printf '%s' "$request" | jq -r '.profile.require_execute_secret // false')"
+    if [ "$require_secret" = "true" ] && [ -z "${WORKCELL_SECRET_SCOPE_CANARY:-}" ]; then
+        jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"SECRET_SCOPE",message:"execute did not receive its workload secret",provider_code:"fixture",retryable:false}}'
+        exit 0
+    fi
     timed_out="$(printf '%s' "$request" | jq -r '.profile.fixture_timed_out // false')"
     if [ "$timed_out" = "true" ]; then
         printf '%s' "$request" | jq -c '{contract:.contract,request_id:.request_id,run_id:.run_id,operation:.operation,type:"result",ok:true,status:"ok",retryable:false,data:{handle:.payload.handle,command_id:"fixture-timeout",terminal:{status:"timed-out",exit_code:null,signal:null,reason:"fixture-timeout",timed_out:true,cancelled:false,certainty:"terminal"},logs:{stdout_bytes:0,stderr_bytes:0,truncated:false,complete:true,ordering:"per-stream"}}}'

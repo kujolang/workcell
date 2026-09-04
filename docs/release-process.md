@@ -47,6 +47,7 @@ git diff --check
 npm ci --ignore-scripts --prefix adapters/official
 npm test --prefix adapters/official
 npm run integrity:check --prefix adapters/official
+KUJO="$KUJO" ./tests/live_certification_contract.sh
 ```
 
 Docker:

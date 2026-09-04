@@ -11,3 +11,7 @@ Official manifests pin the launcher digest. Each launcher pins a verifier that c
 After an intentional runtime or dependency change, run `npm run integrity:update` and review every digest diff. CI runs `npm run integrity:check`; a stale chain fails closed.
 
 See [Backend adapter authoring](../../docs/adapter-authoring.md) for the protocol boundary, capability evidence rules, conformance requirements, and promotion gate.
+
+For immutable local release candidates, clean-install verification, rollback,
+revocation, and emergency disable procedures, see
+[Official adapter distribution](../../docs/official-adapter-distribution.md).

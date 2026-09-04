@@ -48,6 +48,15 @@ expect("accepted capability rejects unknown enforcement", validate_capability_st
 handle := backend_handle("fixture", "1.0.0", "fixture", "sha256:fixture", [{"kind": "fixture", "id": "fixture-1"}], run_identifier, "nonce-1", {})
 expect("backend handle validates ownership", validate_backend_handle(handle, run_identifier)["ok"])
 expect("backend handle rejects run mismatch", validate_backend_handle(handle, "wc-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")["ok"] == false)
+unsafe_handle := parse_json(to_json(handle))
+unsafe_handle["provider_state"] := {"signed_url": "https://objects.invalid/file?X-Amz-Signature=secret"}
+expect("backend handle rejects signed transport material", validate_backend_handle(unsafe_handle, run_identifier)["ok"] == false)
+oversized_handle := parse_json(to_json(handle))
+oversized_handle["provider_state"] := {"value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+mut oversized_value := oversized_handle["provider_state"]["value"]
+while len(oversized_value) < 70000 {oversized_value = oversized_value + oversized_value}
+oversized_handle["provider_state"] := {"value": oversized_value}
+expect("backend handle rejects oversized provider state", validate_backend_handle(oversized_handle, run_identifier)["ok"] == false)
 
 terminal := terminal_result("exited", 0, null, "complete", false, false, "terminal")
 expect("terminal result validates", validate_terminal_result(terminal)["ok"])

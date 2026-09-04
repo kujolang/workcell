@@ -206,20 +206,28 @@ export func validate_backend_handle(value, expected_run_id) {
     if type(value) != "dict" {
         return {"ok": false, "error": "backend handle must be an object"}
     }
+    if only_fields(value, ["backend", "adapter_version", "provider", "profile_fingerprint", "resource_ids", "ownership", "provider_state"]) == false {
+        return {"ok": false, "error": "backend handle contains unknown fields"}
+    }
     fields := ["backend", "adapter_version", "provider", "profile_fingerprint"]
     mut i := 0
     while i < len(fields) {
         field := fields[i]
-        if type(get_or(value, field, null)) != "string"||trim(value[field]) == "" {
+        if type(get_or(value, field, null)) != "string"||trim(value[field]) == ""||len(value[field]) > 256 {
             return {"ok": false, "error": "backend handle " + field + " must be a non-empty string"}
         }
         i = i + 1
     }
-    if type(get_or(value, "resource_ids", null)) != "array"||len(value["resource_ids"]) == 0 {
+    if type(get_or(value, "resource_ids", null)) != "array"||len(value["resource_ids"]) == 0||len(value["resource_ids"]) > 256 {
         return {"ok": false, "error": "backend handle resource_ids must be a non-empty array"}
     }
+    for resource in value["resource_ids"] {
+        if type(resource) != "dict"||only_fields(resource, ["kind", "id"]) == false||type(get_or(resource, "kind", null)) != "string"||trim(resource["kind"]) == ""||len(resource["kind"]) > 128||type(get_or(resource, "id", null)) != "string"||trim(resource["id"]) == ""||len(resource["id"]) > 1024 {
+            return {"ok": false, "error": "backend handle resource identity is invalid"}
+        }
+    }
     ownership := get_or(value, "ownership", null)
-    if type(ownership) != "dict"||valid_run_id(get_or(ownership, "run_id", "")) == false||type(get_or(ownership, "nonce", null)) != "string"||trim(ownership["nonce"]) == "" {
+    if type(ownership) != "dict"||only_fields(ownership, ["run_id", "nonce"]) == false||valid_run_id(get_or(ownership, "run_id", "")) == false||type(get_or(ownership, "nonce", null)) != "string"||trim(ownership["nonce"]) == ""||len(ownership["nonce"]) > 256 {
         return {"ok": false, "error": "backend handle ownership is invalid"}
     }
     if type(expected_run_id) == "string"&&expected_run_id != ""&&ownership["run_id"] != expected_run_id {
@@ -227,6 +235,11 @@ export func validate_backend_handle(value, expected_run_id) {
     }
     if type(get_or(value, "provider_state", null)) != "dict" {
         return {"ok": false, "error": "backend handle provider_state must be an object"}
+    }
+    encoded := to_json(value["provider_state"])
+    if len(encoded) > 65536 {return {"ok": false, "error": "backend handle provider_state exceeds 64 KiB"}}
+    for forbidden in ["X-Amz-Signature", "X-Goog-Signature", "SharedAccessSignature", "-----BEGIN PRIVATE KEY-----"] {
+        if contains(encoded, forbidden) == 1 {return {"ok": false, "error": "backend handle contains forbidden credential or signed transport material"}}
     }
     return {"ok": true}
 }

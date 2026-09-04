@@ -1,6 +1,7 @@
 {
   "name": "Productionize the WorkCell backend matrix",
   "description": "Complete every locally implementable requirement in MEGA_PROMPT.md while preserving the stable Docker/Podman contract and recording credential-, release-, and operator-owned gates as explicit blockers with safe resume commands.",
+  "timeout_seconds": 1800,
   "tests": [
     {
       "name": "WorkCell offline suite passes",

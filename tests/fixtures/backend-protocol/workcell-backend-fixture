@@ -50,6 +50,7 @@ if [ "$operation" = "destroy" ]; then
     resource_id="$(printf '%s' "$request" | jq -r '.payload.handle.resource_ids[0].id')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg resource_id "$resource_id" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{items:[{kind:"fixture",id:$resource_id,status:"removed"}],remaining:[]}}'
     rm -f "$state_path"
+    mkdir -p "$state_root"
     : > "$tombstone_path"
     exit 0
 fi

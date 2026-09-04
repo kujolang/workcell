@@ -10,6 +10,7 @@ from src.workspace.workspace import temp_root
 mut passed := 0
 mut failed := 0
 spawn_process(["rm", "-rf", temp_root() + "/workcell-backend-fixture-state"])
+if temp_root() != "/tmp" {spawn_process(["rm", "-rf", "/tmp/workcell-backend-fixture-state"])}
 
 func expect(label, condition) {
     if condition {

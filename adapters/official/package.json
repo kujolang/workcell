@@ -22,6 +22,7 @@
     "@vercel/sandbox": "3.2.1",
     "e2b": "2.46.1"
   },
+  "bundleDependencies": ["@daytona/sdk", "@vercel/sandbox", "e2b"],
   "scripts": {
     "integrity:check": "node scripts/update-integrity.mjs --check",
     "integrity:update": "node scripts/update-integrity.mjs",

@@ -19,4 +19,11 @@ for provider in e2b vercel-sandbox daytona; do
   actual="$(shasum -a 256 "$executable" | awk '{print $1}')"
   test "$expected" = "$actual"
 done
+dependency_file="$(find "$package_root/node_modules" -type f -name '*.js' -print -quit)"
+test -n "$dependency_file"
+printf '\n// tamper probe\n' >> "$dependency_file"
+if "$package_root/runtime/verify-integrity.sh" "$package_root" >/dev/null 2>&1; then
+  echo "dependency integrity accepted a modified installed SDK file" >&2
+  exit 1
+fi
 printf 'Official adapter release candidate passed clean-install and integrity checks.\n'

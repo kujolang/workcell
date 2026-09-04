@@ -16,17 +16,20 @@ npm ci --ignore-scripts
 npm run release:candidate -- /absolute/path/outside-the-checkout
 ```
 
-The output contains an immutable npm archive, `SHA256SUMS`, an SPDX SBOM, and a
-small provenance record. The provenance explicitly records that no signature
-was created. Publishing and signing require separate authorization. The build
-fails on stale launcher integrity, high-severity dependency audit findings, or
+The output contains an immutable npm archive with bundled provider SDKs,
+`SHA256SUMS`, an SPDX SBOM, and a small provenance record. The provenance
+explicitly records that no signature was created. Publishing and signing
+require separate authorization. The build fails on stale launcher or complete
+bundled-dependency integrity, high-severity dependency audit findings, or
 SBOM/package errors.
 
 Install the archive with scripts disabled, verify `SHA256SUMS`, and make its
-installed tree read-only before selecting a manifest. WorkCell still verifies
-the manifest, launcher, shared runtime, package metadata, and lockfile before
-execution. The package performs no hidden download and does not require a Kujo
-service or hosted registry.
+installed tree read-only before selecting a manifest. WorkCell verifies the
+manifest, launcher, shared runtime, package metadata, lockfile, and every file
+in the bundled provider SDK dependency set before execution. The authenticated,
+compressed file manifest is generated from the exact npm archive inclusion set.
+The package performs no hidden download and does not require a Kujo service or
+hosted registry.
 
 ## Compatibility and platforms
 

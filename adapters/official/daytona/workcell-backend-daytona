@@ -2,7 +2,7 @@
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 VERIFY="$ROOT/runtime/verify-integrity.sh"
-EXPECTED_VERIFY="7f0ab59f153ef8e2488fc9247895d72bb0b2acd32f9ee01e46ec3ca2388c0c4a"
+EXPECTED_VERIFY="3a0a6a82c755ae872459903e6a1ca323a2b9ede5502506a49c6474cded87902f"
 if [ ! -f "$VERIFY" ]; then
   echo "WorkCell adapter integrity verifier is missing" >&2
   exit 70

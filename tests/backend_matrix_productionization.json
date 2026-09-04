@@ -7,7 +7,8 @@
       "name": "WorkCell offline suite passes",
       "check": "command_succeeds",
       "params": {
-        "command": "./tests/run.sh"
+        "command": "./tests/run.sh",
+        "timeout_ms": 1800000
       }
     },
     {
@@ -28,14 +29,16 @@
       "name": "Official adapter tests pass",
       "check": "command_succeeds",
       "params": {
-        "command": "npm test --prefix adapters/official"
+        "command": "npm test --prefix adapters/official",
+        "timeout_ms": 1800000
       }
     },
     {
       "name": "Official adapter integrity passes",
       "check": "command_succeeds",
       "params": {
-        "command": "npm run integrity:check --prefix adapters/official"
+        "command": "npm run integrity:check --prefix adapters/official",
+        "timeout_ms": 1800000
       }
     },
     {

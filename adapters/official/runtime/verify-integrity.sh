@@ -29,7 +29,7 @@ verify "runtime/protocol.mjs" "951efacfef8cd1b2e1c01d7904bfbb64d618d009c55f8678b
 verify "runtime/providers.mjs" "33e4a1cb873ae85616f2b4b11019dddec6d8e52b7d09a78d840493651c1bf50c"
 verify "package.json" "e91582bbbd214281ec29371156d5ff4824947ff116102eba0d6b6fd4ef2ab637"
 verify "package-lock.json" "47a7eedd0cc3376230842d10220c5c4b0186dfd95b8568e9bae5dc6eeebbab62"
-verify "runtime/verify-dependencies.mjs" "8ee29df092ff814d18c3dd92afc1601608949ba43695d9187890ae0c4a687b16"
+verify "runtime/verify-dependencies.mjs" "f1a0a4281116850cb1a18e8176fa8436ca2ec4d352c52f1126c8d34f449766dc"
 verify "runtime/dependencies.sha256" "2735436c1a089cd5f427995651fd11d68b99e79d57721152e3ea58bc262fbadd"
 verify "runtime/dependencies.files.gz.b64" "d01feb1ea4879c475677195e7a8616a09e556d2bc0a28c5b3642f54b1f181744"
 node "$ROOT/runtime/verify-dependencies.mjs" "$ROOT"

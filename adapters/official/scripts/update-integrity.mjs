@@ -31,7 +31,11 @@ async function dependencyManifest() {
   const packed = JSON.parse(stdout)[0].files.map((entry) => entry.path).filter((entry) => entry.startsWith('node_modules/')).sort();
   if (packed.length === 0) throw new Error('official adapter package contains no bundled dependencies');
   const aggregate = createHash('sha256');
-  for (const relative of packed) aggregate.update(relative).update('\0').update(await digest(relative)).update('\n');
+  for (let offset = 0; offset < packed.length; offset += 128) {
+    const batch = packed.slice(offset, offset + 128);
+    const digests = await Promise.all(batch.map(digest));
+    for (let index = 0; index < batch.length; index += 1) aggregate.update(batch[index]).update('\0').update(digests[index]).update('\n');
+  }
   return { digest: aggregate.digest('hex'), files: packed };
 }
 

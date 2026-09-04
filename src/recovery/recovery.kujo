@@ -231,6 +231,22 @@ export func plan_recovery(journal, resources) {
         }
         i = i + 1
     }
+    mut resource_i := 0
+    while resource_i < len(resources) {
+        actual := resources[resource_i]
+        if type(actual) != "dict"||type(get_or(actual, "kind", null)) != "string"||trim(actual["kind"]) == ""||type(get_or(actual, "id", null)) != "string"||trim(actual["id"]) == "" {
+            return {"ok": false, "error": "backend inventory resource is invalid"}
+        }
+        existing := inventory_resource_by_id(journal["handle"]["resource_ids"], actual["kind"], actual["id"])
+        if type(existing) != "dict" {
+            actual_ownership := get_or(actual, "ownership", {})
+            if get_or(actual_ownership, "run_id", "") != ownership["run_id"]||get_or(actual_ownership, "nonce", "") != ownership["nonce"] {
+                return {"ok": false, "error": "ownership mismatch for recovery resource: " + actual["id"], "code": "OWNERSHIP_MISMATCH"}
+            }
+            items = push(items, {"kind": actual["kind"], "id": actual["id"], "status": "remove", "state": get_or(actual, "state", "unknown")})
+        }
+        resource_i = resource_i + 1
+    }
     return {"ok": true, "items": items, "ownership": ownership}
 }
 
@@ -307,11 +323,19 @@ export func recover_with_adapter(journal_path, manifest_path, profile, dry_run) 
         return {"ok": false, "error": destroy_call["result"]["error"]["message"], "code": destroy_call["result"]["error"]["code"]}
     }
     items := get_or(destroy_call["result"]["data"], "items", [])
-    remaining := get_or(destroy_call["result"]["data"], "remaining", [])
-    cleanup_ok := len(remaining) == 0
+    post_request := recovery_request(journal, "inventory", profile, {"ownership": journal["ownership"]})
+    post_call := invoke_backend(executable["path"], post_request, invoke_options)
+    mut remaining := resource_ids
+    mut cleanup_ok := false
+    if post_call["ok"]&&get_or(post_call["result"]["data"], "complete", false) == true {
+        remaining = get_or(post_call["result"]["data"], "resources", [])
+        cleanup_ok = len(remaining) == 0
+    }
     status := "cleaned"
     if cleanup_ok == false {status = "partial"}
-    update := update_recovery_journal(journal_path, "destroy", status, {"time": now_utc(), "operation": "destroy", "ok": cleanup_ok, "items": items, "remaining": remaining}, null)
+    mut cleanup_error := null
+    if post_call["ok"] == false||get_or(post_call["result"]["data"], "complete", false) != true {cleanup_error = {"code": "INVENTORY_INCOMPLETE", "message": "post-destroy inventory was incomplete"}}
+    update := update_recovery_journal(journal_path, "destroy", status, {"time": now_utc(), "operation": "destroy", "ok": cleanup_ok, "items": items, "remaining": remaining}, cleanup_error)
     if update["ok"] == false {return update}
     return {"ok": cleanup_ok, "dry_run": false, "journal_path": journal_path, "items": items, "remaining": remaining, "status": status}
 }

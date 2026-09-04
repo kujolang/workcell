@@ -3,7 +3,7 @@
 from src.backend.client import invoke_backend
 from src.artifacts.archive import accept_remote_artifact_archive
 from src.backend.registry import backend_executable, load_backend_manifest, validate_backend_credential_ref
-from src.backend.types import backend_contract_id, validate_backend_handle, validate_backend_identity, validate_terminal_result
+from src.backend.types import backend_contract_id, backend_handle, validate_backend_handle, validate_backend_identity, validate_terminal_result
 from src.domain.portable_definition import load_host_profile, load_workcell_definition, validate_profile_budgets
 from src.domain.caller_context import load_caller_context
 from src.evidence.controls import controls_ledger, requirements_from_definition
@@ -102,7 +102,22 @@ func execute_failure(call) {
 }
 
 func destroy_and_inventory(executable, run_identifier, profile, definition, handle, idempotency_suffix) {
-    destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + idempotency_suffix}, definition)
+    before := invoke(executable, run_identifier, "inventory", profile, {"ownership": handle["ownership"]}, definition)
+    if before["ok"] == false||get_or(before["result"]["data"], "complete", false) != true {
+        return {"ok": false, "items": [], "remaining": handle["resource_ids"], "error": {"code": "INVENTORY_INCOMPLETE", "message": "pre-destroy inventory was incomplete"}}
+    }
+    resources := get_or(before["result"]["data"], "resources", [])
+    mut verified_ids := []
+    for resource in resources {
+        ownership := get_or(resource, "ownership", {})
+        if type(resource) != "dict"||type(get_or(resource, "kind", null)) != "string"||type(get_or(resource, "id", null)) != "string"||get_or(ownership, "run_id", "") != handle["ownership"]["run_id"]||get_or(ownership, "nonce", "") != handle["ownership"]["nonce"] {
+            return {"ok": false, "items": [], "remaining": handle["resource_ids"], "error": {"code": "OWNERSHIP_MISMATCH", "message": "pre-destroy inventory contained an invalid or unowned resource"}}
+        }
+        verified_ids = push(verified_ids, {"kind": resource["kind"], "id": resource["id"]})
+    }
+    if len(verified_ids) == 0 {return {"ok": true, "items": [], "remaining": [], "error": null}}
+    cleanup_handle := backend_handle(handle["backend"], handle["adapter_version"], handle["provider"], handle["profile_fingerprint"], verified_ids, handle["ownership"]["run_id"], handle["ownership"]["nonce"], {"cleanup_source": "verified-inventory"})
+    destroyed := invoke(executable, run_identifier, "destroy", profile, {"handle": cleanup_handle, "expected_ownership": handle["ownership"], "idempotency_key": run_identifier + idempotency_suffix}, definition)
     if destroyed["ok"] == false {
         return {"ok": false, "items": [], "remaining": handle["resource_ids"], "error": get_or(destroyed["result"], "error", {})}
     }
@@ -320,10 +335,10 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
         artifact_verify_started := performance_now()
         accepted_artifacts = accept_remote_artifact_archive(remote_archive, output_dir + "/artifacts", definition["artifacts"], definition["secrets"])
         receipt = add_timing(receipt, "artifact_verify", artifact_verify_started)
-        if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
         mut transfer_removed := false
         try {remove_file(remote_archive); transfer_removed = file_exists(remote_archive) == false} except err {transfer_removed = false}
         if transfer_removed == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", "untrusted provider artifact transfer could not be removed", 8)}
+        if accepted_artifacts["ok"] == false {return finalize_failure(executable, run_identifier, adapter_options, definition, output_dir, receipt, journal_path, handle, "artifact-failed", accepted_artifacts["error"], 8)}
     }
     cleanup_started := performance_now()
     destroyed := destroy_and_inventory(executable, run_identifier, adapter_options, definition, handle, ":destroy")

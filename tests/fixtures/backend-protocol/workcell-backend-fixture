@@ -14,6 +14,7 @@ mode="$(printf '%s' "$request" | jq -r '.profile.mode // "success"')"
 nonce="$(printf '%s' "$request" | jq -r '.profile.nonce // "nonce-1"')"
 state_root="${TMPDIR:-/tmp}/workcell-backend-fixture-state"
 state_path="$state_root/$run_id"
+tombstone_path="$state_path.destroyed"
 
 if [ "$operation" != "execute" ] && [ -n "${WORKCELL_SECRET_SCOPE_CANARY:-}" ]; then
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"SECRET_SCOPE",message:"workload secret reached a non-execute adapter operation",provider_code:"fixture",retryable:false}}'
@@ -37,7 +38,7 @@ fi
 if [ "$operation" = "inventory" ]; then
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce // .profile.nonce // "nonce-1"')"
     simulate_resource="$(printf '%s' "$request" | jq -r '.profile.simulate_resource // false')"
-    if { [ -f "$state_path" ] && [ "$(cat "$state_path")" = "$nonce" ]; } || [ "$simulate_resource" = "true" ]; then
+    if { [ -f "$state_path" ] && [ "$(cat "$state_path")" = "$nonce" ]; } || { [ "$simulate_resource" = "true" ] && [ ! -f "$tombstone_path" ]; }; then
         jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg nonce "$nonce" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[{kind:"fixture",id:("fixture-"+$run_id),state:"running",ownership:{run_id:$run_id,nonce:$nonce}}],complete:true}}'
     else
         jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{resources:[],complete:true}}'
@@ -49,6 +50,7 @@ if [ "$operation" = "destroy" ]; then
     resource_id="$(printf '%s' "$request" | jq -r '.payload.handle.resource_ids[0].id')"
     jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" --arg resource_id "$resource_id" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:true,status:"ok",retryable:false,data:{items:[{kind:"fixture",id:$resource_id,status:"removed"}],remaining:[]}}'
     rm -f "$state_path"
+    : > "$tombstone_path"
     exit 0
 fi
 
@@ -82,6 +84,7 @@ if [ "$operation" = "provision" ]; then
     nonce="$(printf '%s' "$request" | jq -r '.payload.ownership.nonce')"
     mkdir -p "$state_root"
     chmod 700 "$state_root"
+    rm -f "$tombstone_path"
     if [ -f "$state_path" ] && [ "$(cat "$state_path")" != "$nonce" ]; then
         jq -cn --arg contract "$contract" --arg request_id "$request_id" --arg run_id "$run_id" --arg operation "$operation" '{contract:$contract,request_id:$request_id,run_id:$run_id,operation:$operation,type:"result",ok:false,status:"failed",retryable:false,data:{},error:{code:"OWNERSHIP_MISMATCH",message:"fixture ownership collision",provider_code:"fixture"}}'
         exit 0

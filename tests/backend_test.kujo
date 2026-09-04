@@ -51,6 +51,10 @@ expect("backend handle rejects run mismatch", validate_backend_handle(handle, "w
 unsafe_handle := parse_json(to_json(handle))
 unsafe_handle["provider_state"] := {"signed_url": "https://objects.invalid/file?X-Amz-Signature=secret"}
 expect("backend handle rejects signed transport material", validate_backend_handle(unsafe_handle, run_identifier)["ok"] == false)
+mixed_case_handle := backend_handle("external-fixture", "1.0.0", "fixture", "sha256:fixture", [{"kind": "sandbox", "id": "sandbox-1"}], run_identifier, "nonce-1", {"Authorization": "BeArEr credential"})
+expect("backend handle rejects mixed-case bearer material", validate_backend_handle(mixed_case_handle, run_identifier)["ok"] == false)
+secret_id_handle := backend_handle("external-fixture", "1.0.0", "fixture", "sha256:fixture", [{"kind": "sandbox", "id": "https://provider.invalid/resource?sig=credential"}], run_identifier, "nonce-1", {})
+expect("backend handle rejects signed URL resource ids", validate_backend_handle(secret_id_handle, run_identifier)["ok"] == false)
 oversized_handle := parse_json(to_json(handle))
 oversized_handle["provider_state"] := {"value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
 mut oversized_value := oversized_handle["provider_state"]["value"]

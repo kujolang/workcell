@@ -225,6 +225,10 @@ export func validate_backend_handle(value, expected_run_id) {
         if type(resource) != "dict"||only_fields(resource, ["kind", "id"]) == false||type(get_or(resource, "kind", null)) != "string"||trim(resource["kind"]) == ""||len(resource["kind"]) > 128||type(get_or(resource, "id", null)) != "string"||trim(resource["id"]) == ""||len(resource["id"]) > 1024 {
             return {"ok": false, "error": "backend handle resource identity is invalid"}
         }
+        resource_text := to_lower(resource["id"])
+        for forbidden in ["://", "authorization", "bearer ", "token", "secret", "password", "api_key", "apikey", "access_key", "x-amz-", "x-goog-", "sharedaccesssignature", "sig="] {
+            if contains(resource_text, forbidden) == 1 {return {"ok": false, "error": "backend handle contains forbidden credential or signed transport material"}}
+        }
     }
     ownership := get_or(value, "ownership", null)
     if type(ownership) != "dict"||only_fields(ownership, ["run_id", "nonce"]) == false||valid_run_id(get_or(ownership, "run_id", "")) == false||type(get_or(ownership, "nonce", null)) != "string"||trim(ownership["nonce"]) == ""||len(ownership["nonce"]) > 256 {
@@ -238,8 +242,9 @@ export func validate_backend_handle(value, expected_run_id) {
     }
     encoded := to_json(value["provider_state"])
     if len(encoded) > 65536 {return {"ok": false, "error": "backend handle provider_state exceeds 64 KiB"}}
-    for forbidden in ["X-Amz-Signature", "X-Goog-Signature", "SharedAccessSignature", "-----BEGIN PRIVATE KEY-----"] {
-        if contains(encoded, forbidden) == 1 {return {"ok": false, "error": "backend handle contains forbidden credential or signed transport material"}}
+    encoded_lower := to_lower(encoded)
+    for forbidden in ["authorization", "bearer ", "token", "secret", "password", "api_key", "apikey", "access_key", "x-amz-", "x-goog-", "sharedaccesssignature", "sig=", "-----begin private key-----"] {
+        if contains(encoded_lower, forbidden) == 1 {return {"ok": false, "error": "backend handle contains forbidden credential or signed transport material"}}
     }
     return {"ok": true}
 }

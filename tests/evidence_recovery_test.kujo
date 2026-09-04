@@ -9,6 +9,7 @@ from src.workspace.workspace import temp_root
 
 mut passed := 0
 mut failed := 0
+spawn_process(["rm", "-rf", temp_root() + "/workcell-backend-fixture-state"])
 
 func expect(label, condition) {
     if condition {
@@ -80,6 +81,8 @@ expect("recovery journal reload validates ownership", load_recovery_journal(jour
 
 mismatch := plan_recovery(journal["journal"], [{"kind": "fixture", "id": "fixture-" + run_identifier, "state": "running", "ownership": {"run_id": run_identifier, "nonce": "wrong"}}])
 expect("recovery plan refuses ownership mismatch", mismatch["ok"] == false&&get_or(mismatch, "code", "") == "OWNERSHIP_MISMATCH")
+extra_plan := plan_recovery(journal["journal"], [{"kind": "fixture", "id": "fixture-" + run_identifier, "state": "running", "ownership": {"run_id": run_identifier, "nonce": "nonce-1"}}, {"kind": "fixture", "id": "fixture-extra", "state": "running", "ownership": {"run_id": run_identifier, "nonce": "nonce-1"}}])
+expect("recovery includes every inventoried resource with exact ownership", extra_plan["ok"]&&len(extra_plan["items"]) == 2&&extra_plan["items"][1]["id"] == "fixture-extra")
 
 manifest_path := "tests/fixtures/backend-protocol/manifest.json"
 intent_recovered := recover_with_adapter(journal_intent["path"], manifest_path, {"nonce": "nonce-intent", "simulate_resource": true}, false)

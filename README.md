@@ -1,11 +1,11 @@
 # Workcell
 
-[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/workcell)
+[![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/workcell/releases/tag/v1.1.0)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 [![CI](https://github.com/kujolang/workcell/actions/workflows/ci.yml/badge.svg)](https://github.com/kujolang/workcell/actions/workflows/ci.yml)
 
-Workcell 1.0 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
+Workcell 1.1 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
 
 The repository also contains an additive alpha provider-neutral contract: `workcell-definition/v2alpha1`, `workcell-backend/v1alpha1`, and `workcell-receipt/v2alpha1`. Docker and Podman implement that contract through the existing stable OCI lifecycle. Digest-pinned external adapters for E2B, Vercel Sandbox, and Daytona are separately installed, strictly capability-negotiated, ownership-recoverable, and receipt-visible. gVisor and Kata are OCI runtime selections, not provider adapters. Offline conformance is not live-provider or security certification. See [backend adapters](docs/backend-adapters.md).
 
@@ -15,7 +15,7 @@ The v1 guarantee is deliberately narrow. It covers the local Docker/Podman CLI, 
 
 ## Supported contract
 
-Workcell 1.0 supports:
+Workcell 1.1 supports:
 
 - disposable Git worktrees and isolated-clone workspaces from clean repositories;
 - strict, versioned JSON definitions with safe defaults and unknown-field rejection;
@@ -38,12 +38,12 @@ Workcell is distributed as a source archive and can also run directly from a che
 ```bash
 git clone https://github.com/kujolang/workcell.git
 cd workcell
-git checkout v1.0.0
+git checkout v1.1.0
 export KUJO=/path/to/kujo-1.2.1/kujo
 ./bin/workcell --version
 ```
 
-The `v1.0.0` tag contains the stable release. Unreleased provider-neutral work on `main` must be pinned by exact commit until a later version is approved; do not treat `main` as the tagged release. The launcher reads `KUJO` and does not download or replace the runtime.
+The `v1.1.0` tag contains the stable source release. Its Docker and Podman lifecycle remains the stable contract. The provider-neutral definitions, backend protocol, portable receipts, and remote adapters included in the source remain alpha until each provider passes live certification. The launcher reads `KUJO` and does not download or replace the runtime.
 
 ## Quick Start
 
@@ -147,7 +147,7 @@ Containers are not universal isolation. Workcell trusts the selected engine and 
 
 ## Compatibility and upgrades
 
-Workcell follows semantic versioning for the product. The `workcell-definition/v1`, `workcell-cli/v1`, `workcell-receipt/v1`, `workcell-manifest/v1`, and other evidence identifiers are independent contract versions; product 1.0.0 does not rename them. Additive fields may appear within a v1 contract. Removing or repurposing a field or exit code requires a new contract identifier and migration notes.
+Workcell follows semantic versioning for the product. The `workcell-definition/v1`, `workcell-cli/v1`, `workcell-receipt/v1`, `workcell-manifest/v1`, and other evidence identifiers are independent contract versions; product 1.1.0 does not rename them. Additive fields may appear within a v1 contract. Removing or repurposing a field or exit code requires a new contract identifier and migration notes.
 
 Patch releases contain compatible fixes. Minor releases may add optional CLI or schema surface with safe defaults. A future product major may change supported contracts only with changelog and migration guidance. Pin both the Workcell release and Kujo runtime commit for reproducible automation. See the [API compatibility policy](docs/api-compatibility.md).
 

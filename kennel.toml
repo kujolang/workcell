@@ -1,6 +1,6 @@
 [package]
 name = "workcell"
-version = "1.0.0"
+version = "1.1.0"
 description = "Kujo-native Docker-backed disposable execution sandbox for AI agents and workflows."
 license = "MIT"
 repository = "https://github.com/kujolang/workcell"

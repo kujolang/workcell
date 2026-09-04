@@ -2,13 +2,15 @@
 
 ## Unreleased
 
+## 1.1.0 - 2026-09-04
+
 ### Provider-neutral execution (alpha)
 
 - Added the provider-neutral `workcell-definition/v2alpha1`, executable `workcell-backend/v1alpha1` protocol, `workcell-receipt/v2alpha1`, strict semantic capability negotiation, host profiles, and a core-owned `resolve → provision → prepare → execute → collect → export → destroy → record` lifecycle.
 - Routed portable workloads through built-in Docker and Podman without changing the stable v1 OCI behavior. gVisor and Kata are selectable OCI substrates through `engine_runtime`, not misleading top-level providers.
 - Added digest-pinned official external adapters for E2B, Vercel Sandbox, and Daytona. Provider SDK dependencies remain outside Workcell core, and each adapter validates its supported routing, credentials, operation payloads, and result shapes.
 - Added explicit backend discovery, portable inspection, deterministic cancellation, ownership-bound recovery, caller correlation context, resource/transfer ceilings, phase timings, and honest provider cost classes with unknown amounts by default.
-- Updated unreleased development and CI to the exact Kujo 1.2.1 runtime commit in `RUNTIME_VERSION`; the released `v1.0.0` tag retains its original Kujo 1.0.0 pin.
+- Updated development and CI to the exact Kujo 1.2.1 runtime commit in `RUNTIME_VERSION`; the earlier `v1.0.0` tag retains its original Kujo 1.0.0 pin.
 
 ### Security and evidence
 
@@ -30,7 +32,7 @@
 - Added the complete backend landscape, taxonomy, capability and security matrices, target architecture, contract proposal, risk register, acceptance criteria, and dependency-ordered implementation package under `docs/plans/backend-matrix/`.
 - Added a root `MEGA_PROMPT.md` that turns the remaining live certification, contract stabilization, packaging, onboarding, ecosystem integration, provider expansion, enterprise operations, and release work into a dependency-ordered implementation assignment for another engineering agent.
 
-The provider-neutral surface and remote adapters remain alpha. Production promotion requires credential-gated evidence for the exact provider account, plan, region, adapter/API/SDK version, requested controls, latency/cost envelope, recovery path, and zero owned orphans.
+The provider-neutral surface and remote adapters remain alpha. Production promotion requires credential-gated evidence for the exact provider account, plan, region, adapter/API/SDK version, requested controls, latency/cost envelope, recovery path, and zero owned orphans. This source release does not promote any remote adapter.
 
 ## 1.0.0 - 2026-08-08
 

@@ -2,7 +2,7 @@
 
 Workcell exposes versioned JSON contracts for definitions, CLI metadata, receipts, run manifests, runtime inventory, cleanup results, and optional integration evidence. Consumers should select fields by name and tolerate additive fields.
 
-The Workcell product version and contract identifiers are independent. Workcell 1.0.0 reports product version `1.0.0` while retaining `/v1` schema identifiers for the stable first version of each machine contract. Product releases do not mechanically rename schemas or evidence formats.
+The Workcell product version and contract identifiers are independent. Workcell 1.1.0 reports product version `1.1.0` while retaining `/v1` schema identifiers for the stable first version of each machine contract. Product releases do not mechanically rename schemas or evidence formats.
 
 ## Contract identifiers
 

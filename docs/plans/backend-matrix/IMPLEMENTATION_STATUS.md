@@ -34,7 +34,7 @@ Last reviewed: 2026-09-04
 
 | Phase | Status | Current evidence and remaining gate |
 | --- | --- | --- |
-| 0 — audit and freeze | verified offline | Exact Kujo gates pass; the contract inventory, task Spec, Eval suite, Loop Engineering evidence, and 10-sample local diagnostic baseline are recorded. Docker is installed but its daemon is unavailable; Podman is absent. |
+| 0 — audit and freeze | verified offline; Docker refreshed live | Exact Kujo gates pass; the contract inventory, task Spec, Eval suite, Loop Engineering evidence, and 10-sample local diagnostic baseline are recorded. Rootless Docker on the local Colima Linux VM passed doctor, OCI smoke, integration, four-run load, and egress gates on 2026-09-04. Podman installation is blocked because current Homebrew Podman requires Apple silicon on this Intel host. |
 | 1 — protected live certification harness | implemented; verified offline | `tests/live_certification.sh`, its contract test, schema, protected workflow, bounded fixture profiles, explicit authorization/credential/identity/spend gates, external evidence directory, offline verification, and recovery status are present. Negative security probes remain a mandatory live step and cannot be claimed by fixture mode. |
 | 2 — E2B | implemented alpha; verified offline; live blocked | SDK `e2b@2.46.1`; adapter manifest and fixture conformance exist. Live capability, account/plan/region, performance, cost, security-probe, and zero-orphan certification are absent. |
 | 3 — Vercel Sandbox | implemented alpha; verified offline; live blocked | SDK `@vercel/sandbox@3.2.1`; adapter manifest and fixture conformance exist. Exact OIDC/account/plan/region behavior, live negative probes, performance/cost, and zero-orphan certification are absent. |
@@ -45,14 +45,14 @@ Last reviewed: 2026-09-04
 | 8 — authentication and onboarding | partial | Explicit `env:` references are implemented. Kujo Agent/OS-store bridges, provider-aware doctor flows, clean-machine onboarding evidence, and live identity confirmation remain. |
 | 9 — Agent/Plugin/Relay/Dispatch/evidence integration | contract documented; implementation pending in separate repositories | Caller context and compact WorkCell summaries exist. Cross-repository bridges, cancellation propagation, explicit attempt mapping, and correlated evidence integration require separately gated repository changes. |
 | 10 — enterprise operations and security review | implemented offline; live approvals blocked | `docs/provider-operations.md`, per-provider guides, enterprise/security boundaries, incident/recovery/retention/drift duties, support ownership and no-SLO posture, privacy/legal inputs, and an independent multi-pass source review are present. Provider audit, deletion, legal, privacy, and live isolation evidence require operator/provider approval. |
-| 11 — next providers | deferred | Modal and Runloop wait for phases 2–4 live, packaging, onboarding, and operational gates. Cloudflare Sandbox and Kubernetes Agent Sandbox remain operator candidates. |
+| 11 — next providers | deferred; Cloudflare entitlement checked | Modal and Runloop wait for phases 2–4 live, packaging, onboarding, and operational gates. Cloudflare Sandbox is a technically compatible operator bridge, but the connected Free account cannot access Containers and ordinary Workers cannot execute the Linux-process contract. The read-only preflight and ownership decision are implemented; bridge implementation remains gated by Workers Paid and the phase-11 architecture/dependency review. Kubernetes Agent Sandbox remains an operator candidate. |
 | 12 — beta, distribution, and stable release | blocked | Requires exact live certification and production promotion of at least two independent remote providers, beta feedback, authorized release actions, and complete hosted gates. |
 
 ## Provider certification
 
 | Provider/profile | Offline | Live | Production | Exact live identity |
 | --- | --- | --- | --- | --- |
-| Docker | verified by deterministic regression suite; engine gates are host-specific | local engine evidence must be refreshed per target host | stable v1 contract only | Not a remote-provider certification claim. |
+| Docker | verified by deterministic regression suite; engine gates are host-specific | rootless Colima Linux VM gates passed on 2026-09-04 | stable v1 contract only | Local OCI evidence only; not a remote-provider certification claim. |
 | Podman | verified by deterministic regression suite | blocked on this macOS host where Podman is unavailable | stable v1 contract on documented supported Linux hosts | Resume on supported Linux; do not substitute Docker evidence. |
 | E2B | verified offline | blocked — credentials and explicit live authorization absent | not promoted | Account plan: unknown; region: unknown; adapter: 2.46.1; SDK/API: `e2b@2.46.1`; template: unknown; date: no live claim. |
 | Vercel Sandbox | verified offline | blocked — credentials and explicit live authorization absent | not promoted | Account plan: unknown; region: unknown; adapter: 3.2.1; SDK/API: `@vercel/sandbox@3.2.1`; image: unknown; date: no live claim. |
@@ -137,6 +137,22 @@ REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/docker_integration.sh podman
 REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/load_integration.sh podman
 REQUIRE_BACKEND=true KUJO="$KUJO" ./tests/egress_integration.sh podman
 ```
+
+### Cloudflare Sandbox entitlement
+
+The connected Cloudflare account authenticates with Wrangler, but Containers
+returns a Workers Paid requirement. A Free Worker cannot substitute for the
+required Linux process/container runtime. The check is read-only and creates no
+resources:
+
+```bash
+./scripts/cloudflare-sandbox-preflight.sh
+```
+
+After Workers Paid is intentionally enabled, rerun the same command and complete
+the architecture and phase-order gates in
+[Cloudflare Sandbox operator-bridge decision](../../providers/cloudflare-sandbox.md)
+before deploying anything.
 
 ### Hosted CI and release effects
 

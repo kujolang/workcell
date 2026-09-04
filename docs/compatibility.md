@@ -24,4 +24,4 @@ Run the applicable integration, load, and egress suites on every release host cl
 
 ## Observed deployment evidence
 
-The rootless Docker and Podman paths have been exercised on a Linux Colima VM, including rootless workspace identity, fail-closed identity mismatch, OCI smoke, full integration, egress enforcement, and resource cleanup contracts. See [the dated evidence record](compatibility/rootless-docker-colima-2026-07-13.md). The final hosted CI receipt remains a separate release prerequisite and is not replaced by that local evidence.
+The rootless Docker and Podman paths have been exercised on a Linux Colima VM, including rootless workspace identity, fail-closed identity mismatch, OCI smoke, full integration, egress enforcement, and resource cleanup contracts. See the [2026-07-13 Docker and Podman evidence](compatibility/rootless-docker-colima-2026-07-13.md) and the [2026-09-04 Docker refresh](compatibility/rootless-docker-colima-2026-09-04.md). The final hosted CI receipt remains a separate release prerequisite and is not replaced by that local evidence.

@@ -20,7 +20,17 @@ The commands, expected artifacts, rollback plan, tag procedure, and GitHub Relea
 
 The released Kujo runtime must be built from the exact `RUNTIME_VERSION` revision and verified as `kujo 1.2.1`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck must pass locally. Docker isolation characteristics remain explicit doctor evidence rather than implied security guarantees.
 
-Podman gates are externally blocked on this host because the `podman` executable and engine are absent. `workcell doctor --backend podman --json` exited `3` with three blocked checks: CLI unavailable, engine unreachable, and security inspection unavailable. The safe resume action is to install and start rootless Podman on a supported Linux host, then run the Podman doctor, OCI smoke, integration, concurrent-load, and egress commands in [the release process](release-process.md). No Docker result is treated as Podman evidence.
+Rootless Docker on the local Colima Linux VM was refreshed on 2026-09-04.
+Doctor, OCI smoke, the full integration suite, four concurrent runs, and the
+deny-by-default egress gate passed. This remains local host evidence and does
+not replace hosted CI or remote-provider certification.
+
+Podman gates remain externally blocked on this Intel macOS host. A fresh
+Homebrew installation attempt selected Podman 6.1.1 and failed because that
+formula requires `arm64`. The safe resume action is to use a supported Linux or
+Apple-silicon host, then run the Podman doctor, OCI smoke, integration,
+concurrent-load, and egress commands in [the release process](release-process.md).
+No Docker result is treated as Podman evidence.
 
 ## Hosted CI blocker record
 

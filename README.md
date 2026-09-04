@@ -182,6 +182,7 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 - [Backend adapters](docs/backend-adapters.md)
 - [Backend adapter authoring](docs/adapter-authoring.md)
 - [Live provider certification](docs/live-provider-certification.md)
+- [Remote provider operations](docs/provider-operations.md)
 - [Official adapter distribution](docs/official-adapter-distribution.md)
 - Provider operations: [E2B](docs/providers/e2b.md), [Vercel Sandbox](docs/providers/vercel-sandbox.md), [Daytona](docs/providers/daytona.md)
 - [Backend matrix research and implementation package](docs/plans/backend-matrix/README.md)

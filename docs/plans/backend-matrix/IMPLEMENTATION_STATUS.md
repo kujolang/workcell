@@ -28,23 +28,23 @@ Last reviewed: 2026-09-04
 | Stable WorkCell v1 Docker/Podman contract | implemented; release evidence exists for v1.0.0 | `VERSION`; `README.md`; `tests/docker_integration.sh`; `tests/oci_smoke.sh`; `tests/load_integration.sh`; `tests/egress_integration.sh` |
 | Provider-neutral definition, backend protocol, receipt, recovery, package, and artifact alpha contracts | implemented; verified offline | `src/backend/`; `src/execution/portable_coordinator.kujo`; `src/receipts/v2.kujo`; `src/recovery/recovery.kujo`; `src/workspace/package.kujo`; `src/artifacts/archive.kujo`; `./tests/run.sh` |
 | Official E2B, Vercel Sandbox, and Daytona alpha adapters | implemented; verified offline only | `adapters/official/`; `npm test --prefix adapters/official`; `npm run integrity:check --prefix adapters/official`; `tests/official_adapters_test.kujo` |
-| Current implementation baseline | in progress | Source commit `216cca2`; exact pinned runtime commit is `692512a9070fdba713f160d795bbddb8077db7b5`; final baseline results are recorded below after all gates run. |
+| Current implementation baseline | verified offline | Starting source commit `216cca2`; exact pinned runtime commit `692512a9070fdba713f160d795bbddb8077db7b5`; deterministic gates and diagnostic samples are recorded below. |
 
 ## Dependency-ordered program
 
 | Phase | Status | Current evidence and remaining gate |
 | --- | --- | --- |
-| 0 — audit and freeze | in progress | Existing regression suites cover policy, lifecycle, exits, receipts, artifacts, cleanup, recovery, provider-neutral schemas, and fixture conformance. Record pinned-runtime results and current performance samples below. |
-| 1 — protected live certification harness | missing | Implement provider-independent gated entrypoints, bounds, exact metadata, failure branches, security probes, redacted external evidence, fixture coverage, cleanup, and recovery-required results. |
+| 0 — audit and freeze | verified offline | Exact Kujo gates pass; the contract inventory, task Spec, Eval suite, Loop Engineering evidence, and 10-sample local diagnostic baseline are recorded. Docker is installed but its daemon is unavailable; Podman is absent. |
+| 1 — protected live certification harness | implemented; verified offline | `tests/live_certification.sh`, its contract test, schema, protected workflow, bounded fixture profiles, explicit authorization/credential/identity/spend gates, external evidence directory, offline verification, and recovery status are present. Negative security probes remain a mandatory live step and cannot be claimed by fixture mode. |
 | 2 — E2B | implemented alpha; verified offline; live blocked | SDK `e2b@2.46.1`; adapter manifest and fixture conformance exist. Live capability, account/plan/region, performance, cost, security-probe, and zero-orphan certification are absent. |
 | 3 — Vercel Sandbox | implemented alpha; verified offline; live blocked | SDK `@vercel/sandbox@3.2.1`; adapter manifest and fixture conformance exist. Exact OIDC/account/plan/region behavior, live negative probes, performance/cost, and zero-orphan certification are absent. |
 | 4 — Daytona | implemented alpha; verified offline; live blocked | SDK `@daytona/sdk@0.207.1`; adapter manifest and fixture conformance exist. Hosted and self-hosted account/tier/class/region/TLS evidence, performance/cost, and zero-orphan certification are absent. |
 | 5 — stabilize v2 | blocked by phases 2–4 live evidence | Alpha schemas and compatibility policy exist. Stable identifiers and evidence-driven migrations cannot be finalized before at least two independent exact live providers resolve contract ambiguity. |
-| 6 — robustness, fuzzing, and scale | partial; verified offline for existing corpus | Existing adversarial, archive, workspace, malformed protocol, recovery, stress, and performance tests pass through `./tests/run.sh`; the productionization-specific injection and budget program remains to be completed. |
-| 7 — official adapter packaging | partial | Exact npm lockfile and launcher/runtime integrity chain exist. Packages are private and repository-local; immutable release archives, provenance, SBOM/license/vulnerability gates, clean-install matrices, rollback/revocation, and signing authorization remain. |
+| 6 — robustness, fuzzing, and scale | partial; verified offline | Existing adversarial, archive, workspace, malformed protocol, recovery, stress, and performance tests pass. New regressions cover receipt traversal, operation-scoped workload secrets, ownership-safe recovery, pre/post-destroy inventory, handle bounds/credential rejection, and bundled SDK tamper detection. Provider-specific concurrency/rate/fault evidence remains live-blocked. |
+| 7 — official adapter packaging | implemented candidate; verified offline; publication blocked | The installable package bundles exact provider dependencies and authenticates every shipped dependency file before Node starts. Candidate tooling produces checksum, SPDX SBOM, unsigned provenance, npm audit gate, clean install/tamper test, rollback/revocation/uninstall docs. Signing and publication require explicit authorization. |
 | 8 — authentication and onboarding | partial | Explicit `env:` references are implemented. Kujo Agent/OS-store bridges, provider-aware doctor flows, clean-machine onboarding evidence, and live identity confirmation remain. |
 | 9 — Agent/Plugin/Relay/Dispatch/evidence integration | contract documented; implementation pending in separate repositories | Caller context and compact WorkCell summaries exist. Cross-repository bridges, cancellation propagation, explicit attempt mapping, and correlated evidence integration require separately gated repository changes. |
-| 10 — enterprise operations and security review | partial | Core security and enterprise boundary documents exist. Per-adapter threat models, operational runbooks, support ownership/SLOs, retention/audit matrices, legal/privacy/license inputs, and independent review evidence remain. |
+| 10 — enterprise operations and security review | implemented offline; live approvals blocked | `docs/provider-operations.md`, per-provider guides, enterprise/security boundaries, incident/recovery/retention/drift duties, support ownership and no-SLO posture, privacy/legal inputs, and an independent multi-pass source review are present. Provider audit, deletion, legal, privacy, and live isolation evidence require operator/provider approval. |
 | 11 — next providers | deferred | Modal and Runloop wait for phases 2–4 live, packaging, onboarding, and operational gates. Cloudflare Sandbox and Kubernetes Agent Sandbox remain operator candidates. |
 | 12 — beta, distribution, and stable release | blocked | Requires exact live certification and production promotion of at least two independent remote providers, beta feedback, authorized release actions, and complete hosted gates. |
 
@@ -121,8 +121,10 @@ WORKCELL_LIVE_AUTHORIZED=1 WORKCELL_LIVE_DAYTONA=1 \
   ./tests/live_certification.sh daytona
 ```
 
-These commands are resume contracts until the phase-1 harness lands; they must
-not be run merely because credentials happen to exist in the environment.
+These are the implemented resume contracts. The harness also requires the exact
+provider credential, profile, account/plan, region, image/template, bounded
+limits, and spend ceiling documented in `docs/live-provider-certification.md`;
+it must not be run merely because credentials happen to exist.
 
 ### Podman host evidence
 
@@ -149,4 +151,10 @@ source commit, sample count, warm/cold state, and raw external evidence path
 before setting a regression threshold. Provider queue, network, and workload
 time must never be inferred from WorkCell wall time.
 
-Pending the pinned-runtime baseline run in this session.
+The 10-sample offline changed-file performance fixture ran on macOS 26.3.1
+(`x86_64`) with exact Kujo commit
+`692512a9070fdba713f160d795bbddb8077db7b5`. Wall time ranged from 6.53s to
+6.97s with a 6.905s median. Raw logs and the machine-readable summary are at
+`/tmp/workcell-phase0.T0y9Is` on the implementation host. Ten diagnostic samples
+are not enough for a release-grade p95 claim. Remote/provider timings and costs
+remain unknown until authorized live certification.

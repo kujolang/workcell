@@ -177,7 +177,7 @@ test('official runtime integrity verification fails closed on tampering', async 
     await copyFile(path.join(root, relative), path.join(temporaryRoot, relative));
   }
   const verifier = path.join(root, 'runtime', 'verify-integrity.sh');
-  assert.equal(spawnSync(verifier, [temporaryRoot], { encoding: 'utf8' }).status, 0);
+  assert.equal(spawnSync(verifier, [root], { encoding: 'utf8' }).status, 0);
   await writeFile(path.join(temporaryRoot, 'runtime', 'protocol.mjs'), '// tampered\n');
   const tampered = spawnSync(verifier, [temporaryRoot], { encoding: 'utf8' });
   assert.equal(tampered.status, 70);

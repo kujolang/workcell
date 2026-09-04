@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { gzipSync } from 'node:zlib';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,10 +45,14 @@ const dependencyPath = path.join(root, 'runtime/dependencies.sha256');
 const currentDependencyHash = await readFile(dependencyPath, 'utf8');
 if (check && currentDependencyHash !== dependencyHash) throw new Error('stale dependency integrity metadata');
 if (!check && currentDependencyHash !== dependencyHash) await writeFile(dependencyPath, dependencyHash);
-const dependencyFiles = `${gzipSync(`${dependencies.files.join('\n')}\n`, { level: 9, mtime: 0 }).toString('base64')}\n`;
+const dependencyFileList = `${dependencies.files.join('\n')}\n`;
+const dependencyFiles = `${gzipSync(dependencyFileList, { level: 9, mtime: 0 }).toString('base64')}\n`;
 const dependencyFilesPath = path.join(root, 'runtime/dependencies.files.gz.b64');
 const currentDependencyFiles = await readFile(dependencyFilesPath, 'utf8');
-if (check && currentDependencyFiles !== dependencyFiles) throw new Error('stale dependency file manifest');
+if (check) {
+  const currentDependencyFileList = gunzipSync(Buffer.from(currentDependencyFiles.trim(), 'base64')).toString('utf8');
+  if (currentDependencyFileList !== dependencyFileList) throw new Error('stale dependency file manifest');
+}
 if (!check && currentDependencyFiles !== dependencyFiles) await writeFile(dependencyFilesPath, dependencyFiles);
 
 for (const relative of protectedFiles) {

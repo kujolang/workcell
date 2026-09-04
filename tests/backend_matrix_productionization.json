@@ -42,6 +42,13 @@
       }
     },
     {
+      "name": "Cloudflare Sandbox preflight contract passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "./tests/cloudflare_sandbox_preflight.sh"
+      }
+    },
+    {
       "name": "Implementation status ledger exists",
       "check": "file_exists",
       "params": {

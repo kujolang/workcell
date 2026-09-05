@@ -1,0 +1,154 @@
+{
+  "schema": "workcell-box-research-sources/v1",
+  "workcell_commit": "074d7262ef6c565e3dabd22ee046228c7329e5c1",
+  "research_date": "2026-09-05",
+  "sources": [
+    {
+      "url": "https://docs.ascii.dev/box/api-keys.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "f48eb1d761f8eed847622b92dce70b25b0cbe61338bd052665aec877ea4e06c9",
+      "bytes": 6363,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/api/v1.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "6c923cb63d10421a7dcf8940fe157ee9211aa9fa39dd7d64ee2347f44541d763",
+      "bytes": 20870,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/billing.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "1a0a46e359420e93788f9b991ee7c1cce00efd2bc9c835a473dc7f2faf71a47d",
+      "bytes": 13270,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/data-retention.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "0590e55aa418081854bb852a50b3000bff7d266f90b90267587508eb72bc8830",
+      "bytes": 11504,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/environments.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "bc67fc95bca5b50f71714fb8c88c9a6b6f1e7ff2b4c2ca3c53e1656aa500269a",
+      "bytes": 19698,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/faq.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "5307779f6f4f6b2fa0c9f91f4fc3b806f0383d29286e910c4c0c103ee73d2412",
+      "bytes": 7079,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/hosting.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "45d08571cbcc83d192eb92587eefe7f7c34230c594d8287ab478d59cbaf839f9",
+      "bytes": 11262,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/long-running-tasks.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "e93d19a83583b8ce77c826f329e0386d1a45c4c73ba7412ce3eaa72ad9401a30",
+      "bytes": 9670,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/machines.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "d8d6071e64ab0d02d41cbb9abf7422ac3c163b69241260d8b952eeb1c44de16a",
+      "bytes": 13255,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/platform-guide.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "1a3d1713c67c8d16eca11f285df0eeb61a61e88a2bd0d4fdba45c8b06021fd0a",
+      "bytes": 11565,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/sdks/overview.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "1f2afa449f56b3cedb6a5e6bf15b74751aca5329a9d6ed677023f7f1b7b6fb63",
+      "bytes": 1773,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/sdks/python.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "8ede21c5e8177ebcc7a46d47781138ccbeabc65c74ec812918489fc5c8d1b1e7",
+      "bytes": 76195,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/sdks/typescript.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "14c45a1a381d0f343c13cc042fc4a84699d451119cd3b0bc8058489be8236d31",
+      "bytes": 86923,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/setup.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "6857f556c11c52d5ca501e39c5ede8fb65d7cc5126474ff1d5c89cffd13797a8",
+      "bytes": 4998,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/snapshots.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "a38ee437deac9c8d41d61ac4c903985d6cde6c5b6d0c977d9be4646bc7d4fee5",
+      "bytes": 22854,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/ssh-access.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "b442bde14eff3f021afc4defc92655664b2f94f1c12594cef5edc578712b1169",
+      "bytes": 4873,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/box/webhooks.md",
+      "accessed_date": "2026-09-05",
+      "sha256": "d63e3ab05b986b336a8d093f871d452c7e10b74e42814cff345f95c0d88f6848",
+      "bytes": 11408,
+      "method": "unauthenticated HTTPS GET; not live-provider evidence"
+    },
+    {
+      "url": "https://docs.ascii.dev/openapi/box-v1.yaml",
+      "accessed_date": "2026-09-05",
+      "sha256": "d8a1c00bc2e6d6f78351671cba553211f795641db65f134c210f11da6df67cc8",
+      "bytes": 149454,
+      "method": "unauthenticated HTTPS GET; metadata JSON locally reserialized/subselected where applicable"
+    },
+    {
+      "url": "https://registry.npmjs.org/@asciidev/box-sdk/-/box-sdk-0.0.34.tgz",
+      "accessed_date": "2026-09-05",
+      "sha256": "0d57a9304102b97eaddbbb82b95679042daa0f58ca3675962bbbf46a0a10b02c",
+      "bytes": 186834,
+      "method": "unauthenticated HTTPS GET; metadata JSON locally reserialized/subselected where applicable"
+    },
+    {
+      "url": "https://registry.npmjs.org/@asciidev%2fbox-sdk/latest",
+      "accessed_date": "2026-09-05",
+      "sha256": "d5ba8b65cdd314d1324897d4a1b9f32e7eded9a7d0cf365b7b3f1ad35361d9ba",
+      "bytes": 1734,
+      "method": "unauthenticated HTTPS GET; metadata JSON locally reserialized/subselected where applicable"
+    },
+    {
+      "url": "https://pypi.org/pypi/ascii-box-sdk/json",
+      "accessed_date": "2026-09-05",
+      "sha256": "586151bf9db9871bc7cc8a6983f96f89e9f7abb5b90e2fdde1c4a9215ceebd10",
+      "bytes": 5974,
+      "method": "unauthenticated HTTPS GET; metadata JSON locally reserialized/subselected where applicable"
+    }
+  ]
+}

@@ -87,6 +87,7 @@ node_modules/
 # Muzzle
 /.muzzle/logs/
 /.muzzle/reports/
+/.muzzle/runtime/
 
 # PackWrite / Fence generated agent packs and reports
 /agent/

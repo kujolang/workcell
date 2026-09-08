@@ -5,8 +5,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 
 while IFS= read -r -d '' file; do
+  [[ -f "$ROOT/$file" && ! -L "$ROOT/$file" ]] || continue
   "$KUJO" format --check "$ROOT/$file" >/dev/null
-done < <(cd "$ROOT" && find . -type f -name '*.kujo' -not -path './.git/*' -print0 | sort -z)
+done < <(git -C "$ROOT" ls-files --cached --others --exclude-standard -z -- '*.kujo' | sort -zu)
 
 while IFS= read -r -d '' file; do
   findings="$($KUJO lint --json "$ROOT/$file")"

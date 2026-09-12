@@ -109,7 +109,9 @@ export func build_policy(definition, run_identifier, host_workspace) {
     backend := definition["runtime"]["backend"]
     engine := "docker"
     if backend == "podman" {engine = "podman"}
-    mut docker := [engine, "run"]
+    // Image acquisition and verification belong to ensure_image. A vanished
+    // local image must fail launch rather than cause an unchecked implicit pull.
+    mut docker := [engine, "run", "--pull=never"]
     network_policy := network_policy_for(definition)
     network_mode := definition["network"]["mode"]
     if network_mode == "custom" {
@@ -151,6 +153,15 @@ export func build_policy(definition, run_identifier, host_workspace) {
     docker = add_pair(docker, "--volume", mount_workspace + ":" + mount_path + ":rw")
     docker = add_pair(docker, "--workdir", mount_path)
     docker = environment_args(docker, definition)
+    if backend == "docker" {
+        // Docker client config may inject proxies even when the process does
+        // not inherit them. Override that implicit channel in the workload.
+        for proxy_name in ["HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "all_proxy", "no_proxy"] {
+            if has_key(definition["environment"]["set"], proxy_name) == 0&&contains(definition["environment"]["allow"], proxy_name) == false&&contains(definition["secrets"], proxy_name) == false {
+                docker = add_pair(docker, "--env", proxy_name + "=")
+            }
+        }
+    }
     docker = push(docker, definition["runtime"]["image"])
     command := definition["command"]
     mut command_i := 0

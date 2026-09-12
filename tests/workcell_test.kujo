@@ -343,6 +343,7 @@ expect("rootless workspace identity maps to container root", rootless_policy["ok
 
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]
+expect("launch cannot implicitly pull an unverified image", contains(args, "--pull=never"))
 canonical_policy := build_policy(definition, "test-canonical-workspace", "/tmp")
 expect("existing workspace mount uses canonical host path", canonical_policy["ok"]&&canonical_policy["mounts"][0] == path_absolute("/tmp") + ":/workspace:rw")
 partial_policy := build_policy({}, "test-partial-policy", "/tmp/workcell-test-workspace")

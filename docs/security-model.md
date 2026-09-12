@@ -15,6 +15,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 - Root filesystem is read-only by default; declared tmpfs paths are the writable scratch surface.
 - Host-side Docker/Git calls use structured argv, not shell interpolation.
 - Container environment is explicit: allowlisted host variables and runtime secrets use `--env NAME`, while configured non-secret values use `--env NAME=value`; host-control variables are rejected.
+- Docker connection selectors reach only the trusted host client, including its selected context, config directory and TLS settings. Launch still clears unrelated host variables. Implicit Docker-config proxy injection is overridden with empty workload values unless that proxy was explicitly declared; the definition's existing host-control denials still apply. Launch uses `--pull=never` after image preparation.
 - Artifact paths must be relative, normalized, traversal-free, and contained in the run output directory.
 - Workspace trees and output roots containing symlinks are rejected or preserved only behind an explicit Workcell ownership marker.
 - Workcell-owned containers carry `dev.kujo.workcell=true` and run/project/version labels. Cleanup filters on this ownership label.

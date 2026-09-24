@@ -480,7 +480,6 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     preservation_mode := "none"
     if preserve_failed&&final_ok == false {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
     receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
-    receipt = attach_execution_evidence(receipt, definition, output_dir)
     integration_results := run_integrations(definition, source_info["root"], output_dir, receipt_path, final_status, final_ok)
     receipt["integrations"] := integration_results["results"]
     if integration_results["ok"] {
@@ -491,6 +490,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         warnings = push(warnings, "one or more opt-in ecosystem integrations failed; see receipt.integrations")
         receipt["warnings"] := warnings
     }
+    receipt = attach_execution_evidence(receipt, definition, output_dir)
     final_write := write_receipt(receipt, receipt_path)
     if final_write["ok"] == false {
         receipt = add_error(receipt, "recording", final_write["error"])

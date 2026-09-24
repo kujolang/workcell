@@ -38,6 +38,13 @@ func evidence_refs(output_dir) {
     for name in ["receipt.json", "stdout.log", "stderr.log", "changes.patch", "changes.json", "preservation.json", "handoff-bundle.json"] {
         if file_exists(output_dir + "/" + name) {refs = push(refs, {"$ref": name})}
     }
+    integration_dir := output_dir + "/integrations"
+    if path_is_dir(integration_dir) {
+        for name in list_dir(integration_dir) {
+            relative := "integrations/" + to_string(name)
+            if file_exists(output_dir + "/" + relative) {refs = push(refs, {"$ref": relative})}
+        }
+    }
     return refs
 }
 

@@ -11,6 +11,7 @@ from src.backend.registry import load_backend_registry
 from src.receipts.manifest import verify_manifest
 from src.receipts.v2 import verify_receipt_file
 from src.recovery.recovery import recover_with_adapter
+from src.evidence.retention import cleanup_expired_preservation
 from src.util import get_or, load_json, project_version, save_json
 from src.workspace.workspace import clean_stale_workspaces, inspect_repository, workspace_inventory
 
@@ -40,7 +41,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
     bool_flags := ["json", "summary", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context", "preservation-mode", "retain-until"]
+    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context", "preservation-mode", "retain-until", "preservation", "at"]
     mut positionals := []
     mut flags := {}
     mut i := 0
@@ -121,7 +122,7 @@ func options_for(command) {
     if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json", "summary"]}
     if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "preservation-mode", "retain-until", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
-    if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
+    if command == "clean" {return ["json", "dry-run", "prune-images", "backend", "preservation", "at"]}
     if command == "backends" {return ["json", "manifest"]}
     if command == "recover" {return ["json", "dry-run", "journal", "manifest", "profile"]}
     if command == "help" {return ["json", "help"]}
@@ -172,7 +173,7 @@ func help_value() {
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json", "--summary"]},
         {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--preservation-mode", "--retain-until", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
-        {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
+        {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend", "--preservation", "--at"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
         , {"name": "recover", "options": ["--journal", "--manifest", "--profile", "--dry-run", "--json"]}
         ],
@@ -199,6 +200,7 @@ func print_help(json_mode) {
     "  workcell run [--file <path>] [--repo <path>] [--output <dir>] [options]",
     "  workcell verify --run <dir> [--json]",
     "  workcell clean [--json] [--dry-run] [--prune-images] [--backend docker|podman]",
+    "  workcell clean --preservation <preservation.json> [--at ISO8601] [--dry-run] [--json]",
     "  workcell backends [--manifest <path>] [--json]",
     "  workcell recover --journal <path> --manifest <path> [--profile <path>] [--dry-run] [--json]",
     "",
@@ -643,6 +645,20 @@ func recover_command(parsed) {
 }
 
 func clean_command(parsed) {
+    preservation_path := flag(parsed, "preservation", "")
+    if preservation_path != "" {
+        at_time := flag(parsed, "at", now_utc())
+        result := cleanup_expired_preservation(preservation_path, at_time, has_flag(parsed, "dry-run"))
+        if has_flag(parsed, "json") {
+            print(to_json_pretty(result))
+        } else if result["ok"] {
+            print("Preservation cleanup " + get_or(result, "status", "ready") + ": " + preservation_path)
+        } else {
+            print("Preservation cleanup refused: " + get_or(get_or(result, "error", {}), "message", "unknown error"))
+        }
+        if result["ok"] {return 0}
+        return 9
+    }
     prune_images := has_flag(parsed, "prune-images")
     backend := flag(parsed, "backend", "docker")
     if backend != "docker"&&backend != "podman" {

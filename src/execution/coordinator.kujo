@@ -95,6 +95,8 @@ func attach_preservation(receipt, output_dir, workspace, requested_mode, cleanup
         "output_dir": output_dir,
         "workspace_path": get_or(workspace, "workspace_path", ""),
         "workspace_id": get_or(workspace, "workspace_path", ""),
+        "workspace_strategy": get_or(workspace, "strategy", ""),
+        "source_root": get_or(workspace, "source_root", ""),
         "provider": provider,
         "receipt": receipt,
         "retain_until": retain_until,

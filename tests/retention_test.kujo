@@ -1,0 +1,53 @@
+from src.evidence.preservation import write_preservation_outcome
+from src.evidence.retention import cleanup_expired_preservation
+from src.util import ensure_dir, run_argv
+from src.workspace.workspace import temp_root
+
+mut passed := 0
+mut failed := 0
+
+func expect(name, condition) {
+    if condition {passed = passed + 1; print("PASS " + name)} else {failed = failed + 1; print("FAIL " + name)}
+}
+
+run_identifier := "wc-22222222222222222222222222222222"
+root := "/tmp/workcell-retention-test-" + replace(uuid_v4(), "-", "")
+output_root := root + "/runs"
+output := output_root + "/" + run_identifier
+workspace := temp_root() + "/kujo-workcell-" + run_identifier
+ensure_dir(output)
+ensure_dir(workspace)
+write_file_atomic(workspace + "/changed.txt", "retained", true)
+write_file_atomic(workspace + ".owner", "workcell-run-id=" + run_identifier + "\n", true)
+recorded := write_preservation_outcome({
+    "run_id": run_identifier,
+    "step_id": "workflow",
+    "attempt_id": "attempt-1",
+    "requested_mode": "filesystem",
+    "cleanup_status": "preserved",
+    "output_dir": output,
+    "workspace_path": workspace,
+    "workspace_id": workspace,
+    "workspace_strategy": "isolated-clone",
+    "source_root": root,
+    "provider": "docker",
+    "receipt": {},
+    "retain_until": "2026-09-25T00:00:00Z",
+    "cleanup_owner": "workcell-clean",
+    "cleanup_handle": workspace
+})
+expect("retention fixture is preserved", recorded["ok"]&&file_exists(workspace))
+early := cleanup_expired_preservation(output + "/preservation.json", "2026-09-24T23:59:59Z", false)
+expect("cleanup refuses before expiry", early["ok"] == false&&early["error"]["code"] == "retention_not_expired"&&file_exists(workspace))
+preview := cleanup_expired_preservation(output + "/preservation.json", "2026-09-25T00:00:00Z", true)
+expect("expired cleanup has a non-mutating preview", preview["ok"]&&preview["dry_run"]&&file_exists(workspace))
+deleted := cleanup_expired_preservation(output + "/preservation.json", "2026-09-25T00:00:00Z", false)
+expect("expired owned workspace is deleted", deleted["ok"]&&file_exists(workspace) == false&&file_exists(workspace + ".owner") == false)
+expect("deletion receipt is outside immutable run evidence", starts_with(deleted["deletion_receipt_path"], output_root + "/deletions/")&&file_exists(deleted["deletion_receipt_path"]))
+duplicate := cleanup_expired_preservation(output + "/preservation.json", "2026-09-25T00:00:01Z", false)
+expect("duplicate cleanup is safely rejected", duplicate["ok"] == false&&duplicate["error"]["code"] == "preservation_cleanup_failed")
+
+run_argv(["rm", "-rf", root], 30000)
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

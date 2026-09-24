@@ -132,6 +132,11 @@ states reconstructability and limitations. `--keep-failed` maps to
 patch handoff manifest. Snapshot and live-pause requests report unsupported
 unless a backend supplies them. `--retain-until` records an operator-owned UTC
 deadline; it does not claim provider-side erasure.
+After the deadline, an operator can run `workcell clean --preservation
+<preservation.json>`; Workcell revalidates the exact ownership marker and writes
+a separate deletion receipt outside the immutable run manifest. `--dry-run`
+previews the exact target. Remote/provider deletion continues through the
+provider recovery contract, not this local-filesystem command.
 
 Every non-dry execution also emits `kujo.execution-result/v1` plus a
 `kujo.reexecution-descriptor/v1`. The descriptor retains normalized inputs and

@@ -94,7 +94,7 @@ export func build_preservation_outcome(context) {
         "evidence": evidence,
         "limitations": limitations,
         "created_at": now_utc(),
-        "cleanup": {"owner": get_or(context, "cleanup_owner", "workcell"), "handle": get_or(context, "cleanup_handle", workspace_path)}
+        "cleanup": {"owner": get_or(context, "cleanup_owner", "workcell"), "handle": get_or(context, "cleanup_handle", workspace_path), "strategy": get_or(context, "workspace_strategy", ""), "source_root": get_or(context, "source_root", "")}
     }
     retain_until := get_or(context, "retain_until", "")
     if retain_until != "" {outcome["retain_until"] := retain_until}

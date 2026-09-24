@@ -7,6 +7,8 @@
   deadline metadata without claiming live-runtime suspension or provider erasure.
 - Added portable execution results and conservative re-execution descriptors
   with effect uncertainty, normalized inputs, and secret references.
+- Added explicit expiry-gated cleanup for owned local preservation records with
+  dry-run support and separate deletion receipts.
 
 ## 1.1.0 - 2026-09-04
 

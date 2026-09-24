@@ -12,6 +12,7 @@ printf '%s' "$CLI_SCHEMA" | jq -e '.schema_version == "workcell-cli/v1" and (.gl
 printf '%s' "$CLI_SCHEMA" | jq -e '([.commands[] | select(.name == "run" and (.options | index("--summary") != null))] | length) == 1' >/dev/null
 printf '%s' "$CLI_SCHEMA" | jq -e '([.commands[] | select(.name == "run" and (.options | index("--preservation-mode") != null) and (.options | index("--retain-until") != null))] | length) == 1' >/dev/null
 printf '%s' "$CLI_SCHEMA" | jq -e '([.commands[] | select(.name == "inspect" and (.options | index("--summary") != null))] | length) == 1' >/dev/null
+printf '%s' "$CLI_SCHEMA" | jq -e '([.commands[] | select(.name == "clean" and (.options | index("--preservation") != null) and (.options | index("--at") != null))] | length) == 1' >/dev/null
 grep -Fq 'workcell-receipt/v1' "$ROOT/src/receipts/receipt.kujo"
 grep -Fq 'workcell-runtime-inventory/v1' "$ROOT/src/runtime/docker.kujo"
 grep -Fq 'workcell-clean/v1' "$ROOT/src/cli/cli.kujo"

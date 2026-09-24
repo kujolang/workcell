@@ -31,6 +31,12 @@ the metadata needed to start a new attempt. A re-execution is not a rollback or
 deterministic replay; live network dependencies disable automatic retry and
 leave external effect state explicitly unknown.
 
+Retention expiry never schedules deletion by itself. The explicit
+`clean --preservation` path accepts only an expired, satisfied local-filesystem
+outcome owned by `workcell-clean`, reuses the workspace ownership checks, and
+writes `workcell-preservation-deletion/v1` under the run root's `deletions/`
+directory so the sealed run manifest is not mutated.
+
 Timeouts are distinct from ordinary workload failures. The process API returns a timeout result; Workcell retrieves available container logs, attempts the selected backend's graceful stop, then escalates to label-scoped forced removal. The receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.
 
 ## Exit codes

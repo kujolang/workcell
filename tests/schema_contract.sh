@@ -26,6 +26,8 @@ grep -Fq 'workcell-inspect-summary/v1' "$ROOT/docs/api-compatibility.md"
 jq -e '.properties.schema_version.const == "workcell-backend-conformance/v1" and .additionalProperties == false' "$ROOT/schemas/workcell-backend-conformance-v1.schema.json" >/dev/null
 jq -e '.properties.schema_version.const == "workcell-live-certification/v1"' "$ROOT/schemas/workcell-live-certification-v1.schema.json" >/dev/null
 jq -e '.properties.schema.const == "kujo.preservation-outcome/v1" and (.properties.requested_mode.enum | index("live_pause") != null)' "$ROOT/schemas/preservation-outcome-v1.schema.json" >/dev/null
+jq -e '.properties.schema.const == "kujo.execution-result/v1" and (.properties.status.enum | index("indeterminate") != null)' "$ROOT/schemas/execution-result-v1.schema.json" >/dev/null
+jq -e '.properties.schema.const == "kujo.reexecution-descriptor/v1" and (.properties.capability.enum | index("deterministic_replay") != null)' "$ROOT/schemas/reexecution-descriptor-v1.schema.json" >/dev/null
 grep -Fq 'docs/api-compatibility.md' "$ROOT/README.md"
 
 echo "Schema compatibility contract passed"

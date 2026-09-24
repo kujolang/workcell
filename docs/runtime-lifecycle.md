@@ -25,6 +25,12 @@ collection report filesystem preservation as `unsupported` instead of
 inventing a local path. A handoff bundle records clean source, patch/evidence
 references, limitations, cleanup ownership, and an optional retention deadline.
 
+The same record phase writes `execution-result.json`, `reexecution.json`, and
+`reexecution-input.json`. These separate the observed execution outcome from
+the metadata needed to start a new attempt. A re-execution is not a rollback or
+deterministic replay; live network dependencies disable automatic retry and
+leave external effect state explicitly unknown.
+
 Timeouts are distinct from ordinary workload failures. The process API returns a timeout result; Workcell retrieves available container logs, attempts the selected backend's graceful stop, then escalates to label-scoped forced removal. The receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.
 
 ## Exit codes

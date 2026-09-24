@@ -15,6 +15,8 @@ The Workcell product version and contract identifiers are independent. Workcell 
 | Receipt | `workcell-receipt/v1` | `receipt.json` | `workcell_version` is the product version and `definition_version` is the input contract version; existing fields remain stable and new evidence fields are additive. |
 | Integrity manifest | `workcell-manifest/v1` | `manifest.json` | Relative paths, byte counts, and SHA-256 entries are verified by `workcell verify`. |
 | Preservation outcome | `kujo.preservation-outcome/v1` | `preservation.json` | Requested and actual modes remain distinct; provider capability limits and cleanup ownership are explicit. |
+| Execution result | `kujo.execution-result/v1` | `execution-result.json` | Outcome, classification, effect uncertainty, retry disposition, and evidence refs are portable. |
+| Re-execution descriptor | `kujo.reexecution-descriptor/v1` | `reexecution.json` | Describes a new attempt; deterministic replay is never inferred from retained inputs. |
 | Handoff bundle | `workcell-handoff-bundle/v1` | `handoff-bundle.json` | Clean-source-plus-evidence reconstruction metadata; never a claim of live-process replay. |
 | Portable definition | `workcell-definition/v2alpha1` | selected definition file | Alpha semantic workload contract; provider configuration is excluded. |
 | Backend protocol | `workcell-backend/v1alpha1` | adapter stdin/stdout | Alpha bounded JSONL executable protocol. Request/result envelopes are closed and operation shapes are strict; additive fields require a contract revision while alpha. |

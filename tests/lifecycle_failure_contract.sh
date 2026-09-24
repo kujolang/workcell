@@ -41,7 +41,10 @@ workspace="$(jq -r '.receipt.workspace_path' "$OUTPUT_DIR/result.json")"
 jq -e '.final_status == "verification-failed" and (.lifecycle | index("completed") | not) and (.lifecycle | index("failed") != null) and .verification.checks[0].status == "skipped" and .preservation.schema == "kujo.preservation-outcome/v1" and .preservation.requested_mode == "filesystem" and .preservation.actual_mode == "filesystem" and .preservation.status == "satisfied"' "$receipt" >/dev/null
 preservation="$(dirname "$receipt")/preservation.json"
 jq -e --arg workspace "$workspace" '.schema == "kujo.preservation-outcome/v1" and .requested_mode == "filesystem" and .actual_mode == "filesystem" and .status == "satisfied" and .reconstructability == "same_filesystem" and (.evidence | any(.["$ref"] == $workspace))' "$preservation" >/dev/null
+jq -e '.schema == "kujo.execution-result/v1" and .status == "failure" and .classification == "verification_failure" and .reexecution_descriptor_ref == "reexecution.json"' "$(dirname "$receipt")/execution-result.json" >/dev/null
+jq -e '.schema == "kujo.reexecution-descriptor/v1" and .capability == "re_executable" and .effects.automatic_retry_allowed == true and .external_dependencies[0].mode == "none"' "$(dirname "$receipt")/reexecution.json" >/dev/null
 jq -e '.files | any(.path == "preservation.json" and (.sha256 | length == 64))' "$(dirname "$receipt")/manifest.json" >/dev/null
+jq -e '.files | any(.path == "execution-result.json" and (.sha256 | length == 64)) and any(.path == "reexecution.json" and (.sha256 | length == 64))' "$(dirname "$receipt")/manifest.json" >/dev/null
 test -f "$MARKER_DIR/marker.workload"
 test ! -e "$MARKER_DIR/marker.verify"
 test -d "$workspace"

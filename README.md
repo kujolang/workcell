@@ -117,6 +117,9 @@ Each completed lifecycle writes the applicable evidence:
 ├── manifest.json
 ├── preservation.json
 ├── handoff-bundle.json (when requested and reconstructable)
+├── execution-result.json
+├── reexecution.json
+├── reexecution-input.json
 └── artifacts/
 ```
 
@@ -129,6 +132,13 @@ states reconstructability and limitations. `--keep-failed` maps to
 patch handoff manifest. Snapshot and live-pause requests report unsupported
 unless a backend supplies them. `--retain-until` records an operator-owned UTC
 deadline; it does not claim provider-side erasure.
+
+Every non-dry execution also emits `kujo.execution-result/v1` plus a
+`kujo.reexecution-descriptor/v1`. The descriptor retains normalized inputs and
+secret references, never secret values. Workcell promises inspectability and,
+when source and inputs are present, a new re-execution attempt. It does not
+promise deterministic replay. Network-enabled runs record external effects as
+unknown and require operator policy before retry.
 
 Portable runs use receipt v2. Its controls ledger distinguishes requested, accepted, enforced or provider-claimed, observed, unsupported, and unknown state. A provider name or marketing claim never upgrades an enforcement status.
 

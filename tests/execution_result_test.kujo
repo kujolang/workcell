@@ -1,0 +1,55 @@
+from src.evidence.execution_result import build_reexecution_descriptor, write_execution_evidence
+from src.util import ensure_dir, load_json, run_argv
+
+mut passed := 0
+mut failed := 0
+
+func expect(name, condition) {
+    if condition {passed = passed + 1; print("PASS " + name)} else {failed = failed + 1; print("FAIL " + name)}
+}
+
+root := "/tmp/workcell-execution-result-" + replace(uuid_v4(), "-", "")
+ensure_dir(root)
+definition := {
+    "name": "contract-fixture",
+    "version": "1",
+    "runtime": {"image": "fixture:latest"},
+    "network": {"mode": "none"},
+    "secrets": ["API_TOKEN"],
+    "command": ["true"]
+}
+receipt := {
+    "schema_version": "workcell-receipt/v1",
+    "run_id": "wc-11111111111111111111111111111111",
+    "source_repository": "/fixture/repository",
+    "source_commit": "0123456789abcdef",
+    "container_image": "fixture:latest",
+    "container_image_digest": "sha256:fixture",
+    "network_mode": "none",
+    "start_time": "2026-09-24T00:00:00Z",
+    "end_time": "2026-09-24T00:01:00Z",
+    "final_status": "verification-failed"
+}
+write_file_atomic(root + "/receipt.json", to_json(receipt), true)
+written := write_execution_evidence(definition, receipt, root)
+expect("execution result is emitted", written["ok"]&&file_exists(root + "/execution-result.json")&&file_exists(root + "/reexecution.json")&&file_exists(root + "/reexecution-input.json"))
+expect("verification failure remains distinct", written["result"]["status"] == "failure"&&written["result"]["classification"] == "verification_failure")
+expect("offline workspace-only run permits policy retry", written["descriptor"]["capability"] == "re_executable"&&written["descriptor"]["effects"]["automatic_retry_allowed"])
+expect("secret values are represented only by references", written["descriptor"]["secret_refs"][0] == "secret://environment/API_TOKEN"&&contains(read_file(root + "/reexecution.json"), "API_TOKEN") == 1)
+
+live_definition := parse_json(to_json(definition))
+live_network := live_definition["network"]
+live_network["mode"] := "default"
+live_definition["network"] := live_network
+live_descriptor := build_reexecution_descriptor(live_definition, receipt, root)
+expect("live dependency disables automatic retry", live_descriptor["effects"]["automatic_retry_allowed"] == false&&live_descriptor["external_dependencies"][0]["mode"] == "live")
+live_written := write_execution_evidence(live_definition, receipt, root)
+expect("external effects remain unknown and operator controlled", live_written["result"]["effects"][0]["class"] == "external_non_idempotent"&&live_written["result"]["effects"][0]["state"] == "unknown"&&live_written["result"]["retry"]["disposition"] == "operator_required")
+
+input := load_json(root + "/reexecution-input.json")
+expect("normalized definition is retained without a credential value", input["ok"]&&input["value"]["definition"]["secrets"][0] == "API_TOKEN"&&contains(to_json(input["value"]), "secret-value") == 0)
+
+run_argv(["rm", "-rf", root], 30000)
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

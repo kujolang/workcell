@@ -5,6 +5,8 @@
 - Added provider-neutral preservation outcomes, optional clean-source-plus-patch
   handoff bundles, explicit local/remote capability limitations, and retention
   deadline metadata without claiming live-runtime suspension or provider erasure.
+- Added portable execution results and conservative re-execution descriptors
+  with effect uncertainty, normalized inputs, and secret references.
 
 ## 1.1.0 - 2026-09-04
 

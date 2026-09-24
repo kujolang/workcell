@@ -3,6 +3,7 @@
 from src.backend.oci.driver import builtin_backend_valid, resolve_builtin_backend
 from src.domain.definition import default_definition, validate_definition
 from src.evidence.controls import controls_ledger, requirements_from_definition
+from src.evidence.execution_result import write_execution_evidence
 from src.execution.coordinator import run_workcell
 from src.receipts.manifest import write_manifest
 from src.receipts.v2 import finish_v2, new_v2_receipt
@@ -111,9 +112,17 @@ func normalize_local_receipt(result, definition, profile_id, profile_fingerprint
     if result["ok"] == false {failure_category = result["stage"]}
     finished := finish_v2(receipt, result["receipt_path"], result["stage"], failure_category, cleanup)
     if finished["ok"] == false {return {"ok": false, "error": finished["error"]}}
+    receipt = finished["receipt"]
+    execution_evidence := write_execution_evidence(definition, receipt, output_dir)
+    if execution_evidence["ok"] {
+        receipt["execution_result"] := execution_evidence["result"]
+        receipt["execution_result_path"] := "execution-result.json"
+        receipt["reexecution_descriptor_path"] := "reexecution.json"
+        save_json(result["receipt_path"], receipt)
+    }
     manifest := write_manifest(output_dir, result["run_id"])
     if manifest["ok"] == false {return manifest}
-    return {"ok": true, "receipt": finished["receipt"]}
+    return {"ok": true, "receipt": receipt}
 }
 
 export func run_portable_oci(definition, repo_path, requested_output, profile_id, profile_fingerprint, profile, backend, caller, flags) {

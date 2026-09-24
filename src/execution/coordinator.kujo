@@ -11,6 +11,7 @@ from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 from src.integrations.integrations import dry_run_integrations, run_integrations
 from src.evidence.preservation import write_preservation_outcome
+from src.evidence.execution_result import write_execution_evidence
 
 func option(flags, name, fallback) {
     if type(flags) == "dict"&&has_key(flags, name) == 1 {
@@ -105,6 +106,18 @@ func attach_preservation(receipt, output_dir, workspace, requested_mode, cleanup
         receipt["preservation_path"] := "preservation.json"
     } else {
         receipt = add_error(receipt, "preservation", recorded["error"])
+    }
+    return receipt
+}
+
+func attach_execution_evidence(receipt, definition, output_dir) {
+    recorded := write_execution_evidence(definition, receipt, output_dir)
+    if recorded["ok"] {
+        receipt["execution_result"] := recorded["result"]
+        receipt["execution_result_path"] := "execution-result.json"
+        receipt["reexecution_descriptor_path"] := "reexecution.json"
+    } else {
+        receipt = add_error(receipt, "evidence", recorded["error"])
     }
     return receipt
 }
@@ -220,6 +233,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         preservation_mode := "none"
         if preserve_failed {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
         receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
+        receipt = attach_execution_evidence(receipt, definition, output_dir)
         image_write := write_receipt(receipt, receipt_path)
         if image_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, false, cleanup_status)
@@ -291,6 +305,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         preservation_mode := "none"
         if preserve_failed {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
         receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
+        receipt = attach_execution_evidence(receipt, definition, output_dir)
         start_write := write_receipt(receipt, receipt_path)
         if start_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, false, cleanup_status)
@@ -463,6 +478,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     preservation_mode := "none"
     if preserve_failed&&final_ok == false {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
     receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
+    receipt = attach_execution_evidence(receipt, definition, output_dir)
     integration_results := run_integrations(definition, source_info["root"], output_dir, receipt_path, final_status, final_ok)
     receipt["integrations"] := integration_results["results"]
     if integration_results["ok"] {

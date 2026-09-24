@@ -8,6 +8,7 @@ from src.domain.portable_definition import load_host_profile, load_workcell_defi
 from src.domain.caller_context import load_caller_context
 from src.evidence.controls import controls_ledger, requirements_from_definition
 from src.evidence.preservation import write_preservation_outcome
+from src.evidence.execution_result import write_execution_evidence
 from src.execution.portable_oci import inspect_portable_oci, run_portable_oci
 from src.receipts.manifest import write_manifest
 from src.receipts.v2 import add_v2_error, checkpoint_v2, finish_v2, new_v2_receipt
@@ -199,8 +200,14 @@ func finalize_failure(executable, run_identifier, profile, definition, flags, ou
     if preserved["ok"] {
         receipt["preservation"] := preserved["outcome"]
         receipt["preservation_path"] := "preservation.json"
-        save_json(output_dir + "/receipt.json", receipt)
     }
+    execution_evidence := write_execution_evidence(definition, receipt, output_dir)
+    if execution_evidence["ok"] {
+        receipt["execution_result"] := execution_evidence["result"]
+        receipt["execution_result_path"] := "execution-result.json"
+        receipt["reexecution_descriptor_path"] := "reexecution.json"
+    }
+    save_json(output_dir + "/receipt.json", receipt)
     write_manifest(output_dir, run_identifier)
     return result_value(run_identifier, output_dir, receipt, false, stage, message, exit_code)
 }
@@ -399,8 +406,14 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     if preserved["ok"] {
         receipt["preservation"] := preserved["outcome"]
         receipt["preservation_path"] := "preservation.json"
-        save_json(output_dir + "/receipt.json", receipt)
     }
+    execution_evidence := write_execution_evidence(definition, receipt, output_dir)
+    if execution_evidence["ok"] {
+        receipt["execution_result"] := execution_evidence["result"]
+        receipt["execution_result_path"] := "execution-result.json"
+        receipt["reexecution_descriptor_path"] := "reexecution.json"
+    }
+    save_json(output_dir + "/receipt.json", receipt)
     manifest := write_manifest(output_dir, run_identifier)
     if manifest["ok"] == false {return result_value(run_identifier, output_dir, receipt, false, "recording", manifest["error"], 10)}
     return result_value(run_identifier, output_dir, receipt, status["exit_code"] == 0, status["stage"], "", status["exit_code"])

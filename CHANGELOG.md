@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added provider-neutral preservation outcomes, optional clean-source-plus-patch
+  handoff bundles, explicit local/remote capability limitations, and retention
+  deadline metadata without claiming live-runtime suspension or provider erasure.
+
 ## 1.1.0 - 2026-09-04
 
 ### Provider-neutral execution (alpha)

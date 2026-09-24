@@ -17,6 +17,14 @@ created → validated → preparing → prepared → starting → running
 7. **Record**: write the structured receipt, including failure stage, diagnostics, and a versioned integrity manifest that can be verified offline with `workcell verify`.
 8. **Clean**: remove the labeled container and ownership-marked temporary worktree. On failure, `--keep-failed` preserves only the explicitly owned temporary workspace.
 
+Before the integrity manifest is sealed, Workcell writes
+`preservation.json` using `kujo.preservation-outcome/v1`. Filesystem
+preservation means the owned workspace directory remains; it never means the
+container or process remains alive. Remote providers that are destroyed after
+collection report filesystem preservation as `unsupported` instead of
+inventing a local path. A handoff bundle records clean source, patch/evidence
+references, limitations, cleanup ownership, and an optional retention deadline.
+
 Timeouts are distinct from ordinary workload failures. The process API returns a timeout result; Workcell retrieves available container logs, attempts the selected backend's graceful stop, then escalates to label-scoped forced removal. The receipt records `timeout: true` and the CLI returns exit code `6`. Cleanup is attempted after validation-stage partial setup, image failures, startup failures, workload failures, export failures, and receipt failures.
 
 ## Exit codes

@@ -1,0 +1,59 @@
+from src.evidence.preservation import build_preservation_outcome, write_preservation_outcome, retention_expired
+from src.util import ensure_dir, run_argv
+
+mut passed := 0
+mut failed := 0
+
+func expect(name, condition) {
+    if condition {
+        passed = passed + 1
+        print("PASS " + name)
+    } else {
+        failed = failed + 1
+        print("FAIL " + name)
+    }
+}
+
+root := "/tmp/workcell-preservation-" + replace(uuid_v4(), "-", "")
+output := root + "/run"
+workspace := root + "/workspace"
+ensure_dir(output)
+ensure_dir(workspace)
+write_file_atomic(output + "/receipt.json", "{}", true)
+write_file_atomic(output + "/changes.patch", "diff --git a/a b/a\n", true)
+
+base := {"run_id": "wc-11111111111111111111111111111111", "step_id": "workflow", "attempt_id": "attempt-1", "output_dir": output, "workspace_path": workspace, "provider": "docker", "receipt": {"source_commit": "0123456789abcdef"}, "cleanup_owner": "workcell-clean"}
+
+filesystem_context := parse_json(to_json(base))
+filesystem_context["requested_mode"] := "filesystem"
+filesystem_context["cleanup_status"] := "preserved"
+filesystem := build_preservation_outcome(filesystem_context)
+expect("filesystem preservation is honest about same-filesystem reconstruction", filesystem["ok"]&&filesystem["outcome"]["status"] == "satisfied"&&filesystem["outcome"]["actual_mode"] == "filesystem"&&filesystem["outcome"]["reconstructability"] == "same_filesystem")
+expect("filesystem preservation distinguishes live runtime", contains(to_json(filesystem["outcome"]["limitations"]), "does not keep the container or process alive") == 1)
+
+remote_context := parse_json(to_json(base))
+remote_context["requested_mode"] := "filesystem"
+remote_context["cleanup_status"] := "complete"
+remote_context["workspace_path"] := ""
+remote_context["provider"] := "e2b"
+remote := build_preservation_outcome(remote_context)
+expect("remote unsupported filesystem preservation is explicit", remote["ok"]&&remote["outcome"]["status"] == "unsupported"&&remote["outcome"]["actual_mode"] == "none")
+
+handoff_context := parse_json(to_json(base))
+handoff_context["requested_mode"] := "handoff_bundle"
+handoff_context["cleanup_status"] := "complete"
+handoff_context["retain_until"] := "2026-09-25T00:00:00Z"
+handoff := write_preservation_outcome(handoff_context)
+expect("handoff bundle records clean source plus patch reconstructability", handoff["ok"]&&handoff["outcome"]["actual_mode"] == "handoff_bundle"&&handoff["outcome"]["reconstructability"] == "clean_source_plus_patch"&&file_exists(output + "/handoff-bundle.json")&&file_exists(output + "/preservation.json"))
+expect("retention deadline can be evaluated deterministically", retention_expired(handoff["outcome"], "2026-09-25T00:00:01Z")&&retention_expired(handoff["outcome"], "2026-09-24T23:59:59Z") == false)
+
+snapshot_context := parse_json(to_json(base))
+snapshot_context["requested_mode"] := "snapshot"
+snapshot_context["cleanup_status"] := "complete"
+snapshot := build_preservation_outcome(snapshot_context)
+expect("provider snapshot is not invented", snapshot["ok"]&&snapshot["outcome"]["status"] == "unsupported"&&snapshot["outcome"]["actual_mode"] == "none")
+
+run_argv(["rm", "-rf", root], 30000)
+print("Passed: " + to_string(passed))
+print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

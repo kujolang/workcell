@@ -10,6 +10,7 @@ from src.workspace.workspace import changed_files_from_details, change_details, 
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 from src.integrations.integrations import dry_run_integrations, run_integrations
+from src.evidence.preservation import write_preservation_outcome
 
 func option(flags, name, fallback) {
     if type(flags) == "dict"&&has_key(flags, name) == 1 {
@@ -78,8 +79,34 @@ func final_result(run_identifier, receipt_path, output_dir, receipt, ok, stage, 
         "timed_out": timed_out,
         "cancelled": cancelled,
         "cleanup_status": cleanup_status,
+        "preservation": get_or(receipt, "preservation", null),
         "receipt": receipt
     }
+}
+
+func attach_preservation(receipt, output_dir, workspace, requested_mode, cleanup_status, provider, retain_until) {
+    recorded := write_preservation_outcome({
+        "run_id": get_or(receipt, "run_id", ""),
+        "step_id": "workflow",
+        "attempt_id": "attempt-1",
+        "requested_mode": requested_mode,
+        "cleanup_status": cleanup_status,
+        "output_dir": output_dir,
+        "workspace_path": get_or(workspace, "workspace_path", ""),
+        "workspace_id": get_or(workspace, "workspace_path", ""),
+        "provider": provider,
+        "receipt": receipt,
+        "retain_until": retain_until,
+        "cleanup_owner": "workcell-clean",
+        "cleanup_handle": get_or(workspace, "workspace_path", "")
+    })
+    if recorded["ok"] {
+        receipt["preservation"] := recorded["outcome"]
+        receipt["preservation_path"] := "preservation.json"
+    } else {
+        receipt = add_error(receipt, "preservation", recorded["error"])
+    }
+    return receipt
 }
 
 export func run_workcell(definition_path, repo_path, requested_output, flags) {
@@ -156,6 +183,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
             receipt = add_state(receipt, "cleaned")
         }
         receipt = finish_receipt(receipt, "dry-run", 0, false, "", [], null, [], dry_cleanup_status, current_timestamp() - start_clock, false, false)
+        receipt = attach_preservation(receipt, output_dir, workspace, "none", dry_cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
         dry_write := write_receipt(receipt, receipt_path)
         if dry_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", dry_write["error"], 10, false, false, dry_cleanup_status)
@@ -189,6 +217,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
             receipt = add_state(receipt, "cleaned")
         }
         receipt = finish_receipt(receipt, "failed", 4, false, "", [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
+        preservation_mode := "none"
+        if preserve_failed {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
+        receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
         image_write := write_receipt(receipt, receipt_path)
         if image_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", image_write["error"], 10, false, false, cleanup_status)
@@ -257,6 +288,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
             start_error = "container startup failed and cleanup was incomplete"
         }
         receipt = finish_receipt(receipt, start_status, start_exit_code, false, receipt["container_image_digest"], [], null, [], cleanup_status, current_timestamp() - start_clock, false, false)
+        preservation_mode := "none"
+        if preserve_failed {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
+        receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
         start_write := write_receipt(receipt, receipt_path)
         if start_write["ok"] == false {
             return final_result(run_identifier, receipt_path, output_dir, receipt, false, "internal", start_write["error"], 10, false, false, cleanup_status)
@@ -426,6 +460,9 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         final_error = "Workcell cleanup failed; see receipt errors"
     }
     receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"], receipt["container_image_digest"], changed, patch_path, artifact_list, cleanup_status, current_timestamp() - start_clock, execution_success, artifacts["ok"])
+    preservation_mode := "none"
+    if preserve_failed&&final_ok == false {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
+    receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
     integration_results := run_integrations(definition, source_info["root"], output_dir, receipt_path, final_status, final_ok)
     receipt["integrations"] := integration_results["results"]
     if integration_results["ok"] {

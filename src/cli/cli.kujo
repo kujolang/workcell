@@ -40,7 +40,7 @@ func parse_args(tokens) {
         return {"error": "arguments must be an array"}
     }
     bool_flags := ["json", "summary", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
-    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context"]
+    value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context", "preservation-mode", "retain-until"]
     mut positionals := []
     mut flags := {}
     mut i := 0
@@ -119,7 +119,7 @@ func options_for(command) {
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
     if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json", "summary"]}
-    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
+    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "preservation-mode", "retain-until", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend"]}
     if command == "backends" {return ["json", "manifest"]}
@@ -170,7 +170,7 @@ func help_value() {
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json", "--summary"]},
-        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--preservation-mode", "--retain-until", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
@@ -205,6 +205,8 @@ func print_help(json_mode) {
     "Run options:",
     "  --dry-run       Resolve and record the policy without starting a container",
     "  --keep-failed   Preserve a failed disposable workspace",
+    "  --preservation-mode MODE  none, filesystem, handoff_bundle, snapshot, or live_pause",
+    "  --retain-until ISO8601    Record the operator-owned preservation deadline",
     "  --no-pull       Do not pull a missing image",
     "  --rebuild       Rebuild a configured build context",
     "  --manifest      Explicit external backend manifest (v2)",
@@ -478,6 +480,7 @@ func run_summary(result) {
     verification := get_or(receipt, "verification", {})
     changes := get_or(receipt, "changes", {})
     artifact_section := get_or(receipt, "artifacts", {})
+    preservation := get_or(receipt, "preservation", {})
     cost := get_or(receipt, "cost", {})
     return {
         "schema_version": "workcell-run-summary/v1", "ok": get_or(result, "ok", false), "run_id": get_or(result, "run_id", ""),
@@ -485,7 +488,7 @@ func run_summary(result) {
         "backend": {"adapter_id": get_or(backend, "adapter_id", get_or(receipt, "runtime_backend", "")), "provider_id": get_or(backend, "provider_id", "")},
         "verification": get_or(verification, "status", get_or(verification, "verification_succeeded", null)), "changed_files": len(get_or(changes, "files", get_or(receipt, "changed_files", []))),
         "declared_artifacts": len(get_or(artifact_section, "declared", [])), "cost": {"status": get_or(cost, "status", "unknown"), "class": get_or(cost, "class", "unknown")},
-        "cleanup_status": get_or(result, "cleanup_status", "unknown"), "receipt_path": get_or(result, "receipt_path", null), "output_dir": get_or(result, "output_dir", null), "error": get_or(result, "error", "")
+        "cleanup_status": get_or(result, "cleanup_status", "unknown"), "preservation": {"status": get_or(preservation, "status", "not-recorded"), "requested_mode": get_or(preservation, "requested_mode", "none"), "actual_mode": get_or(preservation, "actual_mode", "none"), "path": get_or(receipt, "preservation_path", null)}, "receipt_path": get_or(result, "receipt_path", null), "output_dir": get_or(result, "output_dir", null), "error": get_or(result, "error", "")
     }
 }
 
@@ -537,6 +540,23 @@ func run_command(parsed) {
     if caller_context != "" {run_flags["context"] := caller_context}
     if has_flag(parsed, "keep-failed") {
         run_flags["keep_failed"] := true
+    }
+    preservation_mode := flag(parsed, "preservation-mode", "")
+    if preservation_mode != "" {
+        if preservation_mode != "none"&&preservation_mode != "filesystem"&&preservation_mode != "handoff_bundle"&&preservation_mode != "snapshot"&&preservation_mode != "live_pause" {
+            print_run_result({"ok": false, "run_id": "", "stage": "validated", "error": "unsupported preservation mode: " + preservation_mode, "exit_code": 2}, has_flag(parsed, "json"), has_flag(parsed, "summary"))
+            return 2
+        }
+        run_flags["preservation_mode"] := preservation_mode
+        run_flags["keep_failed"] := preservation_mode != "none"
+    }
+    retain_until := flag(parsed, "retain-until", "")
+    if retain_until != "" {
+        if contains(retain_until, "T") == 0||ends_with(retain_until, "Z") == 0 {
+            print_run_result({"ok": false, "run_id": "", "stage": "validated", "error": "retain-until must be an ISO 8601 UTC timestamp", "exit_code": 2}, has_flag(parsed, "json"), has_flag(parsed, "summary"))
+            return 2
+        }
+        run_flags["retain_until"] := retain_until
     }
 
     loaded := load_workcell_definition(definition_path(parsed))

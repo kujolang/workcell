@@ -115,10 +115,20 @@ Each completed lifecycle writes the applicable evidence:
 ├── changes.patch
 ├── changes.json
 ├── manifest.json
+├── preservation.json
+├── handoff-bundle.json (when requested and reconstructable)
 └── artifacts/
 ```
 
 The receipt separates Workcell product version, definition version, execution, verification, artifact export, and cleanup results. It records secret names but never intentionally stores secret values. `workcell verify` detects changes to immutable evidence.
+
+Failed-run preservation emits `kujo.preservation-outcome/v1`. The outcome
+separates requested from actual mode, names the provider and cleanup owner, and
+states reconstructability and limitations. `--keep-failed` maps to
+`filesystem`; `--preservation-mode handoff_bundle` writes a clean-source-plus-
+patch handoff manifest. Snapshot and live-pause requests report unsupported
+unless a backend supplies them. `--retain-until` records an operator-owned UTC
+deadline; it does not claim provider-side erasure.
 
 Portable runs use receipt v2. Its controls ledger distinguishes requested, accepted, enforced or provider-claimed, observed, unsupported, and unknown state. A provider name or marketing claim never upgrades an enforcement status.
 

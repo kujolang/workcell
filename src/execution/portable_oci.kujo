@@ -104,6 +104,8 @@ func normalize_local_receipt(result, definition, profile_id, profile_fingerprint
     }
     receipt["errors"] := normalized_errors
     receipt["warnings"] := get_or(legacy, "warnings", [])
+    receipt["preservation"] := get_or(legacy, "preservation", null)
+    receipt["preservation_path"] := get_or(legacy, "preservation_path", null)
     cleanup := {"status": get_or(legacy, "cleanup_status", "unknown"), "journal_path": "", "items": [], "remaining": []}
     failure_category := null
     if result["ok"] == false {failure_category = result["stage"]}

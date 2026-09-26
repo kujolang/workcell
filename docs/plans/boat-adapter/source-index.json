@@ -1,0 +1,81 @@
+{
+  "retrieved_at_utc": "2026-09-26T04:05:09.306306+00:00",
+  "workcell_baseline": "e57ea19",
+  "sources": [
+    {
+      "url": "https://docs.boat.dev/api-keys.md",
+      "sha256": "0356403c484267efa744cc10453b6b203e8b06e5ae6992ca9ff3d61d10e346f5",
+      "bytes": 10778
+    },
+    {
+      "url": "https://docs.boat.dev/api/v1.md",
+      "sha256": "99d18d63491a6e3511fe6f4c6d681c27a5d4177543b28b17365fe160bc79d602",
+      "bytes": 21775
+    },
+    {
+      "url": "https://docs.boat.dev/billing.md",
+      "sha256": "9f959935e8f22df94b3a6c4b01513c6839d5c6c6ece5a4557f59077221bc2113",
+      "bytes": 15451
+    },
+    {
+      "url": "https://docs.boat.dev/data-retention.md",
+      "sha256": "17ffef886293dbeb50df6f12467dcdf3c5df0a233137ab627bcd1e21259772e7",
+      "bytes": 11657
+    },
+    {
+      "url": "https://docs.boat.dev/environments.md",
+      "sha256": "341337fd119724e504f000159ebdf27178de8215292589ad180b9e56697e22a1",
+      "bytes": 20260
+    },
+    {
+      "url": "https://docs.boat.dev/integrated-agents.md",
+      "sha256": "df98ae31bb18f5cd5c379daa4b2a1927939a1cc6e873fa67489c36d7aa079904",
+      "bytes": 54449
+    },
+    {
+      "url": "https://docs.boat.dev/machines.md",
+      "sha256": "132dc84f325b3a0529a27d7776d50d566bb8627575c11f92b516fa035547b1bc",
+      "bytes": 14210
+    },
+    {
+      "url": "https://docs.boat.dev/openapi/boat-v1.yaml",
+      "sha256": "0a769db0ca606e93b3a0b9343087569b75194d8ae84e1aac2dba48119142d13c",
+      "bytes": 195994
+    },
+    {
+      "url": "https://docs.boat.dev/platform-guide.md",
+      "sha256": "d41c58723e16a303bde87877f76395818025f95d0a0c0512a767d995b1052461",
+      "bytes": 14699
+    },
+    {
+      "url": "https://docs.boat.dev/pricing.md",
+      "sha256": "c0a8644630b3e5e5392c6274db11d995bcbdfd7ab0ddf4a6d05a1653b5bcf01e",
+      "bytes": 9281
+    },
+    {
+      "url": "https://docs.boat.dev/sdks/python.md",
+      "sha256": "234069c8412441b42db83eb1d9d6c6bfb0f895f25927977cd7eb16e4803a90e9",
+      "bytes": 87321
+    },
+    {
+      "url": "https://docs.boat.dev/sdks/typescript.md",
+      "sha256": "c64d1475420dfb00cd0d7440e67938a25a20bb0364e540f1ffa982c33636f599",
+      "bytes": 95352
+    },
+    {
+      "url": "https://docs.boat.dev/setup.md",
+      "sha256": "d402e3bb175215fcb57e9e03b5fedaed73fb17523f9e8e744050e8c8cc5b49a6",
+      "bytes": 5090
+    },
+    {
+      "url": "https://docs.boat.dev/snapshots.md",
+      "sha256": "b9da4cef884bc7094cd50dada0828e96292becdd76db4423e23704a23cd9baa7",
+      "bytes": 24601
+    }
+  ],
+  "packages": {
+    "npm": "1.0.1",
+    "npm_integrity": "sha512-s0b4z23vlaS1u25U2wEOwp71HPCUL8fAO/Qqkb01SSzO0LVoRPTn6oF++coPk7XxdR+Wp9j1rF6R9BEFqxmjPg==",
+    "python": "1.0.1"
+  }
+}

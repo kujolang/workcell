@@ -1,10 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## Unreleased
 
 - Added bounded pre-evaluation preservation intent for successful actions.
-
-## Unreleased
+- Added an explicit source-runtime test version override without changing release pins.
 
 - Added provider-neutral preservation outcomes, optional clean-source-plus-patch
   handoff bundles, explicit local/remote capability limitations, and retention

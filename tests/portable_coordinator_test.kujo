@@ -40,6 +40,10 @@ expect("portable lifecycle records phase-separated monotonic timings", has_key(t
 expect("portable receipt verifies offline", verify_receipt_file(result["receipt_path"])["ok"])
 expect("portable manifest verifies offline", verify_manifest(result["output_dir"])["ok"])
 
+retained := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"preserve_until_evaluated": true, "preservation_mode": "handoff_bundle", "retain_until": "2099-01-01T00:00:00Z"})
+expect("successful action exports evidence for later evaluation before finalization", retained["ok"]&&retained["receipt"]["preservation"]["actual_mode"] == "handoff_bundle"&&retained["cleanup_status"] == "complete"&&file_exists(retained["output_dir"] + "/handoff-bundle.json"))
+expect("pre-evaluation preservation is covered by manifest", verify_manifest(retained["output_dir"])["ok"])
+
 dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "tests/fixtures/backend-protocol/manifest.json", "tests/fixtures/portable/profiles.json", "fixture", "", {"dry_run": true})
 expect("portable dry run resolves without provisioning", dry["ok"]&&dry["receipt"]["cleanup"]["status"] == "not-provisioned")
 local_dry := run_portable_workcell("tests/fixtures/portable/workcell.json", repo, output, "", "tests/fixtures/portable/profiles.json", "docker", "", {"dry_run": true})

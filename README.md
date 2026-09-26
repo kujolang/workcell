@@ -193,6 +193,12 @@ KUJO="$KUJO" ./tests/release_report.sh
 git diff --check
 ```
 
+For an explicitly selected source-runtime compatibility run, set
+`WORKCELL_TEST_KUJO_VERSION=1.5.0` alongside `KUJO` when invoking the tests.
+The override checks that exact reported version; it does not change
+`RUNTIME_VERSION`, Docker pins, or certify a release on that runtime. Release
+validation must leave the override unset.
+
 Docker and Podman integration, concurrent-load, egress, doctor, cleanup, self-proof, receipt verification, and ShipCheck commands are documented in [development](docs/development.md) and the [release process](docs/release-process.md).
 
 ## Release and support boundary

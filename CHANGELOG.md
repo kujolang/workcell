@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep pre-evaluation retention validation compatible with the pinned Kujo 1.2.1 runtime, including calendar and UTC clock validation.
+
+- Added bounded pre-evaluation preservation intent for successful actions.
+- Added an explicit source-runtime test version override without changing release pins.
+
 - Added provider-neutral preservation outcomes, optional clean-source-plus-patch
   handoff bundles, explicit local/remote capability limitations, and retention
   deadline metadata without claiming live-runtime suspension or provider erasure.

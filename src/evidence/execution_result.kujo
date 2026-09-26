@@ -84,7 +84,7 @@ export func build_reexecution_descriptor(definition, receipt, output_dir) {
     if net_mode == "none" {dependency_mode = "none"}
     descriptor := {
         "schema": "kujo.reexecution-descriptor/v1",
-        "capability": "re_executable",
+        "capability": "re_executable", "mode": "clean_workspace", "source_attempt_id": "attempt-1",
         "source": source,
         "workflow": {"id": definition_name, "version": definition_version, "sha256": definition_hash},
         "tool": {"name": "workcell", "version": project_version()},

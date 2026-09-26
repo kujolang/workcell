@@ -41,6 +41,8 @@ test "$(grep -Fc "ARG KUJO_COMMIT=$KUJO_COMMIT" "$ROOT/docker/kujo/Dockerfile.lo
 test "$(grep -Fc "KUJO_COMMIT=\"$KUJO_COMMIT\"" "$ROOT/docker/kujo/build-local.sh")" -eq 1
 
 test "$(KUJO="$KUJO" "$ROOT/bin/workcell" --version)" = "Workcell $VERSION"
-test "$("$KUJO" --version)" = "kujo 1.2.1"
+expected_runtime="${WORKCELL_TEST_KUJO_VERSION:-1.2.1}"
+[[ "$expected_runtime" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+test "$("$KUJO" --version)" = "kujo $expected_runtime"
 
-echo "Version consistency passed: Workcell $VERSION on Kujo $KUJO_COMMIT"
+echo "Version consistency passed: Workcell $VERSION; release pin $KUJO_COMMIT; tested Kujo $expected_runtime"

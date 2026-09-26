@@ -1,4 +1,4 @@
-from src.evidence.preservation import build_preservation_outcome, write_preservation_outcome, retention_expired
+from src.evidence.preservation import build_preservation_outcome, write_preservation_outcome, retention_expired, validate_preservation_intent
 from src.util import ensure_dir, run_argv
 
 mut passed := 0
@@ -53,6 +53,16 @@ snapshot_context["cleanup_status"] := "complete"
 snapshot := build_preservation_outcome(snapshot_context)
 expect("provider snapshot is not invented", snapshot["ok"]&&snapshot["outcome"]["status"] == "unsupported"&&snapshot["outcome"]["actual_mode"] == "none")
 
+expect("late-evaluation intent needs future deadline", validate_preservation_intent({"preserve_until_evaluated": true})["ok"] == false)
+expect("invalid dates cannot retain workspaces", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": "2099-99-99T99:99:99Z"})["ok"] == false)
+expect("valid bounded intent accepted", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": "2099-01-01T00:00:00Z"})["ok"])
+for deadline in ["2099-02-29T00:00:00Z", "2099-01-01T24:00:00Z", "2099-01-01T00:60:00Z", "2099-01-01T00:00:60Z", "2099-01-01T00:00:00+00:00", "2000-01-01T00:00:00Z"] {
+    expect("invalid or expired UTC deadline rejected: " + deadline, validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": deadline})["ok"] == false)
+}
+expect("valid leap day accepted", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": "2096-02-29T23:59:59Z"})["ok"])
+expect("fractional UTC deadline accepted", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": "2099-01-01T00:00:00.125Z"})["ok"])
+expect("non-string deadline rejected", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": 123})["ok"] == false)
+expect("none cannot satisfy pre-evaluation retention", validate_preservation_intent({"preserve_until_evaluated": true, "retain_until": "2099-01-01T00:00:00Z", "preservation_mode": "none"})["ok"] == false)
 run_argv(["rm", "-rf", root], 30000)
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))

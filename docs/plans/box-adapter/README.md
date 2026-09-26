@@ -1,5 +1,7 @@
 # WorkCell + Box by ASCII: research and architecture build plan
 
+> Historical research. The [September 26 Boat review](../boat-adapter/README.md) is the current integration plan and supersedes conflicting provider facts and preservation milestones below.
+
 Research date: **2026-09-05**. Audience: WorkCell maintainers and the implementation agent. Status: **research complete; conditional build recommendation; no integration implemented and no live certification**.
 
 WorkCell baseline: `074d7262ef6c565e3dabd22ee046228c7329e5c1`, product `1.1.0`, inspected directly in the local repository. Required Kujo: `1.2.1`, commit `692512a9070fdba713f160d795bbddb8077db7b5`. Box baseline: public API `/api/box/v1`, OpenAPI document version `1.0.0`; npm SDK `0.0.34`; Python SDK `0.0.35`. These identify the research inputs, not a tested deployment.

@@ -216,6 +216,7 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 - [Remote provider operations](docs/provider-operations.md)
 - [Official adapter distribution](docs/official-adapter-distribution.md)
 - Provider operations: [E2B](docs/providers/e2b.md), [Vercel Sandbox](docs/providers/vercel-sandbox.md), [Daytona](docs/providers/daytona.md)
+- [Boat integration research and current build gates](docs/plans/boat-adapter/README.md)
 - [Backend matrix research and implementation package](docs/plans/backend-matrix/README.md)
 - [Backend matrix productionization mega prompt](MEGA_PROMPT.md)
 - [API compatibility and machine contracts](docs/api-compatibility.md)

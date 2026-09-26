@@ -40,7 +40,7 @@ func parse_args(tokens) {
     if type(tokens) != "array" {
         return {"error": "arguments must be an array"}
     }
-    bool_flags := ["json", "summary", "schema", "keep-failed", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
+    bool_flags := ["json", "summary", "schema", "keep-failed", "preserve-until-evaluated", "dry-run", "no-pull", "rebuild", "force", "prune-images", "help", "version"]
     value_flags := ["file", "repo", "output", "backend", "run", "manifest", "journal", "profile", "profiles", "cancel-file", "context", "preservation-mode", "retain-until", "preservation", "at"]
     mut positionals := []
     mut flags := {}
@@ -120,7 +120,7 @@ func options_for(command) {
     if command == "init" {return ["file", "force"]}
     if command == "validate" {return ["file", "json", "schema"]}
     if command == "inspect" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "json", "summary"]}
-    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "preservation-mode", "retain-until", "dry-run", "keep-failed", "no-pull", "rebuild", "json", "summary"]}
+    if command == "run" {return ["file", "repo", "output", "backend", "manifest", "profiles", "profile", "cancel-file", "context", "preservation-mode", "retain-until", "dry-run", "keep-failed", "preserve-until-evaluated", "no-pull", "rebuild", "json", "summary"]}
     if command == "verify" {return ["run", "json"]}
     if command == "clean" {return ["json", "dry-run", "prune-images", "backend", "preservation", "at"]}
     if command == "backends" {return ["json", "manifest"]}
@@ -171,7 +171,7 @@ func help_value() {
         {"name": "init", "options": ["--file", "--force"]},
         {"name": "validate", "options": ["--file", "--json", "--schema"]},
         {"name": "inspect", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--json", "--summary"]},
-        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--preservation-mode", "--retain-until", "--dry-run", "--keep-failed", "--no-pull", "--rebuild", "--json", "--summary"]},
+        {"name": "run", "options": ["--file", "--repo", "--output", "--backend", "--manifest", "--profiles", "--profile", "--cancel-file", "--context", "--preservation-mode", "--retain-until", "--dry-run", "--keep-failed", "--preserve-until-evaluated", "--no-pull", "--rebuild", "--json", "--summary"]},
         {"name": "verify", "options": ["--run", "--json"]},
         {"name": "clean", "options": ["--json", "--dry-run", "--prune-images", "--backend", "--preservation", "--at"]}
         , {"name": "backends", "options": ["--json", "--manifest"]}
@@ -207,6 +207,7 @@ func print_help(json_mode) {
     "Run options:",
     "  --dry-run       Resolve and record the policy without starting a container",
     "  --keep-failed   Preserve a failed disposable workspace",
+    "  --preserve-until-evaluated  Retain/export before cleanup, including successful actions (requires deadline)",
     "  --preservation-mode MODE  none, filesystem, handoff_bundle, snapshot, or live_pause",
     "  --retain-until ISO8601    Record the operator-owned preservation deadline",
     "  --no-pull       Do not pull a missing image",
@@ -561,6 +562,14 @@ func run_command(parsed) {
         run_flags["retain_until"] := retain_until
     }
 
+    if has_flag(parsed, "preserve-until-evaluated") {
+        if retain_until == ""||retain_until <= now_utc() {
+            print_run_result({"ok": false, "run_id": "", "stage": "validated", "error": "preserve-until-evaluated requires a future --retain-until UTC deadline", "exit_code": 2}, has_flag(parsed, "json"), has_flag(parsed, "summary"))
+            return 2
+        }
+        run_flags["preserve_until_evaluated"] := true
+        if preservation_mode == "" {run_flags["preservation_mode"] := "handoff_bundle"}
+    }
     loaded := load_workcell_definition(definition_path(parsed))
     mut result := null
     if loaded["ok"]&&get_or(loaded, "version", 1) == 2 {

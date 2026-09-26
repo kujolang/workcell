@@ -7,7 +7,7 @@ from src.backend.types import backend_contract_id, backend_handle, validate_back
 from src.domain.portable_definition import load_host_profile, load_workcell_definition, validate_profile_budgets
 from src.domain.caller_context import load_caller_context
 from src.evidence.controls import controls_ledger, requirements_from_definition
-from src.evidence.preservation import write_preservation_outcome
+from src.evidence.preservation import write_preservation_outcome, validate_preservation_intent
 from src.evidence.execution_result import write_execution_evidence
 from src.execution.portable_oci import inspect_portable_oci, run_portable_oci
 from src.receipts.manifest import write_manifest
@@ -182,6 +182,7 @@ func finalize_failure(executable, run_identifier, profile, definition, flags, ou
     finished := finish_v2(receipt, output_dir + "/receipt.json", stage, stage, cleanup)
     if finished["ok"] {receipt = finished["receipt"]}
     preservation_mode := "none"
+    if get_or(flags, "preserve_until_evaluated", false) {preservation_mode = get_or(flags, "preservation_mode", "handoff_bundle")}
     if (option(flags, "keep_failed", false)||get_or(definition["cleanup"], "keep_failed", false))&&exit_code != 0 {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
     preserved := write_preservation_outcome({
         "run_id": run_identifier,
@@ -213,6 +214,8 @@ func finalize_failure(executable, run_identifier, profile, definition, flags, ou
 }
 
 export func run_portable_workcell(definition_path, repo_path, requested_output, manifest_path, profiles_path, profile_id, backend_override, flags) {
+    intent_validation := validate_preservation_intent(flags)
+    if intent_validation["ok"] == false {return intent_validation}
     total_started := performance_now()
     run_identifier := run_id()
     loaded := load_workcell_definition(definition_path)
@@ -388,6 +391,7 @@ export func run_portable_workcell(definition_path, repo_path, requested_output, 
     finished := finish_v2(receipt, output_dir + "/receipt.json", status["stage"], failure_category, cleanup)
     if finished["ok"] {receipt = finished["receipt"]}
     preservation_mode := "none"
+    if get_or(flags, "preserve_until_evaluated", false) {preservation_mode = get_or(flags, "preservation_mode", "handoff_bundle")}
     if (option(flags, "keep_failed", false)||get_or(definition["cleanup"], "keep_failed", false))&&status["exit_code"] != 0 {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
     preserved := write_preservation_outcome({
         "run_id": run_identifier,

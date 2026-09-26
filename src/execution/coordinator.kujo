@@ -10,7 +10,7 @@ from src.workspace.workspace import changed_files_from_details, change_details, 
 from src.verification.verification import run_verification_checks
 from src.policy.policy import build_policy
 from src.integrations.integrations import dry_run_integrations, run_integrations
-from src.evidence.preservation import write_preservation_outcome
+from src.evidence.preservation import write_preservation_outcome, validate_preservation_intent
 from src.evidence.execution_result import write_execution_evidence
 
 func option(flags, name, fallback) {
@@ -125,6 +125,8 @@ func attach_execution_evidence(receipt, definition, output_dir) {
 }
 
 export func run_workcell(definition_path, repo_path, requested_output, flags) {
+    intent_validation := validate_preservation_intent(flags)
+    if intent_validation["ok"] == false {return intent_validation}
     run_identifier := run_id()
     loaded := load_definition(definition_path)
     if loaded["ok"] == false {
@@ -425,7 +427,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "cleaning", container_cleanup["message"])
     }
     preserve_workspace := execution_success == false||workspace_safe == false||logs_ok == false||patch["ok"] == false||change_report["ok"] == false||verification_run["ok"] == false||artifacts["ok"] == false
-    cleanup := cleanup_workspace(workspace, preserve_failed&&preserve_workspace)
+    cleanup := cleanup_workspace(workspace, (preserve_failed&&preserve_workspace)||(get_or(flags, "preserve_until_evaluated", false)&&get_or(flags, "preservation_mode", "handoff_bundle") == "filesystem"))
     cleanup_status := "failed"
     if cleanup["ok"] {
         if get_or(cleanup, "preserved", false) {
@@ -479,6 +481,7 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     receipt = finish_receipt(receipt, final_status, exit_code, container["timed_out"], receipt["container_image_digest"], changed, patch_path, artifact_list, cleanup_status, current_timestamp() - start_clock, execution_success, artifacts["ok"])
     preservation_mode := "none"
     if preserve_failed&&final_ok == false {preservation_mode = get_or(flags, "preservation_mode", "filesystem")}
+    if get_or(flags, "preserve_until_evaluated", false) {preservation_mode = get_or(flags, "preservation_mode", "handoff_bundle")}
     receipt = attach_preservation(receipt, output_dir, workspace, preservation_mode, cleanup_status, definition["runtime"]["backend"], get_or(flags, "retain_until", ""))
     integration_results := run_integrations(definition, source_info["root"], output_dir, receipt_path, final_status, final_ok)
     receipt["integrations"] := integration_results["results"]

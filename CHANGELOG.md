@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Added bounded pre-evaluation preservation intent for successful actions.
+
 ## Unreleased
 
 - Added provider-neutral preservation outcomes, optional clean-source-plus-patch

@@ -48,3 +48,8 @@ The Workcell product version and contract identifiers are independent. Workcell 
 - Patch releases preserve all v1 contracts. Minor releases may add optional commands, fields, or evidence with safe defaults. Consumers should pin the Workcell release and inspect the changelog before upgrading.
 
 The definition schema is intentionally stricter for input than the result schemas are for output: misspelled policy input must fail closed, while result consumers must remain forward-compatible with additive evidence.
+
+`run --preserve-until-evaluated` is additive. It requires a future
+`--retain-until` deadline and defaults to `handoff_bundle`. Re-execution
+metadata now includes `mode: clean_workspace` and `source_attempt_id`;
+consumers of the existing v1 descriptor must continue ignoring unknown fields.

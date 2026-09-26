@@ -63,3 +63,18 @@ Remote execution uses `resolve → provision → prepare → execute → collect
 Cancel and inventory are mandatory protocol operations used by control and recovery paths. `--cancel-file` gives local callers and agent hosts a deterministic cancellation hook for both v1 containers and portable execute operations. Portable cancellation terminates the adapter process, records a cancelled result, and destroys the owned remote resource from its durable handle; it does not claim that a provider performed graceful process cancellation. Pause, resume, snapshot, and metrics remain optional capabilities and do not alter the canonical success lifecycle. Workcell does not retry workloads; Dispatch or Relay may start a new correlated Workcell attempt under their own policy.
 
 Portable Docker and Podman use the same stable OCI lifecycle implementation as v1 rather than an external subprocess adapter. This keeps engine launch, streaming, artifact export, verification, and cleanup behavior identical while the coordinator presents the backend-neutral receipt v2 contract.
+
+## Evaluation after execution
+
+Use `run --preserve-until-evaluated --retain-until <future-UTC-time>` when an
+external gate runs after the action. The intent is declared before execution.
+The default mode is `handoff_bundle`: export declared artifacts, logs and source
+references before destroying provider resources; then write the preservation
+outcome and hash manifest. Local `--preservation-mode filesystem` also retains
+the successful owned workspace. Runtime containers are still destroyed.
+Remote filesystem/live-pause/snapshot requests remain explicitly unsupported
+unless an adapter actually supplies the capability. No remote resource is kept
+alive indefinitely. Review the outcome, not the requested mode, before choosing
+re-execution. Cleanup remains operator-owned through the recorded deadline and
+existing `clean --preservation` command; the flag does not start a timer daemon.
+Without this opt-in, successful workspaces keep their existing cleanup behavior.

@@ -114,3 +114,20 @@ export func retention_expired(outcome, at_time) {
     if retain_until == "" {return false}
     return retain_until <= at_time
 }
+
+# Validate intent before any provider admission, not after destructive cleanup.
+export func validate_preservation_intent(flags) {
+    if get_or(flags, "preserve_until_evaluated", false) != true {return {"ok": true}}
+    deadline := get_or(flags, "retain_until", "")
+    valid := false
+    try {
+        if type(deadline) == "string"&&ends_with(deadline, "Z") {
+            seconds := parse_datetime(deadline)
+            if type(seconds) == "float"||type(seconds) == "int" {valid = seconds > parse_datetime(now_utc())}
+        }
+    } except err {valid = false}
+    if valid == false||get_or(flags, "preservation_mode", "handoff_bundle") == "none" {
+        return {"ok": false, "run_id": "", "stage": "validated", "error": "pre-evaluation preservation requires a real mode and valid future UTC retention deadline", "exit_code": 2}
+    }
+    return {"ok": true}
+}

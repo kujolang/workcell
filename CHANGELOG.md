@@ -75,3 +75,5 @@ The provider-neutral surface and remote adapters remain alpha. Production promot
 
 - Initial Docker-first Workcell MVP.
 - Added JSON definition validation, restrictive policy construction, disposable Git workspaces, artifact boundaries, receipts, doctor diagnostics, examples, and offline contract tests.
+
+Unreleased experimental addition: [controlled Git process participant](docs/controlled-git-participant.md), with one-use admission and content-addressed correlation. Dispatch remains replay authority; the existing Git CAS predicate is unchanged.

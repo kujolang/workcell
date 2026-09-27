@@ -1,0 +1,24 @@
+# Trusted host recorder: process outcome is supplied by the supervisor, never caller JSON.
+from src.evidence.git_effect import git_effect_observe
+func artifact(root, value) {
+    raw := to_json(value); digest := sha256(raw)
+    write_file_atomic_beneath(root, "artifacts/" + digest + ".json", raw, false)
+    return "sha256:" + digest
+}
+args := args(); root := args[0]; attempt := args[1]; outcome := args[2]
+if contains(["completion_lost", "completed"], outcome) == false {throw("invalid process outcome")}
+config := parse_json(read_file_beneath(root, "config.json", 8192))
+context := parse_json(read_file_beneath(root, "git-context-" + attempt + ".json", 4096))
+observed := git_effect_observe(config["repo"], config["intent"], config["old_oid"], config["new_oid"])
+if observed["ok"] == false {throw("Git observation unavailable")}
+stamp := format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
+correlation := {"participant_id": context["participant_id"], "participant_call_id": context["participant_call_id"], "participant_invocation_id": context["participant_invocation_id"], "workcell_effect_id": context["workcell_effect_id"], "transaction_sha256": context["transaction_sha256"], "outcome": outcome}
+result := {"schema": "kujo.execution-result/v1", "result_id": "git-result-" + attempt, "subject": {"run_id": context["dispatch_run_id"], "step_id": context["dispatch_step_id"], "attempt_id": attempt}, "producer": {"name": "workcell-git-process", "version": "1"}, "status": "indeterminate", "classification": "unknown", "started_at": stamp, "finished_at": stamp, "attempt": parse_int(attempt), "effects": [{"effect_id": context["dispatch_effect_id"], "class": "external_idempotent", "state": "unknown", "idempotency_key": "fixture-key", "enforced_by": "git-local", "enforcement_evidence_ref": observed["observation"]["evidence_ref"]}], "evidence": [], "process_correlation": correlation, "preservation_outcome": context["preservation"]}
+if outcome == "completed" {result["status"] := "success"}
+handoff := {"schema": "workcell.git-process-handoff/v1alpha1", "dispatch_run_id": context["dispatch_run_id"], "dispatch_step_id": context["dispatch_step_id"], "dispatch_attempt_id": attempt, "dispatch_effect_id": context["dispatch_effect_id"], "execution_result_ref": artifact(root, result), "assurance_ref": null}
+for field in keys(correlation) {handoff[field] := correlation[field]}
+if byte_length(to_json(handoff)) > 4096 {throw("handoff bound")}
+reference := artifact(root, handoff)
+write_file_atomic_beneath(root, "result-" + attempt + ".json", to_json(result), false)
+write_file_atomic_beneath(root, "git-handoff-" + attempt + ".ref", reference, false)
+print(to_json({"ok": true, "outcome": outcome, "handoff_ref": reference}))

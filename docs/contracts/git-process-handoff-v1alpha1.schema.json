@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workcell.git-process-handoff/v1alpha1",
+  "description": "Experimental correlation only; maximum UTF-8 document size 4096 bytes. Canonical compact sorted JSON; no control characters in identifiers. No replay authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "participant_id",
+    "participant_call_id",
+    "participant_invocation_id",
+    "workcell_effect_id",
+    "dispatch_run_id",
+    "dispatch_step_id",
+    "dispatch_attempt_id",
+    "dispatch_effect_id",
+    "outcome",
+    "execution_result_ref",
+    "assurance_ref",
+    "transaction_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "workcell.git-process-handoff/v1alpha1"
+    },
+    "participant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "participant_call_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "participant_invocation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "workcell_effect_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "dispatch_run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "dispatch_step_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "dispatch_attempt_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "dispatch_effect_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
+    },
+    "outcome": {
+      "enum": [
+        "completion_lost",
+        "completed"
+      ]
+    },
+    "execution_result_ref": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "assurance_ref": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      ]
+    },
+    "transaction_sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

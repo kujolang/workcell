@@ -1,0 +1,39 @@
+# Operator launches this entrypoint with a private root. Caller supplies only a call ID.
+# No retry: a lost process outcome must return to Dispatch review.
+from src.evidence.git_effect import git_effect_apply
+args := args()
+root := args[0]; attempt := args[1]
+admitted := false
+try {
+    config := parse_json(read_file_beneath(root, "config.json", 8192))
+    request := parse_json(read_file_beneath(root, "git-request-" + attempt + ".json", 1024))
+    ticket := parse_json(read_file_beneath(root, "git-ticket-" + attempt + ".json", 4096))
+    current := parse_json(read_file_beneath(root, "git-current-ticket.json", 128))
+    if type(request) != "dict"||len(keys(request)) != 1||request["call_id"] != ticket["participant_call_id"]||current["attempt"] != attempt||ticket["dispatch_attempt_id"] != attempt||ticket["valid_until"] <= now_utc_seconds()||ticket["transaction_sha256"] != sha256(to_json(config["intent"])) {throw("denied")}
+    fields := ["participant_id", "participant_call_id", "workcell_effect_id", "dispatch_run_id", "dispatch_step_id", "dispatch_attempt_id", "dispatch_effect_id", "transaction_sha256", "preservation", "valid_until"]
+    if type(ticket) != "dict"||len(keys(ticket)) != len(fields)||ticket["participant_id"] != "local-git-process" {throw("denied")}
+    for field in fields {if has_key(ticket, field) == false {throw("denied")}}
+    for field in ["participant_id", "participant_call_id", "workcell_effect_id", "dispatch_run_id", "dispatch_step_id", "dispatch_attempt_id", "dispatch_effect_id"] {
+        value := ticket[field]
+        if type(value) != "string"||byte_length(value) > 128||contains(value, "\n") != 0||regex_match(value, "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$") == false {throw("denied")}
+    }
+    if regex_match(attempt, "^[1-9][0-9]{0,8}$") == false||type(ticket["valid_until"]) != "int"||ticket["valid_until"] > now_utc_seconds() + 120 {throw("denied")}
+    preservation := ticket["preservation"]
+    if preservation["subject"]["run_id"] != ticket["dispatch_run_id"]||preservation["subject"]["step_id"] != ticket["dispatch_step_id"]||preservation["subject"]["attempt_id"] != attempt {throw("denied")}
+    # Exclusive confined creation is the atomic one-use claim, shared by all processes.
+    write_file_atomic_beneath(root, "git-claim-" + attempt, to_json(ticket), false)
+    admitted = true
+    ticket["participant_invocation_id"] := uuid_v4()
+    write_file_atomic_beneath(root, "git-context-" + attempt + ".json", to_json(ticket), false)
+    if ticket["valid_until"] <= now_utc_seconds() {throw("denied")}
+    append_file(root + "/git-participant-invocations", attempt + "\n")
+    boundary := ""
+    if attempt == "1" {boundary = config["boundary"]}
+    answer := git_effect_apply(config["repo"], config["intent"], config["old_oid"], config["new_oid"], boundary)
+    if answer["ok"] == false {throw("uncertain")}
+    print(to_json({"ok": true, "outcome": "completed"}))
+} except ignored {
+    outcome := "not_admitted"
+    if admitted {outcome = "completion_unknown"}
+    print(to_json({"ok": false, "outcome": outcome}))
+}

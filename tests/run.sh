@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
+(cd "$ROOT" && "$KUJO" run tests/git_commitment_vectors.kujo)
 
 check_all() {
   "$KUJO" check "$ROOT/main.kujo"

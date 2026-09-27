@@ -1,5 +1,8 @@
 # Workcell
 
+Unreleased Wave C: [normative assurance profile](docs/contracts/git-assurance-profile.md) and portable commitment vectors now define the existing local predicate for alpha and proposed opt-in beta envelopes. No stable execution contract or default admission changes.
+
+
 Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
 
 [![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/workcell/releases/tag/v1.1.0)

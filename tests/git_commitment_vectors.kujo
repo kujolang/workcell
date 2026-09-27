@@ -1,0 +1,6 @@
+suite := parse_json(read_file("tests/vectors/git-assurance-commitments.json"))
+for vector in suite["vectors"] {
+    if vector["recipe"] == "alpha_json" {assert(to_json(vector["input"]) == vector["preimage_utf8"], vector["name"])}
+    assert(sha256(vector["preimage_utf8"]) == vector["sha256"])
+}
+print("PASS Git intent/evidence commitment vectors")

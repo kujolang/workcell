@@ -1,5 +1,8 @@
 # Changelog
 
+Unreleased: publish the application-owned effect-assurance profile specification, version manifest and portable commitment vectors with a source-runtime regression. Alpha retained; proposed beta adoption remains opt-in. No adapter execution behavior changes.
+
+
 Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
 
 ## Unreleased

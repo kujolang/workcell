@@ -1,5 +1,7 @@
 # Workcell
 
+Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
+
 [![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/workcell/releases/tag/v1.1.0)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)

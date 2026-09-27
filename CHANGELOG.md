@@ -1,5 +1,7 @@
 # Changelog
 
+Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
+
 ## Unreleased
 
 - Keep pre-evaluation retention validation compatible with the pinned Kujo 1.2.1 runtime, including calendar and UTC clock validation.

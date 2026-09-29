@@ -1,11 +1,11 @@
-# Workcell 1.1 Launch Checklist
+# Workcell 1.2 Launch Checklist
 
-Workcell 1.1 is stable for the documented local and CI Docker/Podman execution contract. Its provider-neutral contracts and remote adapters remain alpha. This checklist does not claim universal sandboxing, hosted multi-tenant readiness, operator egress or image governance, signing-key custody, retention compliance, or enterprise certification.
+Workcell 1.2 is stable for the documented local and CI Docker/Podman execution contract. Its provider-neutral contracts and remote adapters remain alpha. This checklist does not claim universal sandboxing, hosted multi-tenant readiness, operator egress or image governance, signing-key custody, retention compliance, or enterprise certification.
 
 ## Preparation acceptance
 
-- [ ] Product version surfaces and release artifact names agree on `1.1.0`.
-- [ ] Released Kujo 1.2.1 commit `692512a9070fdba713f160d795bbddb8077db7b5` is pinned and used for every gate.
+- [ ] Product version surfaces and release artifact names agree on `1.2.0`.
+- [ ] Released Kujo 1.6.0 commit `44af277848173664f72ca85f2a1b3b98d634ecdd` is pinned and used for every gate.
 - [ ] Offline, CLI, format, lint, version, release-report, Markdown-link, and whitespace gates pass.
 - [ ] Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup pass.
 - [ ] Podman doctor, OCI smoke, integration, concurrent-load, egress, and cleanup pass on supported Linux.
@@ -18,7 +18,7 @@ The commands, expected artifacts, rollback plan, tag procedure, and GitHub Relea
 
 ## Local preparation evidence — 2026-08-08
 
-The released Kujo runtime must be built from the exact `RUNTIME_VERSION` revision and verified as `kujo 1.2.1`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck must pass locally. Docker isolation characteristics remain explicit doctor evidence rather than implied security guarantees.
+The released Kujo runtime must be built from the exact `RUNTIME_VERSION` revision and verified as `kujo 1.6.0`. The Workcell CLI, version consistency, offline suite, quality gate, release report, Markdown-link audit, Docker image build, Docker doctor, Docker integration, four-run concurrent load, Docker egress enforcement, real Workcell self-proof, offline receipt verification, and ShipCheck must pass locally. Docker isolation characteristics remain explicit doctor evidence rather than implied security guarantees.
 
 Rootless Docker on the local Colima Linux VM was refreshed on 2026-09-04.
 Doctor, OCI smoke, the full integration suite, four concurrent runs, and the
@@ -40,4 +40,4 @@ The old pre-runner billing failure is no longer an active blocker. A later relea
 
 ## Prohibited before approval
 
-Do not create or push `v1.1.0`, create the GitHub Release, publish images or packages, deploy hosted runners, modify branch protection or repository policy, use live credentials, or force-push during preparation.
+Do not create or push `v1.2.0`, create the GitHub Release, publish images or packages, deploy hosted runners, modify branch protection or repository policy, use live credentials, or force-push during preparation.

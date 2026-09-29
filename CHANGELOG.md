@@ -1,24 +1,12 @@
 # Changelog
 
-Unreleased: publish the application-owned effect-assurance profile specification, version manifest and portable commitment vectors with a source-runtime regression. Alpha retained; proposed beta adoption remains opt-in. No adapter execution behavior changes.
+## 1.2.0 - 2026-09-29
 
-
-Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
-
-## Unreleased
-
-- Keep pre-evaluation retention validation compatible with the pinned Kujo 1.2.1 runtime, including calendar and UTC clock validation.
-
-- Added bounded pre-evaluation preservation intent for successful actions.
-- Added an explicit source-runtime test version override without changing release pins.
-
-- Added provider-neutral preservation outcomes, optional clean-source-plus-patch
-  handoff bundles, explicit local/remote capability limitations, and retention
-  deadline metadata without claiming live-runtime suspension or provider erasure.
-- Added portable execution results and conservative re-execution descriptors
-  with effect uncertainty, normalized inputs, and secret references.
-- Added explicit expiry-gated cleanup for owned local preservation records with
-  dry-run support and separate deletion receipts.
+- Add bounded pre-evaluation preservation intent, provider-neutral preservation outcomes, retention deadlines and expiry-gated owned cleanup with separate deletion receipts.
+- Add portable execution results, conservative re-execution descriptors and optional clean-source-plus-patch handoff bundles. Preserved evidence does not imply live-process replay or universal recovery.
+- Include the experimental Git CAS assurance profile, portable commitment vectors and controlled process participant with one-use admission and bounded evidence references. Wave C beta remains opt-in in the bounded single-effect required/deny domain; alpha remains supported. Dispatch alone decides replay.
+- Reconcile the supported release runtime and container source pin to published Kujo 1.6.0. Stable v1 contract identifiers remain unchanged.
+- Refresh reviewed adapter dependency integrity after patching transitive Undici advisories. Remote adapters and provider-neutral v2 contracts remain alpha; no live remote-provider certification is claimed.
 
 ## 1.1.0 - 2026-09-04
 

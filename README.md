@@ -1,16 +1,16 @@
 # Workcell
 
-Unreleased Wave C: [normative assurance profile](docs/contracts/git-assurance-profile.md) and portable commitment vectors now define the existing local predicate for alpha and proposed opt-in beta envelopes. No stable execution contract or default admission changes.
+Experimental Wave C beta (opt-in, bounded single-effect required/deny; alpha retained): [normative assurance profile](docs/contracts/git-assurance-profile.md) and portable commitment vectors now define the existing local predicate for alpha and opt-in beta envelopes. No stable execution contract or default admission changes.
 
 
-Unreleased experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
+Experimental addition: [local Git effect assurance prototype](docs/effect-assurance-prototype.md), separate from stable execution and preservation.
 
-[![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/workcell/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/version-1.2.0-black)](https://github.com/kujolang/workcell/releases/tag/v1.2.0)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 [![CI](https://github.com/kujolang/workcell/actions/workflows/ci.yml/badge.svg)](https://github.com/kujolang/workcell/actions/workflows/ci.yml)
 
-Workcell 1.1 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
+Workcell 1.2 is a stable local and CI execution harness for bounded Kujo and agent workflows on Docker or Podman. It creates a disposable Git worktree, validates a declarative execution definition, applies bounded container resources and filesystem access, enforces an explicit network policy, exports only declared artifacts, records a structured receipt and integrity manifest, and performs ownership-scoped cleanup.
 
 The repository also contains an additive alpha provider-neutral contract: `workcell-definition/v2alpha1`, `workcell-backend/v1alpha1`, and `workcell-receipt/v2alpha1`. Docker and Podman implement that contract through the existing stable OCI lifecycle. Digest-pinned external adapters for E2B, Vercel Sandbox, and Daytona are separately installed, strictly capability-negotiated, ownership-recoverable, and receipt-visible. gVisor and Kata are OCI runtime selections, not provider adapters. Offline conformance is not live-provider or security certification. See [backend adapters](docs/backend-adapters.md).
 
@@ -20,7 +20,7 @@ The v1 guarantee is deliberately narrow. It covers the local Docker/Podman CLI, 
 
 ## Supported contract
 
-Workcell 1.1 supports:
+Workcell 1.2 supports:
 
 - disposable Git worktrees and isolated-clone workspaces from clean repositories;
 - strict, versioned JSON definitions with safe defaults and unknown-field rejection;
@@ -33,7 +33,7 @@ Supported host classes are Linux with Docker Engine or rootless Docker/Podman, a
 
 ## Requirements and installation
 
-- Kujo 1.2.1 at commit `692512a9070fdba713f160d795bbddb8077db7b5` (the exact pin is in `RUNTIME_VERSION`).
+- Kujo 1.6.0 at commit `44af277848173664f72ca85f2a1b3b98d634ecdd` (the exact pin is in `RUNTIME_VERSION`).
 - Git and `jq`.
 - Docker for the default backend, or Podman on a supported Linux host.
 - A clean Git source repository for execution. Workcell refuses dirty sources by default so it cannot silently omit user changes.
@@ -43,17 +43,17 @@ Workcell is distributed as a source archive and can also run directly from a che
 ```bash
 git clone https://github.com/kujolang/workcell.git
 cd workcell
-git checkout v1.1.0
-export KUJO=/path/to/kujo-1.2.1/kujo
+git checkout v1.2.0
+export KUJO=/path/to/kujo-1.6.0/kujo
 ./bin/workcell --version
 ```
 
-The `v1.1.0` tag contains the stable source release. Its Docker and Podman lifecycle remains the stable contract. The provider-neutral definitions, backend protocol, portable receipts, and remote adapters included in the source remain alpha until each provider passes live certification. The launcher reads `KUJO` and does not download or replace the runtime.
+The `v1.2.0` tag contains the stable source release. Its Docker and Podman lifecycle remains the stable contract. The provider-neutral definitions, backend protocol, portable receipts, and remote adapters included in the source remain alpha until each provider passes live certification. The launcher reads `KUJO` and does not download or replace the runtime.
 
 ## Quick Start
 
 ```bash
-export KUJO=/path/to/kujo-1.2.1/kujo
+export KUJO=/path/to/kujo-1.6.0/kujo
 docker build --tag kujolang/workcell-base:local docker/
 ./bin/workcell init
 ./bin/workcell validate --file workcell.json
@@ -177,7 +177,7 @@ Containers are not universal isolation. Workcell trusts the selected engine and 
 
 ## Compatibility and upgrades
 
-Workcell follows semantic versioning for the product. The `workcell-definition/v1`, `workcell-cli/v1`, `workcell-receipt/v1`, `workcell-manifest/v1`, and other evidence identifiers are independent contract versions; product 1.1.0 does not rename them. Additive fields may appear within a v1 contract. Removing or repurposing a field or exit code requires a new contract identifier and migration notes.
+Workcell follows semantic versioning for the product. The `workcell-definition/v1`, `workcell-cli/v1`, `workcell-receipt/v1`, `workcell-manifest/v1`, and other evidence identifiers are independent contract versions; product 1.2.0 does not rename them. Additive fields may appear within a v1 contract. Removing or repurposing a field or exit code requires a new contract identifier and migration notes.
 
 Patch releases contain compatible fixes. Minor releases may add optional CLI or schema surface with safe defaults. A future product major may change supported contracts only with changelog and migration guidance. Pin both the Workcell release and Kujo runtime commit for reproducible automation. See the [API compatibility policy](docs/api-compatibility.md).
 
@@ -186,7 +186,7 @@ Patch releases contain compatible fixes. Minor releases may add optional CLI or 
 Run the offline release gates with the pinned runtime:
 
 ```bash
-export KUJO=/path/to/kujo-1.2.1/kujo
+export KUJO=/path/to/kujo-1.6.0/kujo
 ./bin/workcell --help
 ./bin/workcell --version
 ./bin/workcell validate --file workcell.json
@@ -239,4 +239,4 @@ Use [GitHub issues](https://github.com/kujolang/workcell/issues) for reproducibl
 
 Workcell is licensed under the [MIT License](LICENSE).
 
-Unreleased experimental addition: [controlled Git process participant](docs/controlled-git-participant.md), with one-use admission and content-addressed correlation. Dispatch remains replay authority; the existing Git CAS predicate is unchanged.
+Experimental addition: [controlled Git process participant](docs/controlled-git-participant.md), with one-use admission and content-addressed correlation. Dispatch remains replay authority; the existing Git CAS predicate is unchanged.

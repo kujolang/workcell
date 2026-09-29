@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - '**'
+  workflow_dispatch:
   workflow_call:
 
 permissions:
@@ -38,22 +39,20 @@ jobs:
       - name: Install official adapter dependencies
         run: npm ci --ignore-scripts --prefix adapters/official
 
-      - name: Build pinned Kujo runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          KUJO_RUNTIME_REF="$(cat RUNTIME_VERSION)"
-          git init "$RUNNER_TEMP/kujo-runtime"
-          git -C "$RUNNER_TEMP/kujo-runtime" remote add origin https://github.com/kujolang/kujo.git
-          git -C "$RUNNER_TEMP/kujo-runtime" fetch --depth 1 origin "$KUJO_RUNTIME_REF"
-          git -C "$RUNNER_TEMP/kujo-runtime" checkout --detach "$KUJO_RUNTIME_REF"
-          test "$(git -C "$RUNNER_TEMP/kujo-runtime" rev-parse HEAD)" = "$KUJO_RUNTIME_REF"
-          cargo build --release --locked --manifest-path "$RUNNER_TEMP/kujo-runtime/Cargo.toml" --bin kujo
-          echo "KUJO_BIN=$RUNNER_TEMP/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+      - name: Install released Kujo runtime
+        id: kujo
+        uses: kujolang/kujo/.github/actions/setup-kujo@fc53093f35e4236682bbbf5ab1ccc8d2b4df990c
+        with:
+          version: v1.6.0
+      - name: Export runtime
+        run: echo "KUJO_BIN=${{ steps.kujo.outputs.kujo-path }}" >> "$GITHUB_ENV"
 
       - name: Run macOS offline contract suite
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Verify experimental Git effect and process participant
+        run: bash tests/effect_assurance.sh
 
       - name: Exercise interpreter compatibility for portable contracts
         shell: bash
@@ -91,18 +90,13 @@ jobs:
       - name: Install official adapter dependencies
         run: npm ci --ignore-scripts --prefix adapters/official
 
-      - name: Build pinned Kujo runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          KUJO_RUNTIME_REF="$(cat RUNTIME_VERSION)"
-          git init /tmp/kujo-runtime
-          git -C /tmp/kujo-runtime remote add origin https://github.com/kujolang/kujo.git
-          git -C /tmp/kujo-runtime fetch --depth 1 origin "$KUJO_RUNTIME_REF"
-          git -C /tmp/kujo-runtime checkout --detach "$KUJO_RUNTIME_REF"
-          test "$(git -C /tmp/kujo-runtime rev-parse HEAD)" = "$KUJO_RUNTIME_REF"
-          cargo build --release --locked --manifest-path /tmp/kujo-runtime/Cargo.toml --bin kujo
-          echo "KUJO_BIN=/tmp/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+      - name: Install released Kujo runtime
+        id: kujo
+        uses: kujolang/kujo/.github/actions/setup-kujo@fc53093f35e4236682bbbf5ab1ccc8d2b4df990c
+        with:
+          version: v1.6.0
+      - name: Export runtime
+        run: echo "KUJO_BIN=${{ steps.kujo.outputs.kujo-path }}" >> "$GITHUB_ENV"
 
       - name: Verify product and runtime version consistency
         shell: bash
@@ -111,6 +105,9 @@ jobs:
       - name: Run offline and CLI contract suite
         shell: bash
         run: KUJO="$KUJO_BIN" ./tests/run.sh
+
+      - name: Verify experimental Git effect and process participant
+        run: bash tests/effect_assurance.sh
 
       - name: Exercise interpreter compatibility for portable contracts
         shell: bash

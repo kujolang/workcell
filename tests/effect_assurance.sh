@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Experimental source-runtime gate, separate from the stable Workcell 1.2.1 pin.
+# Experimental profile gate on the released Kujo runtime; no contract promotion.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 node tests/git_effect_contract.mjs

@@ -2,7 +2,7 @@
 
 ## Exact identity and setup
 
-The official candidate pins adapter and SDK version `2.46.1`, manifest schema
+The official candidate pins adapter and SDK version `2.50.0`, manifest schema
 `workcell-backend-manifest/v1`, protocol `workcell-backend/v1alpha1`, and profile
 schema `workcell-e2b-profile/v1alpha1`. Install and verify the immutable archive
 as described in [Official adapter distribution](../official-adapter-distribution.md).

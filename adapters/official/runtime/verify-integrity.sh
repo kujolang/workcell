@@ -25,11 +25,11 @@ verify() {
 }
 
 verify "runtime/adapter.mjs" "37a2f18269f61e4062f30ffe3d364d45f97abfaae16a6c1423e135a276af4779"
-verify "runtime/protocol.mjs" "951efacfef8cd1b2e1c01d7904bfbb64d618d009c55f8678bcb219fe72996bbb"
+verify "runtime/protocol.mjs" "9764630072a9fd2ac658f18ff94ac0f6192c567dbeeaa71aa1f7f4613f29374c"
 verify "runtime/providers.mjs" "33e4a1cb873ae85616f2b4b11019dddec6d8e52b7d09a78d840493651c1bf50c"
-verify "package.json" "e91582bbbd214281ec29371156d5ff4824947ff116102eba0d6b6fd4ef2ab637"
-verify "package-lock.json" "47a7eedd0cc3376230842d10220c5c4b0186dfd95b8568e9bae5dc6eeebbab62"
+verify "package.json" "f636705b0db3ef4e73ff7a9f10714ea24c498f8a271a004283da2534159b48c7"
+verify "package-lock.json" "bc49e3a26c07eb080604d45cc6c670ad8f450462463c2ef1d40cfc926e0d9478"
 verify "runtime/verify-dependencies.mjs" "f1a0a4281116850cb1a18e8176fa8436ca2ec4d352c52f1126c8d34f449766dc"
-verify "runtime/dependencies.sha256" "2735436c1a089cd5f427995651fd11d68b99e79d57721152e3ea58bc262fbadd"
-verify "runtime/dependencies.files.gz.b64" "d01feb1ea4879c475677195e7a8616a09e556d2bc0a28c5b3642f54b1f181744"
+verify "runtime/dependencies.sha256" "07629fccf6e579d3841b78c41e33f6c17c3748b0c00ee6e7523471ce9261c65e"
+verify "runtime/dependencies.files.gz.b64" "3b0edc6d9fe93e1bb09320c5f2038072ae085d6392bb587400613a9fbb860955"
 node "$ROOT/runtime/verify-dependencies.mjs" "$ROOT"

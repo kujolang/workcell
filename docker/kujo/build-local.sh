@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 KUJO_SOURCE="${1:-}"
-KUJO_COMMIT="692512a9070fdba713f160d795bbddb8077db7b5"
+KUJO_COMMIT="44af277848173664f72ca85f2a1b3b98d634ecdd"
 
 if [ -z "$KUJO_SOURCE" ]; then
   echo "usage: $0 /path/to/kujo-source" >&2

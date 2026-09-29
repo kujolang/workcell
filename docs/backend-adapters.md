@@ -24,7 +24,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-Versions are pinned by `package-lock.json`. E2B uses `e2b` 2.46.1, Vercel uses `@vercel/sandbox` 3.2.1, and Daytona uses `@daytona/sdk` 0.207.1. Live-provider API drift is not covered by offline fixture success.
+Versions are pinned by `package-lock.json`. E2B uses `e2b` 2.50.0, Vercel uses `@vercel/sandbox` 3.2.1, and Daytona uses `@daytona/sdk` 0.207.1. Live-provider API drift is not covered by offline fixture success.
 
 ## Definition and host profile
 

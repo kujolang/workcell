@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add read-only retained-workspace owner/materialization observations for installed
+  local recovery and finalization adapters; preservation v1 bytes are unchanged.
+
 - Add an experimental checked local Git effect boundary for Dispatch sequential continuation. Installed-host final validation gates the existing atomic ref transaction; historical apply/observe bytes remain unchanged.
 
 ## 1.2.0 - 2026-09-29

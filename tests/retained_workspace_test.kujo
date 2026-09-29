@@ -1,0 +1,39 @@
+from src.evidence.retained_workspace import observe_retained_workspace
+from src.util import ensure_dir, run_argv, run_id
+from src.workspace.workspace import create_workspace, cleanup_workspace
+mut passed := 0
+mut failed := 0
+func expect(label, value) {
+    if value {passed += 1;print("PASS " + label)} else {failed += 1;print("FAIL " + label)}
+}
+root := "/tmp/workcell-retained-test-" + run_id()
+ensure_dir(root)
+run_argv(["git", "-C", root, "init", "-q"], 10000)
+run_argv(["git", "-C", root, "config", "user.name", "Fixture"], 10000)
+run_argv(["git", "-C", root, "config", "user.email", "fixture@example.invalid"], 10000)
+write_file_atomic(root + "/tracked", "original\n", true)
+run_argv(["git", "-C", root, "add", "tracked"], 10000)
+run_argv(["git", "-C", root, "commit", "-qm", "initial"], 10000)
+workspace := create_workspace(root, "git-worktree", run_id())
+expect("real retained worktree created", workspace["ok"])
+first := observe_retained_workspace(workspace)
+expect("owner and materialization observed", first["ok"])
+expect("read-only observation stable", to_json(first) == to_json(observe_retained_workspace(workspace)))
+marker := workspace["workspace_path"] + ".owner"
+original := read_file(marker)
+write_file_atomic(marker, "wrong-owner\n", true)
+expect("owner mismatch rejected", observe_retained_workspace(workspace)["ok"] == false)
+write_file_atomic(marker, original, true)
+changed := workspace
+changed["source_root"] := root + "/missing"
+expect("missing source rejected", observe_retained_workspace(changed)["ok"] == false)
+write_file_atomic(workspace["workspace_path"] + "/tracked", "changed\n", true)
+run_argv(["git", "-C", workspace["workspace_path"], "add", "tracked"], 10000)
+run_argv(["git", "-C", workspace["workspace_path"], "commit", "-qm", "changed"], 10000)
+second := observe_retained_workspace(workspace)
+expect("changed HEAD changes observation", second["ok"]&&to_json(first) != to_json(second))
+cleanup_workspace(workspace, false)
+expect("missing retained workspace rejected", observe_retained_workspace(workspace)["ok"] == false)
+run_argv(["rm", "-rf", root], 30000)
+print("Passed: " + to_string(passed));print("Failed: " + to_string(failed))
+if failed > 0 {exit(1)}

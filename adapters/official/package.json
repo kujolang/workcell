@@ -32,7 +32,7 @@
   "dependencies": {
     "@daytona/sdk": "0.207.1",
     "@vercel/sandbox": "3.2.1",
-    "e2b": "2.46.1"
+    "e2b": "2.50.0"
   },
   "bundleDependencies": [
     "@daytona/sdk",
@@ -44,10 +44,5 @@
     "integrity:update": "node scripts/update-integrity.mjs",
     "release:candidate": "./scripts/release-candidate.sh",
     "test": "node --test test/*.test.mjs"
-  },
-  "overrides": {
-    "e2b": {
-      "undici8": "npm:undici@8.10.2"
-    }
   }
 }

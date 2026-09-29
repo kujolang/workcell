@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add an experimental checked local Git effect boundary for Dispatch sequential continuation. Installed-host final validation gates the existing atomic ref transaction; historical apply/observe bytes remain unchanged.
+
 ## 1.2.0 - 2026-09-29
 
 - Add bounded pre-evaluation preservation intent, provider-neutral preservation outcomes, retention deadlines and expiry-gated owned cleanup with separate deletion receipts.

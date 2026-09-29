@@ -67,3 +67,25 @@ never fetches an evidence reference.
 
 Compensation is explicitly `not_evaluated`: support, request, execution and verified
 reversal remain separate future facts. No saga engine is introduced.
+
+## Checked local Git mutation boundary
+
+`git_effect_apply_checked(repo, intent, old_oid, new_oid, verify)` is an
+experimental installed-host integration point. Workcell independently validates
+intent and live refs, invokes `verify` immediately before its bounded atomic Git
+ref transaction, and rechecks the intent deadline. False or throwing callbacks
+deny mutation. An already committed effect does not pass this checked boundary;
+ordinary `git_effect_apply` retains its historical duplicate-observation behavior.
+
+Dispatch retains its run lock and owns selection, lifecycle, current authority,
+and permanent admission consumption. Workcell owns target/marker observation and
+Git compare-and-swap. Neither the callback nor a successful admission proves the
+mutation happened: lost replies require fresh live verification, never replay.
+The callback is an installed trusted-host function, not serialized participant
+permission. This does not provide cross-host authority, arbitrary-writer fencing,
+cross-sink transactions, exactly-once execution, or rollback.
+
+Validation: `tests/git_effect_contract.mjs` exercises refusal, callback exception,
+checked mutation and refusal after completion alongside the historical API cases.
+Dispatch's sequential fixture independently exercises C/D lifecycles and process
+loss against real Workcell refs using this same implementation.

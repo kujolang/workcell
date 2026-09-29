@@ -1,0 +1,8 @@
+from src.evidence.git_effect import git_effect_apply_checked
+args := args()
+config := parse_json(read_file_beneath(args[0], "config.json", 8192))
+verify := func() {
+    if args[1] == "throw" {throw("host_denied")}
+    return args[1] == "allow"
+}
+print(to_json(git_effect_apply_checked(config["repo"], config["intent"], config["old_oid"], config["new_oid"], verify)))

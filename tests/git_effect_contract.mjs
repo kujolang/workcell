@@ -17,6 +17,11 @@ try{
  const adapter=mode=>JSON.parse(command(runtime,['run','examples/effect-assurance/adapter.kujo',root,mode]));
  command('git',['--git-dir='+repo,'update-ref','refs/kujo-targets/'+intent.target_sha256,old]);
  assert.equal(adapter('observe').observation.observed_state,'not_started');
+ const checked=mode=>JSON.parse(command(runtime,['run','tests/git_effect_checked_fixture.kujo',root,mode]));
+ assert.equal(checked('deny').ok,false);assert.equal(checked('throw').ok,false);
+ assert.equal(adapter('observe').observation.observed_state,'not_started');
+ assert.equal(checked('allow').ok,true);assert.equal(checked('allow').ok,false);
+
  assert.equal(adapter('apply').ok,true);assert.equal(adapter('apply').ok,true);
  const proof=adapter('observe');assert.equal(proof.observation.observed_state,'committed');assert.ok(!JSON.stringify(proof).includes('CANARY'));
  assert.equal(command('git',['--git-dir='+repo,'for-each-ref','--format=%(refname)','refs/kujo-effects/']).split('\n').length,1);
@@ -25,5 +30,5 @@ try{
  config.intent.request_sha256=sha(next);write();
  command('git',['--git-dir='+repo,'update-ref','refs/kujo-targets/'+intent.target_sha256,old]);
  assert.equal(adapter('observe').ok,false);assert.equal(adapter('apply').ok,false);
- console.log('PASS Git effect: real atomic ref transaction, duplicate, input conflict, expiry, moved target, privacy');
+ console.log('PASS Git effect: real atomic ref transaction, final callback denial/exception, one-use checked boundary, historical duplicate, input conflict, expiry, moved target, privacy');
 }finally{fs.rmSync(root,{recursive:true,force:true});}

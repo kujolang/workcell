@@ -77,5 +77,47 @@
     "npm": "1.0.1",
     "npm_integrity": "sha512-s0b4z23vlaS1u25U2wEOwp71HPCUL8fAO/Qqkb01SSzO0LVoRPTn6oF++coPk7XxdR+Wp9j1rF6R9BEFqxmjPg==",
     "python": "1.0.1"
+  },
+  "latest_review": {
+    "retrieved_at": "2026-09-30",
+    "workcell_baseline": "e645d80e697cb722d49c35982905b2294da0a627",
+    "workcell_version": "1.2.0",
+    "kujo_version": "1.6.0",
+    "kujo_commit": "44af277848173664f72ca85f2a1b3b98d634ecdd",
+    "sources": [
+      {
+        "url": "https://docs.boat.dev/llms.txt",
+        "sha256": "189952fb85908d875b83f5283968c665b2e8884060c3fe7ac4a068e467ae67cc",
+        "bytes": 18925
+      },
+      {
+        "url": "https://docs.boat.dev/api/v1.md",
+        "sha256": "a3b1136d03e4110fd108334374ae12175621217410d44ae550ce9bae0c45e4c3",
+        "bytes": 16333
+      },
+      {
+        "url": "https://docs.boat.dev/api/reference/sandboxes/permanently-delete-sandbox-data.md",
+        "sha256": "168b8eed2b660a44659939f5362639512ecff449585930cea2eac08f622ff60b",
+        "bytes": 8259
+      },
+      {
+        "url": "https://docs.boat.dev/openapi/boat-v1.yaml",
+        "sha256": "96a37a835501d6d4d68e1c3f95a98ab617c0a22eaedb7046d546ca1e88f0b6eb",
+        "bytes": 207778
+      }
+    ],
+    "packages": {
+      "npm": "1.4.0",
+      "npm_integrity": "sha512-6crEv7YxM5ojNOllSZV2ZaMhrJpHWSgVEOq93dK+69HCXM3TUWuUKoMrbJ2OGxDFYpfOtIGnDTbsyrHt2nYm1Q=="
+    },
+    "direct_confirmation": {
+      "date": "2026-09-30",
+      "source": "Boat founder response supplied by the user",
+      "claims": [
+        "Create and fork recover by retrying the same Idempotency-Key.",
+        "Repeating DELETE for the same sandbox ID returns the same deletion operation.",
+        "Atomic immutable snapshot and environment selection is not yet supported and is on the roadmap."
+      ]
+    }
   }
 }

@@ -10,6 +10,7 @@ check_all() {
   while IFS= read -r file; do
     "$KUJO" check "$ROOT/$file"
   done < <(cd "$ROOT" && find src -type f -name '*.kujo' | sort)
+  "$KUJO" check "$ROOT/tests/process_cancellation_test.kujo"
   "$KUJO" check "$ROOT/tests/workcell_test.kujo"
   "$KUJO" check "$ROOT/tests/workspace_test.kujo"
   "$KUJO" check "$ROOT/tests/performance_test.kujo"
@@ -56,6 +57,7 @@ fi
 check_all
 KUJO="$KUJO" "$ROOT/tests/quality.sh"
 EMPTY_SECRET="" LONG_SECRET="longsecret" AUDIT_SECRET="artifact-secret" "$KUJO" run "$ROOT/tests/workcell_test.kujo"
+"$KUJO" run "$ROOT/tests/process_cancellation_test.kujo"
 "$KUJO" run "$ROOT/tests/workspace_test.kujo"
 "$KUJO" run "$ROOT/tests/performance_test.kujo"
 WORKCELL_PERF_FILES=999999999999999999999 "$KUJO" run "$ROOT/tests/performance_test.kujo" >/dev/null

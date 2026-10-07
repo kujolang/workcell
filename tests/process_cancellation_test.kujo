@@ -1,0 +1,15 @@
+from src.runtime.docker import process_was_cancelled
+from src.util import run_id
+func fail(message) {print(message); exit(1)}
+root := "/tmp/workcell-process-cancel-" + run_id()
+spawn_process(["mkdir", "-p", root])
+flag := root + "/cancel"
+write_file(flag, "cancel")
+result := spawn_process(["sh", "-c", "sleep 5"], {"cancel_file": flag, "timeout_ms": 1000})
+if result.cancelled != true {fail("native cancellation prerequisite failed")}
+if process_was_cancelled(result) != true {fail("ProcessResult cancellation was lost")}
+if process_was_cancelled({"cancelled": true}) != true {fail("dictionary cancellation was lost")}
+if process_was_cancelled({"cancelled": false}) != false {fail("false cancellation was invented")}
+if process_was_cancelled({}) != false {fail("missing cancellation was invented")}
+spawn_process(["rm", "-rf", root])
+print("ProcessResult cancellation contract: PASS")

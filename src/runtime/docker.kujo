@@ -353,6 +353,16 @@ func docker_launch_options(options) {
     return selected
 }
 
+# spawn_process returns a ProcessResult struct; get_or accepts dictionaries only.
+export func process_was_cancelled(result) {
+    if type(result) == "dict" {return get_or(result, "cancelled", false) == true}
+    try {
+        return result.cancelled == true
+    } except err {
+        return false
+    }
+}
+
 export func run_container(definition, policy, stream_options) {
     if type(policy) != "dict"||type(get_or(policy, "docker_args", null)) != "array"||get_or(policy, "runtime_backend", "") == ""||get_or(policy, "container_name", "") == "" {
         return {"ok": false, "stage": "starting", "error": "container policy is incomplete"}
@@ -382,7 +392,7 @@ export func run_container(definition, policy, stream_options) {
                 "stdout": result.stdout,
                 "stderr": result.stderr,
                 "timed_out": false,
-                "cancelled": get_or(result, "cancelled", false),
+                "cancelled": process_was_cancelled(result),
                 "stdout_truncated": result.stdout_truncated,
                 "stderr_truncated": result.stderr_truncated,
                 "container_name": policy["container_name"]
@@ -402,7 +412,7 @@ export func run_container(definition, policy, stream_options) {
         "stdout": result.stdout,
         "stderr": result.stderr,
         "timed_out": result.timed_out,
-        "cancelled": get_or(result, "cancelled", false),
+        "cancelled": process_was_cancelled(result),
         "stdout_truncated": result.stdout_truncated,
         "stderr_truncated": result.stderr_truncated,
         "container_name": policy["container_name"]

@@ -1,0 +1,8 @@
+PASS e2b official manifest validates
+PASS e2b passes offline conformance
+PASS vercel-sandbox official manifest validates
+PASS vercel-sandbox passes offline conformance
+PASS daytona official manifest validates
+PASS daytona passes offline conformance
+Passed: 6
+Failed: 0

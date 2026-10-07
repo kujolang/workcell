@@ -1,0 +1,10 @@
+Kujo official_adapters_test.kujo; host 1.7.0; initial run concurrent with npm fixture suite. Exit 1. Captured command output:
+PASS e2b official manifest validates
+PASS e2b passes offline conformance
+PASS vercel-sandbox official manifest validates
+PASS vercel-sandbox passes offline conformance
+PASS daytona official manifest validates
+FAIL daytona passes offline conformance
+Passed: 5
+Failed: 1
+No failing operation/error was printed by the original test; cause unknown.

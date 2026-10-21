@@ -14,7 +14,8 @@
     "runtime/",
     "e2b/",
     "vercel-sandbox/",
-    "daytona/"
+    "daytona/",
+    "vendor/"
   ],
   "bin": {
     "workcell-backend-e2b": "e2b/workcell-backend-e2b",
@@ -32,17 +33,23 @@
   "dependencies": {
     "@daytona/sdk": "0.207.1",
     "@vercel/sandbox": "3.2.1",
-    "e2b": "2.50.0"
+    "e2b": "2.50.0",
+    "braces": "file:vendor/braces"
   },
   "bundleDependencies": [
     "@daytona/sdk",
     "@vercel/sandbox",
-    "e2b"
+    "e2b",
+    "braces"
   ],
   "scripts": {
     "integrity:check": "node scripts/update-integrity.mjs --check",
     "integrity:update": "node scripts/update-integrity.mjs",
     "release:candidate": "./scripts/release-candidate.sh",
     "test": "node --test test/*.test.mjs"
+  },
+  "overrides": {
+    "braces": "$braces",
+    "follow-redirects": "1.16.1"
   }
 }

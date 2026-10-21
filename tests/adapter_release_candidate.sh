@@ -19,6 +19,8 @@ for provider in e2b vercel-sandbox daytona; do
   actual="$(shasum -a 256 "$executable" | awk '{print $1}')"
   test "$expected" = "$actual"
 done
+"$package_root/runtime/verify-integrity.sh" "$package_root"
+WORKCELL_ADAPTER_PACKAGE_ROOT="$package_root" node --test "$ROOT/adapters/official/test/dependency-security.test.mjs"
 dependency_file="$(find "$package_root/node_modules" -type f -name '*.js' -print -quit)"
 test -n "$dependency_file"
 printf '\n// tamper probe\n' >> "$dependency_file"

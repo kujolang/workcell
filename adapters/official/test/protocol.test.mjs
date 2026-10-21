@@ -173,7 +173,7 @@ test('official manifests pin their executable wrapper digests', async () => {
 test('official runtime integrity verification fails closed on tampering', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'workcell-adapter-integrity-'));
   await mkdir(path.join(temporaryRoot, 'runtime'));
-  for (const relative of ['runtime/adapter.mjs', 'runtime/protocol.mjs', 'runtime/providers.mjs', 'package.json', 'package-lock.json']) {
+  for (const relative of ['runtime/adapter.mjs', 'runtime/protocol.mjs', 'runtime/providers.mjs', 'package.json', 'npm-shrinkwrap.json']) {
     await copyFile(path.join(root, relative), path.join(temporaryRoot, relative));
   }
   const verifier = path.join(root, 'runtime', 'verify-integrity.sh');

@@ -575,7 +575,7 @@ adapters/official/
     update-integrity.mjs
     release-candidate.sh
   package.json
-  package-lock.json
+  npm-shrinkwrap.json
 examples/box/
   workcell.json
   host-profiles.example.json

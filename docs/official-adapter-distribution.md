@@ -3,7 +3,7 @@
 The three official remote adapters ship together as
 `@kujolang/workcell-official-adapters`. A combined package keeps their shared,
 integrity-pinned protocol runtime atomic. Provider SDK versions remain exact in
-`package-lock.json`; a provider whose SDK cadence or dependency weight makes the
+`npm-shrinkwrap.json`; a provider whose SDK cadence or dependency weight makes the
 combined package unsafe may move to an independently versioned package only
 after a contract and migration review.
 

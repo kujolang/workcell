@@ -49,7 +49,6 @@
     "test": "node --test test/*.test.mjs"
   },
   "overrides": {
-    "braces": "$braces",
     "follow-redirects": "1.16.1"
   }
 }

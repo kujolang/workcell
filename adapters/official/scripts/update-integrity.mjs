@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const check = process.argv.includes('--check');
 const providers = ['e2b', 'vercel-sandbox', 'daytona'];
-const protectedFiles = ['runtime/adapter.mjs', 'runtime/protocol.mjs', 'runtime/providers.mjs', 'package.json', 'package-lock.json', 'runtime/verify-dependencies.mjs', 'runtime/dependencies.sha256', 'runtime/dependencies.files.gz.b64'];
+const protectedFiles = ['runtime/adapter.mjs', 'runtime/protocol.mjs', 'runtime/providers.mjs', 'package.json', 'npm-shrinkwrap.json', 'runtime/verify-dependencies.mjs', 'runtime/dependencies.sha256', 'runtime/dependencies.files.gz.b64'];
 const run = promisify(execFile);
 
 async function digest(relative) {

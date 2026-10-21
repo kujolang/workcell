@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '22.23.4'
           cache: npm
-          cache-dependency-path: adapters/official/package-lock.json
+          cache-dependency-path: adapters/official/npm-shrinkwrap.json
       - name: Install exact SDK versions
         run: npm ci --ignore-scripts --prefix adapters/official
       - name: Run offline protocol fixtures

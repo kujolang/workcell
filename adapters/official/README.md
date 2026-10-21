@@ -1,6 +1,6 @@
 # Official remote backend adapters
 
-These external adapters implement `workcell-backend/v1alpha1` without adding Node or provider SDKs to WorkCell core. Versions are pinned in `package-lock.json`. Install with `npm ci`, then pass the selected `manifest.json` explicitly to WorkCell.
+These external adapters implement `workcell-backend/v1alpha1` without adding Node or provider SDKs to WorkCell core. Versions are pinned in the publishable `npm-shrinkwrap.json`, which is included in the integrity chain and installed archives. Install with `npm ci`, then pass the selected `manifest.json` explicitly to WorkCell.
 
 Credentials are references only: `env:E2B_API_KEY`, `env:VERCEL_OIDC_TOKEN`, or `env:DAYTONA_API_KEY`. Values are inherited only by the adapter process and never enter definitions, profiles, receipts, or protocol payloads.
 

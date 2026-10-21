@@ -28,7 +28,11 @@ async function replace(relative, pattern, replacement) {
 
 async function dependencyManifest() {
   const { stdout } = await run('npm', ['pack', '--dry-run', '--json'], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
-  const packed = JSON.parse(stdout)[0].files.map((entry) => entry.path).filter((entry) => entry.startsWith('node_modules/')).sort();
+  const archiveFiles = JSON.parse(stdout)[0].files.map((entry) => entry.path);
+  for (const relative of protectedFiles) {
+    if (!archiveFiles.includes(relative)) throw new Error(`protected file missing from package archive: ${relative}`);
+  }
+  const packed = archiveFiles.filter((entry) => entry.startsWith('node_modules/')).sort();
   if (packed.length === 0) throw new Error('official adapter package contains no bundled dependencies');
   const aggregate = createHash('sha256');
   for (let offset = 0; offset < packed.length; offset += 128) {

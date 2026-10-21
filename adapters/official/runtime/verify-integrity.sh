@@ -27,7 +27,7 @@ verify() {
 verify "runtime/adapter.mjs" "37a2f18269f61e4062f30ffe3d364d45f97abfaae16a6c1423e135a276af4779"
 verify "runtime/protocol.mjs" "9764630072a9fd2ac658f18ff94ac0f6192c567dbeeaa71aa1f7f4613f29374c"
 verify "runtime/providers.mjs" "33e4a1cb873ae85616f2b4b11019dddec6d8e52b7d09a78d840493651c1bf50c"
-verify "package.json" "eec9c7e79f7a18b8caeb8a6e1467b8ada81a9af97cb57feb7c86e16e5a7f394e"
+verify "package.json" "ad7057347391a5a998441feec6bdb978b7f2358e1c828fd3dc63a1b519300a8c"
 verify "npm-shrinkwrap.json" "0281f00439431ec6294ecf911a265a67fa818c1acdfcb990045f56d7a82c950a"
 verify "runtime/verify-dependencies.mjs" "f1a0a4281116850cb1a18e8176fa8436ca2ec4d352c52f1126c8d34f449766dc"
 verify "runtime/dependencies.sha256" "64d24b0dc1165ad151076a51bc4a390dd56676c387c8ab6337ed700e17acf0a4"

@@ -15,7 +15,8 @@
     "e2b/",
     "vercel-sandbox/",
     "daytona/",
-    "vendor/"
+    "vendor/",
+    "npm-shrinkwrap.json"
   ],
   "bin": {
     "workcell-backend-e2b": "e2b/workcell-backend-e2b",

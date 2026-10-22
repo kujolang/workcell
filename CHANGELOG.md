@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 - 2026-10-22
+
+- Preserve native process cancellation in Docker results.
+- Require patched Node releases and refresh official-adapter dependencies,
+  protected archive contents, and verifiable dependency shrinkwrap.
+- Keep the released Kujo 1.6.0 runtime pin and stable v1 Docker/Podman contracts.
+  Provider-neutral contracts, remote adapters and Git effect assurance retain
+  their existing alpha/beta boundaries; no live-provider promotion is claimed.
 
 - Add read-only retained-workspace owner/materialization observations for installed
   local recovery and finalization adapters; preservation v1 bytes are unchanged.

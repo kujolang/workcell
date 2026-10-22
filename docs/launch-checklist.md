@@ -1,10 +1,10 @@
-# Workcell 1.2 Launch Checklist
+# Workcell 1.3 Launch Checklist
 
-Workcell 1.2 is stable for the documented local and CI Docker/Podman execution contract. Its provider-neutral contracts and remote adapters remain alpha. This checklist does not claim universal sandboxing, hosted multi-tenant readiness, operator egress or image governance, signing-key custody, retention compliance, or enterprise certification.
+Workcell 1.3 is stable for the documented local and CI Docker/Podman execution contract. Its provider-neutral contracts and remote adapters remain alpha. This checklist does not claim universal sandboxing, hosted multi-tenant readiness, operator egress or image governance, signing-key custody, retention compliance, or enterprise certification.
 
 ## Preparation acceptance
 
-- [ ] Product version surfaces and release artifact names agree on `1.2.0`.
+- [ ] Product version surfaces and release artifact names agree on `1.3.0`.
 - [ ] Released Kujo 1.6.0 commit `44af277848173664f72ca85f2a1b3b98d634ecdd` is pinned and used for every gate.
 - [ ] Offline, CLI, format, lint, version, release-report, Markdown-link, and whitespace gates pass.
 - [ ] Docker build, doctor, integration, concurrent-load, egress, self-proof, receipt verification, and cleanup pass.
@@ -40,4 +40,4 @@ The old pre-runner billing failure is no longer an active blocker. A later relea
 
 ## Prohibited before approval
 
-Do not create or push `v1.2.0`, create the GitHub Release, publish images or packages, deploy hosted runners, modify branch protection or repository policy, use live credentials, or force-push during preparation.
+Do not create or push `v1.3.0`, create the GitHub Release, publish images or packages, deploy hosted runners, modify branch protection or repository policy, use live credentials, or force-push during preparation.

@@ -482,7 +482,7 @@ export func make_patch(workspace, patch_path, secrets, secret_action) {
     if type(secret_action) != "string"||(secret_action != "allow"&&secret_action != "reject"&&secret_action != "redact") {
         return {"ok": false, "error": "patch secret action is invalid"}
     }
-    result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
+    result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--no-ext-diff", "--no-textconv", "--binary", workspace["source_commit"]], 60000)
     if process_ok(result) == false {
         return {"ok": false, "error": process_error(result, "generate Git patch")}
     }
@@ -513,7 +513,7 @@ export func make_patch(workspace, patch_path, secrets, secret_action) {
         if process_ok(intent_result) == false {
             return {"ok": false, "error": process_error(intent_result, "stage untracked files for patch metadata")}
         }
-        patch_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
+        patch_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--no-ext-diff", "--no-textconv", "--binary", workspace["source_commit"]], 60000)
         if process_ok(patch_result) == false {
             return {"ok": false, "error": process_error(patch_result, "generate Git patch including untracked files")}
         }

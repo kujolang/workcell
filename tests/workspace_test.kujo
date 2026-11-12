@@ -74,7 +74,10 @@ if workspace["ok"] {
     binary_path := workspace["workspace_path"] + "/added.bin"
     run_argv(["dd", "if=/dev/zero", "of=" + binary_path, "bs=1", "count=1"], 30000)
     patch_path := repo + "/changes.patch"
+    run_argv(["git", "-C", workspace["workspace_path"], "config", "diff.external", "false"], 10000)
     patch := make_patch(workspace, patch_path, [], "allow")
+    expect("patch collection ignores repository external diff executables", patch["ok"])
+    run_argv(["git", "-C", workspace["workspace_path"], "config", "--unset", "diff.external"], 10000)
     expect("patch generated", patch["ok"])
     patch_text := read_text(patch_path)
     expect("untracked file appears in patch", patch_text["ok"]&&contains(patch_text["text"], "added.bin") == 1)

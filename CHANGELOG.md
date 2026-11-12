@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Generate evidence patches with external diff and text conversion disabled, preserving native binary patches under restricted host environments and preventing repository diff callbacks.
+
 ## 1.3.0 - 2026-10-22
 
 - Preserve native process cancellation in Docker results.

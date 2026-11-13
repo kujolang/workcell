@@ -16,7 +16,7 @@ policy.
 
 After an intentional runtime or dependency change, run `npm run integrity:update` and review every digest diff. CI runs `npm run integrity:check`; a stale chain fails closed.
 
-The transport dependency is pinned to `follow-redirects` 1.16.1 to preserve
+The transport dependency is pinned to `follow-redirects` 1.16.3 to preserve
 credential stripping across redirects, including array-form headers and custom
 header names. Braces has no upstream fix for
 [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), so all
@@ -37,3 +37,5 @@ See [Backend adapter authoring](../../docs/adapter-authoring.md) for the protoco
 For immutable local release candidates, clean-install verification, rollback,
 revocation, and emergency disable procedures, see
 [Official adapter distribution](../../docs/official-adapter-distribution.md).
+
+Dependency maintenance: E2B 2.63.0 brings patched Glob/Minimatch and Undici; the shrinkwrap also fixes Vercel’s Undici and Zod resolutions. Cross-realm sensitive-header redirect tests run against both the checkout and installed release candidate. SDK import/API-shape and fixture lifecycle tests are offline evidence, not live-provider certification.

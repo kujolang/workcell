@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -41,7 +42,7 @@ test('every bundled Braces copy is the guarded fork and redirect transport is pa
   }
   inspect(path.join(root, 'node_modules'));
   assert.ok(copies > 0, 'the guarded fork must be bundled as real files');
-  assert.equal(require('follow-redirects/package.json').version, '1.16.1');
+  assert.equal(require('follow-redirects/package.json').version, '1.16.3');
 });
 
 test('deep braces, parentheses and unclosed patterns fail before stack exhaustion', () => {
@@ -109,9 +110,9 @@ test('redirects strip object and array credentials without stripping ordinary he
     res.end();
   });
   const headers = { Authorization: 'fixture-auth', Cookie: 'fixture-cookie', 'Proxy-Authorization': 'fixture-proxy', 'X-Api^Key': 'fixture-caret', 'X-Token|Secret': 'fixture-pipe', 'X-Ordinary': 'keep', 'X-Token': 'keep-neighbor', Secret: 'keep-neighbor' };
-  const request = (route, values) => new Promise((resolve, reject) => {
+  const request = (route, values, sensitiveHeaders = ['X-Api^Key', 'X-Token|Secret']) => new Promise((resolve, reject) => {
     const req = transport.get(`http://127.0.0.1:${origin.address().port}/${route}`, {
-      headers: values, sensitiveHeaders: ['X-Api^Key', 'X-Token|Secret'], timeout: 5000
+      headers: values, sensitiveHeaders, timeout: 5000
     }, response => {
       let body = '';
       response.on('data', chunk => { body += chunk; });
@@ -125,15 +126,40 @@ test('redirects strip object and array credentials without stripping ordinary he
     destination.listen(0, '127.0.0.1'); await once(destination, 'listening');
     origin.listen(0, '127.0.0.1'); await once(origin, 'listening');
     for (const values of [{ ...headers }, Object.entries(headers).flat()]) {
-      const received = await request('cross', values);
-      for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api^key', 'x-token|secret']) assert.equal(received[name], undefined, name);
-      for (const name of ['x-ordinary', 'x-token', 'secret']) assert.ok(received[name]?.startsWith('keep'), name);
+      for (const sensitive of [['X-Api^Key', 'X-Token|Secret'], runInNewContext("['X-Api^Key', 'X-Token|Secret']")]) {
+        const received = await request('cross', values, sensitive);
+        for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api^key', 'x-token|secret']) assert.equal(received[name], undefined, name);
+        for (const name of ['x-ordinary', 'x-token', 'secret']) assert.ok(received[name]?.startsWith('keep'), name);
+      }
     }
-    const same = await request('control', { ...headers });
+    const same = await request('control', { ...headers }, runInNewContext("['X-Api^Key', 'X-Token|Secret']"));
     assert.equal(same.authorization, headers.Authorization);
     assert.equal(same['x-api^key'], headers['X-Api^Key']);
   } finally {
     origin.closeAllConnections(); destination.closeAllConnections();
     await Promise.all([origin, destination].map(server => new Promise(resolve => server.close(resolve))));
   }
+});
+
+// SDK loading and the lifecycle entry points used by providers.mjs are verified
+// offline. This deliberately does not claim account-specific live certification.
+test('updated provider SDKs retain the imported lifecycle entry points', async () => {
+  const e2b = await import(require.resolve('e2b'));
+  for (const method of ['create', 'connect', 'kill', 'list']) assert.equal(typeof e2b.Sandbox[method], 'function', method);
+  const vercel = await import(require.resolve('@vercel/sandbox'));
+  for (const method of ['create', 'get', 'list']) assert.equal(typeof vercel.Sandbox[method], 'function', method);
+  const daytona = await import(require.resolve('@daytona/sdk'));
+  assert.equal(typeof daytona.Daytona, 'function');
+});
+
+test('bundled glob respects pre-aborted traversal and ordinary patterns', async () => {
+  const { glob } = require('glob');
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'workcell-glob-abort-'));
+  try {
+    writeFileSync(path.join(directory, 'fixture.txt'), 'fixture');
+    assert.deepEqual(await glob('*.txt', { cwd: directory }), ['fixture.txt']);
+    const controller = new AbortController();
+    controller.abort(new Error('fixture-abort'));
+    await assert.rejects(glob('**/*', { cwd: directory, signal: controller.signal }), /fixture-abort/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });

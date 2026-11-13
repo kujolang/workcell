@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh official adapter dependencies to remove the six reported npm audit findings, preserve the guarded Braces fork, and regenerate the complete dependency/executable integrity chain. Add cross-realm redirect and updated SDK compatibility regressions.
+
 - Generate evidence patches with external diff and text conversion disabled, preserving native binary patches under restricted host environments and preventing repository diff callbacks.
 
 ## 1.3.0 - 2026-10-22

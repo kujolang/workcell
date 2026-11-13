@@ -16,9 +16,12 @@ policy.
 
 After an intentional runtime or dependency change, run `npm run integrity:update` and review every digest diff. CI runs `npm run integrity:check`; a stale chain fails closed.
 
-The transport dependency is pinned to `follow-redirects` 1.16.1 to preserve
+The transport dependency is pinned to `follow-redirects` 1.16.3 to preserve
 credential stripping across redirects, including array-form headers and custom
-header names. Braces has no upstream fix for
+header names supplied from another JavaScript realm. The E2B minor update and
+Vercel transport/schema overrides address the current dependency audit without
+changing the supported Node ranges. Offline tests do not qualify live-provider
+API behavior. Braces has no upstream fix for
 [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), so all
 transitive copies use the reviewed local fork in `vendor/braces`. It rejects
 patterns and ASTs beyond 128 levels with `ERR_BRACES_DEPTH`; ordinary globbing

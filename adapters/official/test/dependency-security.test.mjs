@@ -1,3 +1,4 @@
+import {runInNewContext} from 'node:vm';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
@@ -41,7 +42,7 @@ test('every bundled Braces copy is the guarded fork and redirect transport is pa
   }
   inspect(path.join(root, 'node_modules'));
   assert.ok(copies > 0, 'the guarded fork must be bundled as real files');
-  assert.equal(require('follow-redirects/package.json').version, '1.16.1');
+  assert.equal(require('follow-redirects/package.json').version, '1.16.3');
 });
 
 test('deep braces, parentheses and unclosed patterns fail before stack exhaustion', () => {
@@ -109,9 +110,9 @@ test('redirects strip object and array credentials without stripping ordinary he
     res.end();
   });
   const headers = { Authorization: 'fixture-auth', Cookie: 'fixture-cookie', 'Proxy-Authorization': 'fixture-proxy', 'X-Api^Key': 'fixture-caret', 'X-Token|Secret': 'fixture-pipe', 'X-Ordinary': 'keep', 'X-Token': 'keep-neighbor', Secret: 'keep-neighbor' };
-  const request = (route, values) => new Promise((resolve, reject) => {
+  const request = (route, values, sensitiveHeaders = ['X-Api^Key', 'X-Token|Secret']) => new Promise((resolve, reject) => {
     const req = transport.get(`http://127.0.0.1:${origin.address().port}/${route}`, {
-      headers: values, sensitiveHeaders: ['X-Api^Key', 'X-Token|Secret'], timeout: 5000
+      headers: values, sensitiveHeaders, timeout: 5000
     }, response => {
       let body = '';
       response.on('data', chunk => { body += chunk; });
@@ -129,6 +130,9 @@ test('redirects strip object and array credentials without stripping ordinary he
       for (const name of ['authorization', 'cookie', 'proxy-authorization', 'x-api^key', 'x-token|secret']) assert.equal(received[name], undefined, name);
       for (const name of ['x-ordinary', 'x-token', 'secret']) assert.ok(received[name]?.startsWith('keep'), name);
     }
+    const crossRealm = await request('cross', {...headers}, runInNewContext("['X-Api^Key','X-Token|Secret']"));
+    assert.equal(crossRealm['x-api^key'], undefined);
+    assert.equal(crossRealm['x-token|secret'], undefined);
     const same = await request('control', { ...headers });
     assert.equal(same.authorization, headers.Authorization);
     assert.equal(same['x-api^key'], headers['X-Api^Key']);

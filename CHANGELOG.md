@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh official remote adapter dependencies for current redirect, HTTP transport, glob, and schema-validation advisories; retain supported Node ranges and add cross-realm sensitive-header regression coverage.
+
 - Add opt-in `workspace.read_only` for native Docker/Podman workspace mounts, preserving writable defaults and noexec temporary filesystems. Policy evidence records the actual requested mount access.
 - Add schema/policy regression tests and an explicit rootless readonly-mount qualification against an existing image.
 

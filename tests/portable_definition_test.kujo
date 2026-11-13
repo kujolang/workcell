@@ -108,6 +108,12 @@ write_file_atomic(unsafe_profile_path, to_json(unsafe_profiles), true)
 expect("profile rejects unknown operator policy fields", load_host_profile(unsafe_profile_path, "fixture", "")["ok"] == false)
 run_argv(["rm", "-f", unsafe_profile_path], 5000)
 
+unsupported_workspace := definition["workspace"]
+unsupported_workspace["read_only"] := true
+unsupported_definition := definition
+unsupported_definition["workspace"] := unsupported_workspace
+expect("portable readonly workspace cannot silently pass unsupported contract", validate_portable_definition(unsupported_definition)["ok"] == false)
+
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))
 if failed > 0 {exit(1)}

@@ -354,6 +354,7 @@ expect("workspace readonly rejects number", validate_definition(with_workspace_r
 readonly_definition := with_workspace_read_only(definition, true)
 readonly_policy := build_policy(readonly_definition, "readonly", "/tmp/workcell-test-workspace")
 expect("workspace readonly accepted", validate_definition(readonly_definition)["ok"])
+expect("readonly unsupported remote backend rejected", validate_definition(with_backend(readonly_definition, "e2b", ""))["ok"] == false)
 expect("docker readonly volume enforced", contains(readonly_policy["docker_args"], "/tmp/workcell-test-workspace:/workspace:ro"))
 expect("readonly evidence agrees", readonly_policy["mounts"][0] == "/tmp/workcell-test-workspace:/workspace:ro"&&readonly_policy["effective_security_policy"]["workspace_mount"] == "/workspace:ro"&&readonly_policy["effective_security_policy"]["workspace_read_only"] == true)
 readonly_podman := build_policy(with_backend(readonly_definition, "podman", ""), "readonly-podman", "/tmp/workcell-test-workspace")

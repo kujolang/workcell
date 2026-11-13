@@ -160,6 +160,13 @@ func with_workspace_scan(definition, key, value) {
     return definition
 }
 
+func with_workspace_read_only(definition, value) {
+    workspace := definition["workspace"]
+    workspace["read_only"] := value
+    definition["workspace"] := workspace
+    return definition
+}
+
 func with_run_as(definition, value) {
     workspace := definition["workspace"]
     workspace["run_as"] := value
@@ -341,6 +348,17 @@ expect("secret is passed by name only", contains(to_string(secret_policy["docker
 rootless_policy := build_policy(with_run_as(definition, "rootless"), "test-rootless", "/tmp/workcell-test-workspace")
 expect("rootless workspace identity maps to container root", rootless_policy["ok"]&&contains(to_string(rootless_policy["docker_args"]), "0:0") == 1&&rootless_policy["effective_security_policy"]["workspace_identity"] == "rootless")
 
+expect("workspace defaults writable", definition["workspace"]["read_only"] == false)
+expect("workspace readonly rejects string", validate_definition(with_workspace_read_only(definition, "true"))["ok"] == false)
+expect("workspace readonly rejects number", validate_definition(with_workspace_read_only(definition, 1))["ok"] == false)
+readonly_definition := with_workspace_read_only(definition, true)
+readonly_policy := build_policy(readonly_definition, "readonly", "/tmp/workcell-test-workspace")
+expect("workspace readonly accepted", validate_definition(readonly_definition)["ok"])
+expect("docker readonly volume enforced", contains(readonly_policy["docker_args"], "/tmp/workcell-test-workspace:/workspace:ro"))
+expect("readonly evidence agrees", readonly_policy["mounts"][0] == "/tmp/workcell-test-workspace:/workspace:ro"&&readonly_policy["effective_security_policy"]["workspace_mount"] == "/workspace:ro"&&readonly_policy["effective_security_policy"]["workspace_read_only"] == true)
+readonly_podman := build_policy(with_backend(readonly_definition, "podman", ""), "readonly-podman", "/tmp/workcell-test-workspace")
+expect("podman readonly volume enforced", contains(readonly_podman["docker_args"], "/tmp/workcell-test-workspace:/workspace:ro"))
+expect("readonly tmp remains noexec", contains(to_string(readonly_policy["docker_args"]), ":rw,noexec,nosuid,nodev") == 1)
 policy := build_policy(definition, "test-run", "/tmp/workcell-test-workspace")
 args := policy["docker_args"]
 expect("launch cannot implicitly pull an unverified image", contains(args, "--pull=never"))

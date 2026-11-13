@@ -53,3 +53,7 @@ The definition schema is intentionally stricter for input than the result schema
 `--retain-until` deadline and defaults to `handoff_bundle`. Re-execution
 metadata now includes `mode: clean_workspace` and `source_attempt_id`;
 consumers of the existing v1 descriptor must continue ignoring unknown fields.
+
+### Optional read-only workspace
+
+Version 1 definitions accept `workspace.read_only` as a boolean, defaulting to `false` for compatibility. When `true`, native Docker and Podman policies mount the isolated workspace with `:ro`; the policy mount list and `effective_security_policy.workspace_read_only` record this choice. This is separate from `filesystem.read_only_root`. Temporary filesystems remain writable with `noexec,nosuid,nodev`. A read-only workspace cannot be used for commands that write build products there; use the bounded temporary filesystem instead. This additive v1 option does not extend portable v2 backend capabilities.

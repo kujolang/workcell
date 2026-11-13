@@ -21,6 +21,7 @@ export func default_definition() {
             "strategy": "git-worktree",
             "mount_path": "/workspace",
             "run_as": "host",
+            "read_only": false,
             "scan": {
                 "max_files": 100000,
                 "max_bytes": 1000000000,
@@ -755,7 +756,7 @@ export func validate_definition(raw) {
     }
 
     workspace := get_or(raw, "workspace", {})
-    workspace_keys := validate_keys(workspace, ["strategy", "mount_path", "run_as", "scan"], "workspace")
+    workspace_keys := validate_keys(workspace, ["strategy", "mount_path", "run_as", "read_only", "scan"], "workspace")
     if workspace_keys["ok"] == false {
         return workspace_keys
     }
@@ -765,6 +766,9 @@ export func validate_definition(raw) {
     mount_path := get_or(workspace, "mount_path", "")
     if type(mount_path) != "string"||starts_with(mount_path, "/") == false||contains(mount_path, "..") == 1||mount_path == "/"||(mount_path != "/workspace"&&starts_with(mount_path, "/workspace/") == false) {
         return {"ok": false, "error": "workspace.mount_path must be /workspace or a descendant beneath it"}
+    }
+    if type(get_or(workspace, "read_only", false)) != "bool" {
+        return {"ok": false, "error": "workspace.read_only must be a boolean"}
     }
     run_as_check := valid_run_as(get_or(workspace, "run_as", "host"))
     if run_as_check["ok"] == false {
@@ -1066,7 +1070,7 @@ export func resolve_definition(raw) {
         }
     }
     value = fill_section_defaults(value, defaults, "runtime", ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"])
-    value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "scan"])
+    value = fill_section_defaults(value, defaults, "workspace", ["strategy", "mount_path", "run_as", "read_only", "scan"])
     value = fill_section_defaults(value, defaults, "environment", ["allow", "set"])
     value = fill_section_defaults(value, defaults, "resources", ["cpus", "memory", "pids", "timeout_ms", "max_output_bytes"])
     mut network_had_egress := false
@@ -1146,6 +1150,7 @@ export func definition_summary(definition) {
         "timeout_ms": definition["resources"]["timeout_ms"],
         "max_output_bytes": definition["resources"]["max_output_bytes"],
         "workspace_run_as": definition["workspace"]["run_as"],
+        "workspace_read_only": get_or(definition["workspace"], "read_only", false),
         "workspace_scan": definition["workspace"]["scan"],
         "artifact_policy": definition["artifacts"],
         "verification_checks": len(definition["verification"]["commands"]),
@@ -1164,7 +1169,7 @@ export func definition_schema() {
             "version": {"type": "integer", "const": 1},
             "name": {"type": "string", "non_empty": true},
             "runtime": {"type": "object", "fields": ["backend", "engine_runtime", "image", "build_context", "image_digest", "signature_key", "require_digest", "require_signature", "registry_allowlist"], "backend_enum": ["docker", "podman"], "provenance": "optional digest/signature requirements and registry allowlist"},
-            "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "scan"], "run_as": "host, rootless, or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
+            "workspace": {"type": "object", "fields": ["strategy", "mount_path", "run_as", "read_only", "scan"], "run_as": "host, rootless, or non-root uid:gid", "scan": "bounded max_files/max_bytes/max_depth"},
             "command": {"type": "array", "items": "string", "min_items": 1},
             "environment": {"type": "object", "fields": ["allow", "set"]},
             "secrets": {"type": "array", "items": "environment variable name"},

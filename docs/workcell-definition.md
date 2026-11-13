@@ -50,3 +50,9 @@ Definition version `1` is the stable Workcell v1 input contract, not the Workcel
 - `receipt.path`: relative project output root, default `.workcell/runs`. Each completed run also writes `manifest.json` with schema `workcell-manifest/v1`, relative paths, byte counts, and SHA-256 hashes for immutable run evidence. `manifest.json` is excluded because it contains the manifest; `receipt.json` is included so receipt tampering is detected. Use `workcell verify --run <run-directory>` to validate it offline.
 
 Unknown fields are rejected so misspellings do not silently weaken policy. The CLI's `inspect` command makes defaults and security arguments visible without starting Docker.
+
+### Optional read-only workspace
+
+Version 1 definitions accept `workspace.read_only` as a boolean, defaulting to `false` for compatibility. When `true`, native Docker and Podman policies mount the isolated workspace with `:ro`; the policy mount list and `effective_security_policy.workspace_read_only` record this choice. This is separate from `filesystem.read_only_root`. Temporary filesystems remain writable with `noexec,nosuid,nodev`. A read-only workspace cannot be used for commands that write build products there; use the bounded temporary filesystem instead. This additive v1 option does not extend portable v2 backend capabilities.
+
+Run the explicit rootless qualification with `KUJO=/path/to/kujo WORKCELL_READONLY_IMAGE=existing-local-image python3 tests/readonly_workspace_integration.py`. It requires a local rootless Docker daemon with seccomp, never builds or pulls images, and checks both root and UID 65534 cannot write a deliberately world-writable fixture through the read-only mount.

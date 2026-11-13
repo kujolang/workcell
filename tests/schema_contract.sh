@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 
 DEFINITION_SCHEMA="$($KUJO run "$ROOT/main.kujo" -- validate --schema)"
+printf '%s' "$DEFINITION_SCHEMA" | jq -e '(.fields.workspace.fields | index("read_only") != null)' >/dev/null
 CLI_SCHEMA="$($KUJO run "$ROOT/main.kujo" -- help --json)"
 printf '%s' "$DEFINITION_SCHEMA" | jq -e '.schema_version == "workcell-definition/v1" and .unknown_fields == "rejected" and (.fields.runtime.fields | index("require_digest") != null) and (.fields.integrations.opt_in == true)' >/dev/null
 printf '%s' "$DEFINITION_SCHEMA" | jq -e '(.fields.network.fields | index("egress") != null) and ((.fields.network.egress.policy_enum | index("deny-by-default")) != null)' >/dev/null

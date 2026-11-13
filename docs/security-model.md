@@ -50,3 +50,7 @@ Optional ecosystem integrations run after the primary receipt boundary with expl
 ## Reporting security issues
 
 Do not open a public issue for a suspected vulnerability. Use the repository's private [GitHub Security Advisory reporting flow](https://github.com/kujolang/workcell/security/advisories/new) and include the affected Workcell version, backend and host class, definition, reproduction steps, and redacted receipt evidence.
+
+### Optional read-only workspace
+
+Version 1 definitions accept `workspace.read_only` as a boolean, defaulting to `false` for compatibility. When `true`, native Docker and Podman policies mount the isolated workspace with `:ro`; the policy mount list and `effective_security_policy.workspace_read_only` record this choice. This is separate from `filesystem.read_only_root`. Temporary filesystems remain writable with `noexec,nosuid,nodev`. A read-only workspace cannot be used for commands that write build products there; use the bounded temporary filesystem instead. This additive v1 option does not extend portable v2 backend capabilities.

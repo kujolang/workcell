@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in `workspace.read_only` for native Docker/Podman workspace mounts, preserving writable defaults and noexec temporary filesystems. Policy evidence records the actual requested mount access.
+- Add schema/policy regression tests and an explicit rootless readonly-mount qualification against an existing image.
+
 ## 1.3.0 - 2026-10-22
 
 - Preserve native process cancellation in Docker results.

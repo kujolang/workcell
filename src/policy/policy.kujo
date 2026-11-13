@@ -150,7 +150,11 @@ export func build_policy(definition, run_identifier, host_workspace) {
         docker = add_pair(docker, "--tmpfs", tmpfs[tmp_i] + ":rw,noexec,nosuid,nodev")
         tmp_i = tmp_i + 1
     }
-    docker = add_pair(docker, "--volume", mount_workspace + ":" + mount_path + ":rw")
+    mut workspace_access := ":rw"
+    if get_or(definition["workspace"], "read_only", false) == true {
+        workspace_access = ":ro"
+    }
+    docker = add_pair(docker, "--volume", mount_workspace + ":" + mount_path + workspace_access)
     docker = add_pair(docker, "--workdir", mount_path)
     docker = environment_args(docker, definition)
     if backend == "docker" {
@@ -173,7 +177,7 @@ export func build_policy(definition, run_identifier, host_workspace) {
         "docker_args": docker,
         "container_name": "kujo-workcell-" + run_identifier,
         "labels": labels,
-        "mounts": [mount_workspace + ":" + mount_path + ":rw"],
+        "mounts": [mount_workspace + ":" + mount_path + workspace_access],
         "network_mode": network_mode,
         "runtime_backend": backend,
         "runtime_engine": engine,
@@ -197,7 +201,8 @@ export func build_policy(definition, run_identifier, host_workspace) {
             "capabilities_dropped": "ALL",
             "network_mode": network_mode,
             "network_policy": network_policy,
-            "workspace_mount": mount_path + ":rw",
+            "workspace_mount": mount_path + workspace_access,
+            "workspace_read_only": get_or(definition["workspace"], "read_only", false),
             "artifact_export_boundary": "host output directory only"
         },
         "ok": true,

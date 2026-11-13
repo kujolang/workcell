@@ -1,0 +1,15 @@
+# Policy input for the explicit local readonly-workspace qualification.
+from src.domain.definition import default_definition
+from src.policy.policy import build_policy
+value := default_definition()
+runtime := value["runtime"]
+runtime["image"] := env("WORKCELL_READONLY_IMAGE")
+value["runtime"] := runtime
+workspace := value["workspace"]
+workspace["run_as"] := "rootless"
+workspace["read_only"] := true
+value["workspace"] := workspace
+value["command"] := ["sh", "-c", "touch /workspace/forged && exit 99; test -r /workspace/probe && sleep 20"]
+result := build_policy(value, env("WORKCELL_READONLY_RUN"), env("WORKCELL_READONLY_DIR"))
+if result["ok"] == false {exit(1)}
+print(to_json(result))

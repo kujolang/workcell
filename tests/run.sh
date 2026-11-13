@@ -12,6 +12,7 @@ check_all() {
   done < <(cd "$ROOT" && find src -type f -name '*.kujo' | sort)
   "$KUJO" check "$ROOT/tests/process_cancellation_test.kujo"
   "$KUJO" check "$ROOT/tests/workcell_test.kujo"
+  "$KUJO" check "$ROOT/tests/readonly_workspace_policy.kujo"
   "$KUJO" check "$ROOT/tests/workspace_test.kujo"
   "$KUJO" check "$ROOT/tests/performance_test.kujo"
   "$KUJO" check "$ROOT/tests/stress_test.kujo"

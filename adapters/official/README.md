@@ -39,3 +39,15 @@ revocation, and emergency disable procedures, see
 [Official adapter distribution](../../docs/official-adapter-distribution.md).
 
 Dependency maintenance: E2B 2.63.0 brings patched Glob/Minimatch and Undici; the shrinkwrap also fixes Vercel’s Undici and Zod resolutions. Cross-realm sensitive-header redirect tests run against both the checkout and installed release candidate. SDK import/API-shape and fixture lifecycle tests are offline evidence, not live-provider certification.
+
+
+E2B inventory uses the pinned SDK’s `hasNext`/`nextItems` paginator. It requests
+100 records per page, fetches at most ten pages, and applies one abort deadline
+across all pages (the request budget capped at 30 seconds). Every returned record
+must match both the run ID and nonce; owned IDs are deduplicated. Exhaustion is
+complete, including an empty final page. A remaining continuation or repeated
+token yields `complete: false`; an oversized/malformed page or request failure
+fails the operation. Recovery already rejects incomplete inventory before deletion.
+These bounds limit processed inventory, not the provider HTTP response body size.
+Local HTTP tests exercise the real SDK without live credentials or provisioning;
+provider certification remains separate.

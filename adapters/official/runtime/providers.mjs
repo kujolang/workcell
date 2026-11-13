@@ -23,7 +23,45 @@ export const e2b = {
   async collect(req) { const sb = await e2bConnect(req); return collectWithCommand(req, async (cmd) => sb.commands.run(cmd)); },
   async export(req) { const sb = await e2bConnect(req); return exportWithCommand(req, async (cmd) => sb.commands.run(cmd), async (remote, local, limit) => writeBoundedStream(local, await sb.files.read(remote, { format: 'stream' }), limit)); },
   async destroy(req) { const { Sandbox } = await import('e2b'); await Sandbox.kill(resourceId(req), { apiKey: credential(req, 'e2b') }); return destroyed(req); },
-  async inventory(req) { const { Sandbox } = await import('e2b'); const pager = Sandbox.list({ apiKey: credential(req, 'e2b'), query: { metadata: { 'workcell.run_id': req.run_id, 'workcell.nonce': req.payload.ownership.nonce } } }); const resources = []; for await (const item of pager) if (ownedMetadata(item.metadata, req.payload.ownership, 'workcell.run_id', 'workcell.nonce')) resources.push({ kind: 'sandbox', id: item.sandboxId, state: item.state || 'unknown', ownership: req.payload.ownership }); return { resources, complete: true }; }
+  async inventory(req) {
+    const { Sandbox } = await import('e2b');
+    const pageSize = 100, maxPages = 10;
+    const budget = Math.min(req.deadline_ms, 30_000);
+    if (!Number.isSafeInteger(budget) || budget <= 0) throw Object.assign(new Error('inventory deadline is invalid'), { code: 'INVENTORY_INVALID' });
+    const controller = new AbortController();
+    const timeout = Object.assign(new Error('inventory deadline exceeded'), { code: 'INVENTORY_TIMEOUT' });
+    let timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => { controller.abort(timeout); reject(timeout); }, budget);
+    });
+    try {
+      const pager = Sandbox.list({ apiKey: credential(req, 'e2b'), limit: pageSize,
+        query: { metadata: { 'workcell.run_id': req.run_id, 'workcell.nonce': req.payload.ownership.nonce } } });
+      const resources = [], ids = new Set(), tokens = new Set();
+      for (let page = 0; page < maxPages; page++) {
+        if (typeof pager.hasNext !== 'boolean') throw Object.assign(new Error('inventory pagination state is invalid'), { code: 'INVENTORY_INVALID' });
+        if (!pager.hasNext) return { resources, complete: true };
+        const items = await Promise.race([pager.nextItems({ signal: controller.signal, requestTimeoutMs: budget }), deadline]);
+        if (!Array.isArray(items) || items.length > pageSize) throw Object.assign(new Error('inventory page exceeds its contract'), { code: 'INVENTORY_INVALID' });
+        for (const item of items) {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) throw Object.assign(new Error('inventory item is invalid'), { code: 'INVENTORY_INVALID' });
+          if (!ownedMetadata(item.metadata, req.payload.ownership, 'workcell.run_id', 'workcell.nonce')) continue;
+          if (typeof item.sandboxId !== 'string' || !item.sandboxId || item.sandboxId.length > 256) throw Object.assign(new Error('owned inventory identifier is invalid'), { code: 'INVENTORY_INVALID' });
+          if (ids.has(item.sandboxId)) continue;
+          ids.add(item.sandboxId);
+          resources.push({ kind: 'sandbox', id: item.sandboxId, state: typeof item.state === 'string' && item.state.length <= 128 ? item.state : 'unknown', ownership: req.payload.ownership });
+        }
+        if (typeof pager.hasNext !== 'boolean') throw Object.assign(new Error('inventory pagination state is invalid'), { code: 'INVENTORY_INVALID' });
+        if (!pager.hasNext) return { resources, complete: true };
+        // A repeated continuation token cannot establish a complete inventory.
+        if (typeof pager.nextToken === 'string') {
+          if (tokens.has(pager.nextToken)) return { resources, complete: false };
+          tokens.add(pager.nextToken);
+        }
+      }
+      return { resources, complete: false };
+    } finally { clearTimeout(timer); }
+  }
 };
 
 async function vercelConnect(req) { const { Sandbox } = await import('@vercel/sandbox'); return Sandbox.get({ name: resourceId(req), resume: true }); }

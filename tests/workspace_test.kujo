@@ -3,6 +3,12 @@
 from src.util import ensure_dir, load_json, process_ok, read_text, run_argv, run_id
 from src.workspace.workspace import change_details, changed_files, changed_files_from_details, cleanup_workspace, clean_stale_workspaces, create_workspace, find_symlink_with_limits, inspect_repository, make_patch, temp_root, workspace_inventory, write_change_report, write_change_report_from_details
 
+# Stale-workspace tests sweep TMPDIR. Keep them away from other Workcell runs.
+isolated_root := "/tmp/workcell-workspace-contract-" + run_id()
+if ensure_dir(isolated_root) == false {exit(1)}
+env_set("TMPDIR", isolated_root)
+if temp_root() != isolated_root {exit(1)}
+
 mut passed := 0
 mut failed := 0
 
@@ -44,7 +50,10 @@ run_argv(["git", "-C", repo, "init", "-q"], 30000)
 run_argv(["git", "-C", repo, "config", "user.email", "workcell@example.invalid"], 30000)
 run_argv(["git", "-C", repo, "config", "user.name", "Workcell"], 30000)
 write_file_atomic(repo + "/tracked.txt", "tracked\n", true)
-run_argv(["git", "-C", repo, "add", "tracked.txt"], 30000)
+run_argv(["dd", "if=/dev/zero", "of=" + repo + "/rename.bin", "bs=16", "count=1"], 30000)
+tracked_binary_name := "tracked\tbinary.bin"
+run_argv(["dd", "if=/dev/zero", "of=" + repo + "/" + tracked_binary_name, "bs=16", "count=1"], 30000)
+run_argv(["git", "-C", repo, "add", "--", "tracked.txt", "rename.bin", tracked_binary_name], 30000)
 run_argv(["git", "-C", repo, "commit", "-qm", "initial"], 30000)
 
 source := inspect_repository(repo)
@@ -71,6 +80,8 @@ if cleanup_strategy_workspace["ok"] {
     expect("workspace for cleanup strategy contract created", false)
 }
 if workspace["ok"] {
+    clean_details := change_details(workspace)
+    expect("a clean worktree reports no changed files", clean_details["ok"]&&clean_details["summary"]["total_files"] == 0)
     binary_path := workspace["workspace_path"] + "/added.bin"
     run_argv(["dd", "if=/dev/zero", "of=" + binary_path, "bs=1", "count=1"], 30000)
     patch_path := repo + "/changes.patch"
@@ -101,6 +112,15 @@ if workspace["ok"] {
         }
     }
     expect("change report preserves tabs and newlines in Git paths", unusual_details["ok"]&&saw_tab_name&&saw_newline_name)
+    renamed_binary_name := "renamed\tbinary.bin"
+    moved := run_argv(["git", "-C", workspace["workspace_path"], "mv", "--", "rename.bin", renamed_binary_name], 30000)
+    modified := run_argv(["dd", "if=/dev/zero", "of=" + workspace["workspace_path"] + "/" + tracked_binary_name, "bs=16", "count=2"], 30000)
+    mixed := change_details(workspace)
+    mut tracked_changes := {}
+    for entry in mixed["files"] {
+        tracked_changes[entry["path"]] := entry
+    }
+    expect("mixed report preserves tracked binary renames, modifications, and untracked files", process_ok(moved)&&process_ok(modified)&&mixed["ok"]&&mixed["summary"]["total_files"] == 5&&mixed["summary"]["binary_files"] == 3&&tracked_changes[renamed_binary_name]["status"] == "renamed"&&tracked_changes[renamed_binary_name]["binary"]&&tracked_changes[tracked_binary_name]["status"] == "modified"&&tracked_changes[tracked_binary_name]["binary"])
     cleanup := cleanup_workspace(workspace, false)
     expect("worktree cleanup succeeded", cleanup["ok"])
 }
@@ -152,6 +172,7 @@ run_argv(["rm", "-rf", denied_orphan], 30000)
 missing_scan := find_symlink_with_limits(temp_root() + "/kujo-workcell-missing-" + run_id(), {"max_files": 100, "max_bytes": 1000000, "max_depth": 8})
 expect("missing workspace scan fails with a structured result", missing_scan["ok"] == false&&contains(missing_scan["error"], "workspace disappeared during scan") == 1)
 
+run_argv(["rm", "-rf", isolated_root], 30000)
 print("Passed: " + to_string(passed))
 print("Failed: " + to_string(failed))
 if failed > 0 {

@@ -1,10 +1,10 @@
 # Local performance signal for batched changed-file collection.
 
-from src.util import ensure_dir, run_argv, run_id
-from src.workspace.workspace import change_details, cleanup_workspace, create_workspace, inspect_repository
+from src.util import ensure_dir, get_or, run_argv, run_id
+from src.workspace.workspace import change_details, cleanup_workspace, create_workspace
 
 repo := "/tmp/workcell-performance-fixture-" + run_id()
-mut file_count := 200
+mut file_count := 257
 requested_count := env("WORKCELL_PERF_FILES")
 if type(requested_count) == "string"&&trim(requested_count) != "" {
     mut parsed_count := 0
@@ -29,16 +29,36 @@ if workspace["ok"] == false {
     print("FAIL performance fixture workspace: " + workspace["error"])
     exit(1)
 }
+binary_first := "generated/00-binary.bin"
+binary_last := "generated/zz-binary.bin"
+binary_content := parse_json("\"\\u0000\"")
+mut expected_binary := 1
+if file_count > 1 {expected_binary = 2}
 mut i := 0
 ensure_dir(workspace["workspace_path"] + "/generated")
 while i < file_count {
-    write_file_atomic(workspace["workspace_path"] + "/generated/file-" + to_string(i) + ".txt", "file\n", true)
+    mut relative := "generated/file-" + to_string(i) + ".txt"
+    mut content := "file\n"
+    if i == 0 {
+        relative = binary_first
+        content = binary_content
+    } else if i == file_count - 1 {
+        relative = binary_last
+        content = binary_content
+    }
+    write_file_atomic(workspace["workspace_path"] + "/" + relative, content, true)
     i = i + 1
 }
 start := current_timestamp()
 details := change_details(workspace)
 elapsed := current_timestamp() - start
-if details["ok"] == false||details["summary"]["total_files"] != file_count {
+mut results := {}
+if details["ok"] {
+    for entry in details["files"] {
+        results[entry["path"]] := entry["binary"]
+    }
+}
+if details["ok"] == false||details["summary"]["total_files"] != file_count||details["summary"]["binary_files"] != expected_binary||get_or(results, binary_first, false) == false||(file_count > 1&&get_or(results, binary_last, false) == false) {
     print("FAIL performance changed-file collection: " + to_string(details))
     cleanup_workspace(workspace, false)
     run_argv(["rm", "-rf", repo], 30000)

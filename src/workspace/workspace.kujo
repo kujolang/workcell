@@ -240,34 +240,51 @@ func status_name(letter) {
     return "modified"
 }
 
+async func probe_file_types(args) {
+    return run_argv(args, 60000)
+}
+
 func binary_paths_for_batch(workspace_path, paths) {
     mut binary_paths := {}
+    if len(paths) == 0 {
+        return binary_paths
+    }
+    batch_size := 256
+    mut batches := []
     mut offset := 0
     while offset < len(paths) {
-        end := offset + 256
-        if end > len(paths) {
-            end = len(paths)
-        }
-        batch := slice(paths, offset, end)
+        end := offset + batch_size
         mut args := ["file", "--brief", "--mime-type"]
-        mut i := 0
-        while i < len(batch) {
-            args = push(args, workspace_path + "/" + batch[i])
-            i = i + 1
+        while offset < end&&offset < len(paths) {
+            args = push(args, workspace_path + "/" + paths[offset])
+            offset = offset + 1
         }
-        result := run_argv(args, 60000)
+        batches = push(batches, args)
+    }
+
+    mut results := []
+    if len(batches) == 1 {
+        results = [run_argv(batches[0], 60000)]
+    } else {
+        # Each batch is read-only. parallel_map returns results in input order.
+        results = promise_wait(parallel_map(batches, probe_file_types, 4))
+    }
+    mut batch_i := 0
+    while batch_i < len(results) {
+        result := results[batch_i]
+        offset = batch_i * batch_size
         if process_ok(result) {
             mime_lines := lines_of(trim(result.stdout))
             mut mime_i := 0
-            while mime_i < len(batch)&&mime_i < len(mime_lines) {
+            while mime_i < batch_size&&mime_i < len(mime_lines)&&offset + mime_i < len(paths) {
                 mime := to_lower(trim(mime_lines[mime_i]))
                 if starts_with(mime, "text/") == false&&contains(mime, "json") == 0&&contains(mime, "xml") == 0&&contains(mime, "javascript") == 0&&contains(mime, "empty") == 0 {
-                    binary_paths[batch[mime_i]] := true
+                    binary_paths[paths[offset + mime_i]] := true
                 }
                 mime_i = mime_i + 1
             }
         }
-        offset = end
+        batch_i = batch_i + 1
     }
     return binary_paths
 }
@@ -324,17 +341,51 @@ func change_details_check(details) {
     return {"ok": true}
 }
 
+func tracked_binary_paths(workspace, nul) {
+    mut binary_paths := {}
+    numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "-z", workspace["source_commit"]], 30000)
+    if process_ok(numstat_result) == false {
+        return binary_paths
+    }
+    records := split(numstat_result.stdout, nul)
+    mut i := 0
+    while i < len(records) {
+        columns := split(records[i], "\t")
+        if len(columns) >= 3 {
+            mut path := columns[2]
+            if len(columns) > 3 {
+                path = join(slice(columns, 2, len(columns)), "\t")
+            }
+            if path == ""&&i + 2 < len(records) {
+                path = records[i + 2]
+                i = i + 2
+            }
+            if columns[0] == "-"&&columns[1] == "-" {
+                binary_paths[path] := true
+            }
+        }
+        i = i + 1
+    }
+    return binary_paths
+}
+
 export func change_details(workspace) {
     workspace_check := workspace_input_check(workspace, true)
     if workspace_check["ok"] == false {
         return workspace_check
     }
-    status_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--name-status", "-z", workspace["source_commit"]], 30000)
+    workspace_path := workspace["workspace_path"]
+    status_result := git_result(["git", "-C", workspace_path, "diff", "--name-status", "-z", workspace["source_commit"]], 30000)
     if process_ok(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
     }
     nul := nul_separator()
     records := split(status_result.stdout, nul)
+    untracked_result := git_result(["git", "-C", workspace_path, "ls-files", "--others", "--exclude-standard", "-z"], 30000)
+    mut tracked_binary := {}
+    if status_result.stdout != "" {
+        tracked_binary = tracked_binary_paths(workspace, nul)
+    }
     mut files := []
     mut known_paths := {}
     mut i := 0
@@ -348,71 +399,24 @@ export func change_details(workspace) {
                 path = records[i]
                 i = i + 1
             }
-            files = push(files, {"path": path, "status": status_name(letter), "binary": false})
+            files = push(files, {"path": path, "status": status_name(letter), "binary": has_key(tracked_binary, path) == 1})
             known_paths[path] := true
         } else {
             i = i + 1
         }
     }
-    untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard", "-z"], 30000)
     if process_ok(untracked_result) {
-        untracked := split(untracked_result.stdout, nul)
         mut untracked_paths := []
-        mut j := 0
-        while j < len(untracked) {
-            item := untracked[j]
-            if item != "" {
-                if has_key_safe(known_paths, item) == false {
-                    untracked_paths = push(untracked_paths, item)
-                    files = push(files, {"path": item, "status": "added", "binary": false})
-                    known_paths[item] := true
-                }
+        for path in split(untracked_result.stdout, nul) {
+            if path != ""&&has_key(known_paths, path) == 0 {
+                untracked_paths = push(untracked_paths, path)
+                known_paths[path] := true
             }
-            j = j + 1
         }
-        binary_paths := binary_paths_for_batch(workspace["workspace_path"], untracked_paths)
-        mut untracked_file_i := 0
-        while untracked_file_i < len(files) {
-            if files[untracked_file_i]["status"] == "added"&&has_key_safe(binary_paths, files[untracked_file_i]["path"]) {
-                mut updated_file := files[untracked_file_i]
-                updated_file["binary"] := true
-                files[untracked_file_i] := updated_file
-            }
-            untracked_file_i = untracked_file_i + 1
-        }
-    }
-    numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "-z", workspace["source_commit"]], 30000)
-    if process_ok(numstat_result) {
-        numstat_records := split(numstat_result.stdout, nul)
-        binary_paths := {}
-        mut numstat_i := 0
-        while numstat_i < len(numstat_records) {
-            numstat_columns := split(numstat_records[numstat_i], "\t")
-            if len(numstat_columns) >= 3 {
-                mut numstat_path := numstat_columns[2]
-                mut column_i := 3
-                while column_i < len(numstat_columns) {
-                    numstat_path = numstat_path + "\t" + numstat_columns[column_i]
-                    column_i = column_i + 1
-                }
-                if numstat_path == ""&&numstat_i + 2 < len(numstat_records) {
-                    numstat_path = numstat_records[numstat_i + 2]
-                    numstat_i = numstat_i + 2
-                }
-                if numstat_columns[0] == "-"&&numstat_columns[1] == "-" {
-                    binary_paths[numstat_path] := true
-                }
-            }
-            numstat_i = numstat_i + 1
-        }
-        mut file_i := 0
-        while file_i < len(files) {
-            if has_key_safe(binary_paths, files[file_i]["path"]) {
-                mut updated_file := files[file_i]
-                updated_file["binary"] := true
-                files[file_i] := updated_file
-            }
-            file_i = file_i + 1
+        untracked_binary := binary_paths_for_batch(workspace_path, untracked_paths)
+        for path in untracked_paths {
+            binary := has_key(untracked_binary, path) == 1||has_key(tracked_binary, path) == 1
+            files = push(files, {"path": path, "status": "added", "binary": binary})
         }
     }
     return {"ok": true, "files": files, "summary": change_summary(files)}
@@ -493,22 +497,13 @@ export func make_patch(workspace, patch_path, secrets, secret_action) {
     }
     nul := nul_separator()
     untracked := split(untracked_result.stdout, nul)
-    mut untracked_paths := []
-    mut i := 0
-    while i < len(untracked) {
-        relative := untracked[i]
-        if relative != "" {
-            untracked_paths = push(untracked_paths, relative)
+    if untracked_result.stdout != "" {
+        # Drop Git's trailing NUL record. A capped stream may end mid-record.
+        mut untracked_paths := untracked
+        if untracked[len(untracked) - 1] == "" {
+            untracked_paths = slice(untracked, 0, len(untracked) - 1)
         }
-        i = i + 1
-    }
-    if len(untracked_paths) > 0 {
-        mut add_args := ["git", "-C", workspace["workspace_path"], "add", "--intent-to-add", "--"]
-        i = 0
-        while i < len(untracked_paths) {
-            add_args = push(add_args, untracked_paths[i])
-            i = i + 1
-        }
+        add_args := concat(["git", "-C", workspace["workspace_path"], "add", "--intent-to-add", "--"], untracked_paths)
         intent_result := git_result(add_args, 60000)
         if process_ok(intent_result) == false {
             return {"ok": false, "error": process_error(intent_result, "stage untracked files for patch metadata")}
@@ -594,6 +589,7 @@ export func clean_stale_workspaces(active_run_ids) {
     } except err {
         return {"ok": false, "removed": [], "skipped": [root + ": could not list temporary workspace root: " + to_string(err)]}
     }
+    active_run_json := to_json(active_run_ids)
     mut removed := []
     mut skipped := []
     mut i := 0
@@ -606,7 +602,7 @@ export func clean_stale_workspaces(active_run_ids) {
             run_value := substring(name, len(run_prefix), len(name))
             if valid_run_id(run_value) == false {
                 skipped = push(skipped, path + ": invalid Workcell run ID")
-            } else if contains(to_json(active_run_ids), run_value) == 1 {
+            } else if contains(active_run_json, run_value) == 1 {
                 skipped = push(skipped, path + ": active Workcell run is still running")
             } else if file_exists(owner_path)&&path_is_symlink(path) == false&&path_has_symlink(owner_path) == false&&path_is_dir(path) {
                 owner := read_text(owner_path)

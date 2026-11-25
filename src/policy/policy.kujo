@@ -76,6 +76,10 @@ export func labels_for(definition, run_identifier) {
     if definition_check["ok"] == false {
         return definition_check
     }
+    return labels_for_validated_definition(definition, run_identifier)
+}
+
+func labels_for_validated_definition(definition, run_identifier) {
     return {
         "dev.kujo.workcell": "true",
         "dev.kujo.workcell.run_id": run_identifier,
@@ -105,7 +109,7 @@ export func build_policy(definition, run_identifier, host_workspace) {
         return identity
     }
     mount_path := definition["workspace"]["mount_path"]
-    labels := labels_for(definition, run_identifier)
+    labels := labels_for_validated_definition(definition, run_identifier)
     backend := definition["runtime"]["backend"]
     engine := "docker"
     if backend == "podman" {engine = "podman"}

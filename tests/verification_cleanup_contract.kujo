@@ -16,8 +16,10 @@ definition["environment"] := environment
 verification := definition["verification"]
 verification["commands"] := [{"name": "startup-failure", "command": ["false"]}]
 definition["verification"] := verification
+workload_command := definition["command"]
 result := run_verification_checks(definition, {"workspace_path": "/tmp/workcell-verification-cleanup"}, "wc-0123456789abcdef0123456789abcdef", [], true)
 if result["ok"] != false {exit(1)}
 if result["checks"][0]["status"] != "blocked" {exit(2)}
 if result["checks"][0]["cleanup_status"] != "complete" {exit(3)}
+if definition["command"] != workload_command {exit(4)}
 print("verification cleanup contract passed")

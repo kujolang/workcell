@@ -44,6 +44,22 @@ Do not run live mode during normal development. It is a manual protected-environ
 
 Use `inspect --summary` and `run --summary` in agent tests. Assert the compact schema and evidence pointers, then verify the referenced receipt separately; do not snapshot full receipts into prompts or fixtures unless the receipt contract itself is under test.
 
+## Function performance
+
+Use the pinned runtime and run this fixture separately from the test suite to
+reduce timing noise. The timings cover 512 untracked files, 128 MiB of run
+evidence, 60 policy builds, and 120 skipped verification checks with redacted
+command arguments. The fixture checks the results before accepting each run.
+Repeat on the baseline and candidate checkouts with the same runtime, Git, and
+`file` utility. Compare medians and ranges.
+
+```bash
+export WORKCELL_BENCH_ROOT="$(mktemp -d /tmp/workcell-bench.XXXXXX)"
+WORKCELL_BENCH_SECRET=workcell-bench-secret "$KUJO" run tests/performance_hot_paths.kujo
+```
+
+See the [November 2026 function performance audit](audits/workcell-function-performance-2026-11-25.md).
+
 ## Docker gates
 
 Run on a supported host with a reachable Docker daemon:

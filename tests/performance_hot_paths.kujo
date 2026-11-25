@@ -1,0 +1,92 @@
+# Manual timing fixture; run from the repository root with the pinned Kujo runtime.
+
+from src.domain.definition import default_definition
+from src.policy.policy import build_policy
+from src.receipts.manifest import verify_manifest, write_manifest
+from src.util import ensure_dir, process_ok, run_argv, run_id
+from src.verification.verification import run_verification_checks
+from src.workspace.workspace import change_details, make_patch
+
+func require(condition, operation) {
+    if condition == false {
+        print("FAIL " + operation)
+        exit(1)
+    }
+}
+
+func timing(operation, started) {
+    print(operation + " elapsed_ms=" + to_string(current_timestamp() - started))
+}
+
+root := env("WORKCELL_BENCH_ROOT")
+require(type(root) == "string"&&root != "", "set WORKCELL_BENCH_ROOT to an existing empty temporary directory")
+fixture := root + "/hot-paths-" + run_id()
+repo := fixture + "/git"
+evidence := fixture + "/evidence"
+require(ensure_dir(repo)&&ensure_dir(evidence), "create fixture directories")
+require(process_ok(run_argv(["git", "-C", repo, "init", "-q"], 30000)), "initialize Git fixture")
+require(process_ok(run_argv(["git", "-C", repo, "-c", "user.name=Workcell", "-c", "user.email=workcell@example.invalid", "commit", "--allow-empty", "-qm", "fixture"], 30000)), "commit Git fixture")
+commit := run_argv(["git", "-C", repo, "rev-parse", "HEAD"], 30000)
+require(process_ok(commit), "resolve fixture commit")
+mut i := 0
+while i < 512 {
+    require(write_file_atomic(repo + "/file-" + to_string(i) + ".txt", "fixture file\n", true), "write untracked file")
+    i = i + 1
+}
+workspace := {"workspace_path": repo, "source_commit": trim(commit.stdout)}
+start_changes := current_timestamp()
+details := change_details(workspace)
+timing("change_details_512_untracked", start_changes)
+require(details["ok"]&&details["summary"]["added"] == 512&&details["summary"]["binary_files"] == 0, "collect 512 text entries")
+start_patch := current_timestamp()
+patch := make_patch(workspace, fixture + "/changes.patch", [], "allow")
+timing("make_patch_512_untracked", start_patch)
+require(patch["ok"]&&patch["bytes"] > 0, "write patch for all untracked files")
+
+i = 0
+while i < 4 {
+    require(process_ok(run_argv(["dd", "if=/dev/zero", "of=" + evidence + "/file-" + to_string(i), "bs=1", "seek=33554431", "count=1"], 30000)), "write 32 MiB evidence file")
+    i = i + 1
+}
+manifest := write_manifest(evidence, "benchmark")
+require(manifest["ok"]&&manifest["files"] == 4&&manifest["bytes"] == 134217728, "write integrity manifest: " + to_json(manifest))
+start_verify := current_timestamp()
+verified := verify_manifest(evidence)
+timing("verify_manifest_128_MiB", start_verify)
+require(verified["ok"]&&verified["files"] == 4&&verified["bytes"] == 134217728, "verify complete run evidence")
+
+mut definition := default_definition()
+mut workspace_config := definition["workspace"]
+workspace_config["run_as"] := "1000:1000"
+definition["workspace"] := workspace_config
+start_policy := current_timestamp()
+i = 0
+while i < 60 {
+    policy := build_policy(definition, "benchmark", repo)
+    require(policy["ok"]&&policy["labels"]["dev.kujo.workcell.run_id"] == "benchmark", "build labeled policy")
+    i = i + 1
+}
+timing("build_policy_60_calls", start_policy)
+
+mut check_argv := ["printf"]
+i = 0
+while i < 32 {
+    check_argv = push(check_argv, "workcell-bench-secret")
+    i = i + 1
+}
+mut checks := []
+i = 0
+while i < 24 {
+    checks = push(checks, {"name": "check-" + to_string(i), "command": check_argv})
+    i = i + 1
+}
+definition["verification"] := {"version": 1, "commands": checks}
+start_redaction := current_timestamp()
+i = 0
+while i < 5 {
+    result := run_verification_checks(definition, workspace, "benchmark", ["WORKCELL_BENCH_SECRET"], false)
+    require(type(result["checks"]) == "array"&&len(result["checks"]) == 24&&result["checks"][0]["command"][1] == "[REDACTED]", "redact skipped check arguments")
+    i = i + 1
+}
+timing("redact_120_skipped_checks", start_redaction)
+require(process_ok(run_argv(["rm", "-rf", fixture], 30000)), "clean timing fixture")

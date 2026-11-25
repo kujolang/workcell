@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Speed up workspace change collection with bounded parallel file-type probes
+  and skip Git binary statistics when no tracked files changed.
+- Hash each listed file once during run evidence verification and retain a
+  directory coverage check for unexpected files.
+- Reuse policy validation and reduce definition copying and log redaction work
+  for post-run verification.
+
 ## 1.3.0 - 2026-10-22
 
 - Preserve native process cancellation in Docker results.

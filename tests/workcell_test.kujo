@@ -666,9 +666,9 @@ save_json(manifest_fixture + "/manifest.json", non_normalized_manifest_value)
 non_normalized_manifest := verify_manifest(manifest_fixture)
 expect("integrity manifest rejects non-normalized file entries", non_normalized_manifest["ok"] == false&&contains(non_normalized_manifest["error"], "non-normalized") == 1)
 write_manifest(manifest_fixture, "manifest-run")
-write_file_atomic(manifest_fixture + "/stdout.log", "tampered output\n", true)
+write_file_atomic(manifest_fixture + "/stdout.log", "modified evidence\n", true)
 tampered_manifest := verify_manifest(manifest_fixture)
-expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "mismatch") == 1)
+expect("integrity manifest detects tampering", tampered_manifest["ok"] == false&&contains(tampered_manifest["error"], "digest mismatch") == 1)
 write_file_atomic(manifest_fixture + "/stdout.log", "manifested output\n", true)
 duplicate_manifest_value := manifest_value["value"]
 duplicate_manifest_files := duplicate_manifest_value["files"]
@@ -688,6 +688,10 @@ omitted_manifest_value["total_bytes"] := omitted_manifest_value["total_bytes"] -
 save_json(manifest_fixture + "/manifest.json", omitted_manifest_value)
 omitted_manifest := verify_manifest(manifest_fixture)
 expect("integrity manifest rejects omitted file entries", omitted_manifest["ok"] == false&&contains(omitted_manifest["error"], "cover") == 1)
+write_manifest(manifest_fixture, "manifest-run")
+run_argv(["ln", "-s", "stdout.log", manifest_fixture + "/unlisted-link"], 30000)
+unsafe_manifest := verify_manifest(manifest_fixture)
+expect("integrity manifest detects unlisted symlinks during coverage", unsafe_manifest["ok"] == false&&contains(unsafe_manifest["error"], "symlink") == 1)
 run_argv(["rm", "-rf", manifest_fixture], 30000)
 
 manifest_denied_fixture := "/tmp/workcell-manifest-denied-" + run_id()

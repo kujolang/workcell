@@ -2,10 +2,10 @@
 
 from src.util import get_or, has_key_safe, load_json, normalized_relative, path_has_symlink, path_within, save_json
 
-func collect_files(root, relative, depth) {
+func collect_files(root, hash_files) {
     mut queue_paths := [root]
-    mut queue_relative := [relative]
-    mut queue_depths := [depth]
+    mut queue_relative := [""]
+    mut queue_depths := [0]
     mut queue_i := 0
     mut files := []
     mut total_bytes := 0
@@ -45,10 +45,12 @@ func collect_files(root, relative, depth) {
                             return {"ok": false, "error": "manifest source escapes the run directory: " + child_relative}
                         }
                         mut digest := ""
-                        try {
-                            digest = sha256_file(child_path)
-                        } except err {
-                            return {"ok": false, "error": "could not hash manifest source " + child_relative + ": " + to_string(err)}
+                        if hash_files {
+                            try {
+                                digest = sha256_file(child_path)
+                            } except err {
+                                return {"ok": false, "error": "could not hash manifest source " + child_relative + ": " + to_string(err)}
+                            }
                         }
                         mut bytes := 0
                         try {
@@ -56,7 +58,11 @@ func collect_files(root, relative, depth) {
                         } except err {
                             return {"ok": false, "error": "could not inspect manifest source " + child_relative + ": " + to_string(err)}
                         }
-                        files = push(files, {"path": child_relative, "sha256": digest, "bytes": bytes})
+                        if hash_files {
+                            files = push(files, {"path": child_relative, "sha256": digest, "bytes": bytes})
+                        } else {
+                            files = push(files, child_relative)
+                        }
                         total_bytes = total_bytes + bytes
                         if len(files) > 100000 {return {"ok": false, "error": "manifest exceeds 100000 files"}}
                     }
@@ -76,7 +82,7 @@ export func write_manifest(output_dir, run_identifier) {
     if path_is_dir(output_dir) == false||path_has_symlink(output_dir) {
         return {"ok": false, "error": "manifest output directory must be an existing non-symlink directory"}
     }
-    manifest := collect_files(output_dir, "", 0)
+    manifest := collect_files(output_dir, true)
     if manifest["ok"] == false {return manifest}
     value := {
         "schema_version": "workcell-manifest/v1",
@@ -171,16 +177,18 @@ export func verify_manifest(output_dir) {
     if get_or(value, "total_files", - 1) != len(files)||get_or(value, "total_bytes", - 1) != total_bytes {
         return {"ok": false, "error": "integrity manifest totals do not match its file entries"}
     }
-    actual := collect_files(output_dir, "", 0)
+    # Entry digests were checked above. Enumerate again only for coverage.
+    actual := collect_files(output_dir, false)
     if actual["ok"] == false {
         return {"ok": false, "error": "could not enumerate files for integrity manifest coverage: " + actual["error"]}
     }
-    if len(actual["files"]) != len(files)||actual["bytes"] != total_bytes {
+    actual_paths := actual["files"]
+    if len(actual_paths) != len(files)||actual["bytes"] != total_bytes {
         return {"ok": false, "error": "integrity manifest does not cover the complete run directory"}
     }
     mut actual_i := 0
-    while actual_i < len(actual["files"]) {
-        actual_path := actual["files"][actual_i]["path"]
+    while actual_i < len(actual_paths) {
+        actual_path := actual_paths[actual_i]
         if has_key_safe(seen_paths, actual_path) == false {
             return {"ok": false, "error": "integrity manifest does not cover file: " + actual_path}
         }

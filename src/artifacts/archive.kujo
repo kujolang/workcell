@@ -1,5 +1,6 @@
 # Declared-only artifact archive creation and safe local materialization.
 
+from src.archive_listing import inspect_regular_tar
 from src.artifacts.exporter import export_declared_with_policy
 from src.util import base_of, ensure_dir, get_or, normalized_relative, parent_of, path_has_symlink, path_within, process_error, process_ok, run_argv, save_json
 
@@ -155,40 +156,6 @@ export func create_artifact_archive(workspace_path, output_dir, policy, secret_n
     return {"ok": true, "schema_version": artifact_archive_schema_version(), "archive_path": archive_path, "manifest_path": manifest_path, "sha256": digest, "archive_bytes": bytes, "expanded_bytes": files["total_bytes"], "files": files["total_files"], "manifest": manifest}
 }
 
-func inspect_artifact_tar(archive_path, max_entries) {
-    names_result := run_argv(["tar", "-tf", archive_path], 60000)
-    types_result := run_argv(["tar", "-tvf", archive_path], 60000)
-    if process_ok(names_result) == false||process_ok(types_result) == false {
-        return {"ok": false, "error": "artifact archive could not be listed safely"}
-    }
-    names := split(trim(names_result.stdout), "\n")
-    types := split(trim(types_result.stdout), "\n")
-    if len(names) != len(types)||len(names) > max_entries + 256 {
-        return {"ok": false, "error": "artifact archive listing is inconsistent or exceeds bounds"}
-    }
-    mut i := 0
-    while i < len(names) {
-        name := trim(names[i])
-        while ends_with(name, "/")&&len(name) > 1 {
-            name = substring(name, 0, len(name) - 1)
-        }
-        checked := normalized_relative(name)
-        if checked["ok"] == false||checked["path"] != name {
-            return {"ok": false, "error": "artifact archive contains unsafe path: " + name}
-        }
-        detail := types[i]
-        if detail == "" {
-            return {"ok": false, "error": "artifact archive entry type is missing"}
-        }
-        kind := substring(detail, 0, 1)
-        if kind != "-"&&kind != "d" {
-            return {"ok": false, "error": "artifact archive contains unsupported entry type: " + name}
-        }
-        i = i + 1
-    }
-    return {"ok": true, "entries": len(names)}
-}
-
 func verify_artifact_manifest(root, manifest, policy) {
     if type(manifest) != "dict"||get_or(manifest, "schema_version", "") != artifact_archive_schema_version()||type(get_or(manifest, "declared", null)) != "array"||type(get_or(manifest, "files", null)) != "array" {
         return {"ok": false, "error": "artifact archive manifest is invalid"}
@@ -246,7 +213,9 @@ export func materialize_artifact_archive(package, target_dir, policy) {
     bounds := artifact_bounds(policy)
     max_entries := bounds["max_files"]
     if max_entries <= 0 {max_entries = 100000}
-    inspected := inspect_artifact_tar(archive_path, max_entries)
+    mut max_bytes := bounds["max_bytes"]
+    if max_bytes <= 0 {max_bytes = 1000000000}
+    inspected := inspect_regular_tar(archive_path, max_entries + 256, max_bytes)
     if inspected["ok"] == false {return inspected}
     if path_has_symlink(target_dir)||ensure_dir(target_dir) == false||path_is_dir(target_dir) == false {
         return {"ok": false, "error": "artifact package target is unsafe"}
@@ -287,7 +256,9 @@ export func accept_remote_artifact_archive(archive_path, target_dir, policy, sec
     bounds := artifact_bounds(policy)
     max_entries := bounds["max_files"]
     if max_entries <= 0 {max_entries = 100000}
-    inspected := inspect_artifact_tar(archive_path, max_entries)
+    mut max_bytes := bounds["max_bytes"]
+    if max_bytes <= 0 {max_bytes = 1000000000}
+    inspected := inspect_regular_tar(archive_path, max_entries + 256, max_bytes)
     if inspected["ok"] == false {return inspected}
     parent := parent_of(target_dir)
     if path_has_symlink(parent)||ensure_dir(parent) == false {return {"ok": false, "error": "remote artifact target parent is unsafe"}}

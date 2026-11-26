@@ -44,6 +44,13 @@ accepted := accept_remote_artifact_archive(remote_archive, root + "/accepted", p
 expect("remote archive is re-exported through core policy", accepted["ok"]&&accepted["manifest"]["files"][0]["path"] == "reports/result.txt")
 expect("remote archive receives a local integrity digest", len(accepted["sha256"]) == 64)
 
+too_small := parse_json(to_json(policy))
+too_small["max_bytes"] := 4
+bounded_target := root + "/too-small"
+bounded := accept_remote_artifact_archive(remote_archive, bounded_target, too_small, [])
+expect("expanded byte bound refuses a regular archive before creating output", bounded["ok"] == false&&contains(bounded["error"], "expanded byte bound") == 1&&path_is_dir(bounded_target) == false)
+
+
 wrong_policy := {"export": ["undeclared.txt"], "limits": {}, "max_bytes": 100000, "max_files": 10, "max_depth": 8, "allowed_extensions": [".txt"], "secret_action": "allow"}
 expect("artifact materialization rejects declaration mismatch", materialize_artifact_archive(package, root + "/wrong-target", wrong_policy)["ok"] == false)
 

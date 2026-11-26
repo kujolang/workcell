@@ -1,0 +1,71 @@
+# Preflight regular TAR entries before extracting operator or adapter archives.
+from src.util import normalized_relative, process_ok, run_argv_options
+
+func listing_lines(text) {
+    parts := split(text, "\n")
+    if len(parts) > 0&&parts[len(parts) - 1] == "" {
+        return slice(parts, 0, len(parts) - 1)
+    }
+    return parts
+}
+
+func listed_file_bytes(detail) {
+    mut columns := []
+    for column in split(detail, " ") {
+        if column != "" {columns = push(columns, column)}
+    }
+    if len(columns) < 5 {return - 1}
+    # GNU tar prints a combined UID/GID. BSD tar prints the link count,
+    # UID and GID as separate columns before the size.
+    mut size_index := 4
+    if regex_match(columns[1], "^[0-9]+/[0-9]+$") {size_index = 2}
+    if regex_match(columns[size_index], "^[0-9]+$") == false {return - 1}
+    try {
+        return parse_int(columns[size_index])
+    } except err {
+        return - 1
+    }
+}
+
+export func inspect_regular_tar(archive_path, max_entries, max_bytes) {
+    options := {"inherit_env": false, "env_allow": ["PATH"], "env": {"LC_ALL": "C"}, "timeout_ms": 60000, "max_output_bytes": 4000000}
+    names_result := run_argv_options(["tar", "-tf", archive_path], options)
+    details_result := run_argv_options(["tar", "--numeric-owner", "-tvf", archive_path], options)
+    if process_ok(names_result) == false||process_ok(details_result) == false||names_result.stdout_truncated||details_result.stdout_truncated {
+        return {"ok": false, "error": "archive could not be listed completely and safely"}
+    }
+    names := listing_lines(names_result.stdout)
+    details := listing_lines(details_result.stdout)
+    if len(names) != len(details)||len(names) > max_entries {
+        return {"ok": false, "error": "archive listing is inconsistent or exceeds entry bound"}
+    }
+    mut seen := {}
+    mut bytes := 0
+    mut i := 0
+    while i < len(names) {
+        mut name := names[i]
+        while ends_with(name, "/")&&len(name) > 1 {
+            name = substring(name, 0, len(name) - 1)
+        }
+        checked := normalized_relative(name)
+        if checked["ok"] == false||checked["path"] != name||has_key(seen, name) == 1 {
+            return {"ok": false, "error": "archive contains an unsafe or duplicate path"}
+        }
+        seen[name] := true
+        detail := details[i]
+        if detail == "" {return {"ok": false, "error": "archive entry type is missing"}}
+        kind := substring(detail, 0, 1)
+        if kind == "-" {
+            size := listed_file_bytes(detail)
+            if size < 0 {return {"ok": false, "error": "archive entry size is invalid"}}
+            if size > max_bytes - bytes {
+                return {"ok": false, "error": "archive exceeds the expanded byte bound"}
+            }
+            bytes = bytes + size
+        } else if kind != "d" {
+            return {"ok": false, "error": "archive contains unsupported entry type"}
+        }
+        i = i + 1
+    }
+    return {"ok": true, "entries": len(names), "bytes": bytes}
+}

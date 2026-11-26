@@ -1,5 +1,6 @@
 # Portable clean-Git workspace packaging for remote backend transfer.
 
+from src.archive_listing import inspect_regular_tar
 from src.util import base_of, ensure_dir, get_or, normalized_relative, parent_of, path_has_symlink, path_within, process_error, process_ok, read_text, run_argv, save_json, valid_run_id
 from src.workspace.workspace import find_symlink_with_limits, inspect_repository, temp_root
 
@@ -222,40 +223,6 @@ export func create_workspace_package(repo_path, output_dir, run_identifier, requ
     return {"ok": true, "schema_version": workspace_package_schema_version(), "archive_path": archive_path, "manifest_path": manifest_path, "sha256": archive_digest, "archive_bytes": archive_bytes, "expanded_bytes": files["total_bytes"], "files": files["total_files"], "source_commit": inspected["commit"], "root_name": manifest["root_name"], "manifest": manifest}
 }
 
-func inspect_tar_archive(archive_path, max_files) {
-    names_result := run_argv(["tar", "-tf", archive_path], 60000)
-    types_result := run_argv(["tar", "-tvf", archive_path], 60000)
-    if process_ok(names_result) == false||process_ok(types_result) == false {
-        return {"ok": false, "error": "archive could not be listed safely"}
-    }
-    names := split(trim(names_result.stdout), "\n")
-    types := split(trim(types_result.stdout), "\n")
-    if len(names) != len(types)||len(names) > max_files + 256 {
-        return {"ok": false, "error": "archive listing is inconsistent or exceeds file bound"}
-    }
-    mut i := 0
-    while i < len(names) {
-        name := trim(names[i])
-        while ends_with(name, "/")&&len(name) > 1 {
-            name = substring(name, 0, len(name) - 1)
-        }
-        checked := normalized_relative(name)
-        if checked["ok"] == false||checked["path"] != name {
-            return {"ok": false, "error": "archive contains unsafe path: " + name}
-        }
-        detail := types[i]
-        if detail == "" {
-            return {"ok": false, "error": "archive entry type is missing"}
-        }
-        kind := substring(detail, 0, 1)
-        if kind != "-"&&kind != "d" {
-            return {"ok": false, "error": "archive contains unsupported entry type: " + name}
-        }
-        i = i + 1
-    }
-    return {"ok": true, "entries": len(names)}
-}
-
 func verify_package_manifest(root, manifest, limits) {
     if type(manifest) != "dict"||get_or(manifest, "schema_version", "") != workspace_package_schema_version()||type(get_or(manifest, "files", null)) != "array" {
         return {"ok": false, "error": "workspace package manifest is invalid"}
@@ -308,7 +275,7 @@ export func materialize_workspace_package(package, target_dir, requested_limits)
         return {"ok": false, "error": "workspace package archive digest mismatch"}
     }
     limits := package_limits(requested_limits)
-    inspected := inspect_tar_archive(archive_path, limits["max_files"])
+    inspected := inspect_regular_tar(archive_path, limits["max_files"] + 256, limits["max_bytes"])
     if inspected["ok"] == false {return inspected}
     if path_has_symlink(target_dir)||ensure_dir(target_dir) == false||path_is_dir(target_dir) == false {
         return {"ok": false, "error": "workspace package target is unsafe"}

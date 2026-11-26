@@ -398,8 +398,8 @@ func change_details_check(details) {
 func tracked_binary_paths(workspace, nul) {
     mut binary_paths := {}
     numstat_result := evidence_git(workspace, ["diff", "--no-ext-diff", "--no-textconv", "--numstat", "-z", workspace["source_commit"]], "", 30000)
-    if process_ok(numstat_result) == false {
-        return binary_paths
+    if git_output_complete(numstat_result) == false {
+        return {"ok": false, "error": "could not collect complete Git binary evidence"}
     }
     records := split(numstat_result.stdout, nul)
     mut i := 0
@@ -420,7 +420,7 @@ func tracked_binary_paths(workspace, nul) {
         }
         i = i + 1
     }
-    return binary_paths
+    return {"ok": true, "paths": binary_paths}
 }
 
 export func change_details(workspace) {
@@ -445,7 +445,9 @@ export func change_details(workspace) {
     }
     mut tracked_binary := {}
     if status_result.stdout != "" {
-        tracked_binary = tracked_binary_paths(workspace, nul)
+        tracked := tracked_binary_paths(workspace, nul)
+        if tracked["ok"] == false {return tracked}
+        tracked_binary = tracked["paths"]
     }
     mut files := []
     mut known_paths := {}
@@ -582,7 +584,7 @@ export func make_patch(workspace, patch_path, secrets, secret_action) {
     } except err {
         return {"ok": false, "error": "could not write Git patch: " + to_string(err)}
     }
-    return {"ok": true, "path": patch_path, "bytes": len(patch_text), "redacted": patch_holds_secret}
+    return {"ok": true, "path": patch_path, "bytes": byte_length(patch_text), "redacted": patch_holds_secret}
 }
 
 export func cleanup_workspace(workspace, preserve) {

@@ -158,6 +158,13 @@ external_request := {
 external := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 30000, "max_output_bytes": 65536})
 expect("external JSONL adapter executes through bounded client", external["ok"]&&len(external["events"]) == 0&&external["result"]["data"]["adapter"]["id"] == "external-fixture")
 
+bounded_line := to_json(external["result"])
+line_bytes := byte_length(bounded_line)
+expect("protocol parser accepts a frame exactly at its byte bound", parse_backend_frames(external_request, bounded_line, {"line_bytes": line_bytes})["ok"])
+expect("protocol line bound includes spaces around its JSON frame", parse_backend_frames(external_request, " " + bounded_line + " ", {"line_bytes": line_bytes})["ok"] == false)
+expect("protocol aggregate output includes the JSONL separator in its byte bound", parse_backend_frames(external_request, bounded_line + "\n", {"max_output_bytes": line_bytes})["ok"] == false)
+
+
 external_request["profile"] := {"mode": "noise"}
 noise := invoke_backend(external_executable["path"], external_request, {"timeout_ms": 30000, "max_output_bytes": 65536})
 expect("external adapter stdout noise is a protocol violation", noise["ok"] == false&&noise["result"]["error"]["code"] == "PROTOCOL_VIOLATION")

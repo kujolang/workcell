@@ -125,22 +125,26 @@ export func parse_backend_frames(request, output, bounds) {
     max_line_bytes := get_or(bounds, "line_bytes", 1048576)
     max_events := get_or(bounds, "event_count", 100000)
     secrets := get_or(bounds, "redact_values", [])
+    max_output_bytes := get_or(bounds, "max_output_bytes", 4194304)
+    if byte_length(output) > max_output_bytes {
+        return client_failure(request, "PROTOCOL_VIOLATION", "adapter protocol output exceeded bound", false)
+    }
     raw_lines := lines_of(output)
-    mut events := []
+    mut event_count := 0
     mut result := null
-    mut stdout_text := ""
-    mut stderr_text := ""
+    mut stdout_parts := []
+    mut stderr_parts := []
     mut stdout_event := null
     mut stderr_event := null
     mut i := 0
     while i < len(raw_lines) {
+        if byte_length(raw_lines[i]) > max_line_bytes {
+            return client_failure(request, "PROTOCOL_VIOLATION", "adapter protocol line exceeded bound", false)
+        }
         line := trim(raw_lines[i])
         if line == "" {
             i = i + 1
             continue
-        }
-        if len(line) > max_line_bytes {
-            return client_failure(request, "PROTOCOL_VIOLATION", "adapter protocol line exceeded bound", false)
         }
         mut frame := null
         try {
@@ -160,10 +164,10 @@ export func parse_backend_frames(request, output, bounds) {
             if type(result) != "null" {
                 return client_failure(request, "PROTOCOL_VIOLATION", "adapter emitted an event after its result", false)
             }
-            if len(events) >= max_events {
+            if event_count >= max_events {
                 return client_failure(request, "PROTOCOL_VIOLATION", "adapter event count exceeded bound", false)
             }
-            if type(get_or(frame, "sequence", null)) != "int"||frame["sequence"] != len(events) {
+            if type(get_or(frame, "sequence", null)) != "int"||frame["sequence"] != event_count {
                 return client_failure(request, "PROTOCOL_VIOLATION", "adapter event sequence is invalid", false)
             }
             validated_event := validate_log_event(frame)
@@ -171,13 +175,13 @@ export func parse_backend_frames(request, output, bounds) {
                 return client_failure(request, "PROTOCOL_VIOLATION", validated_event["error"], false)
             }
             if frame["stream"] == "stdout" {
-                stdout_text = stdout_text + validated_event["decoded"]
+                stdout_parts = push(stdout_parts, validated_event["decoded"])
                 if type(stdout_event) == "null" {stdout_event = frame}
             } else {
-                stderr_text = stderr_text + validated_event["decoded"]
+                stderr_parts = push(stderr_parts, validated_event["decoded"])
                 if type(stderr_event) == "null" {stderr_event = frame}
             }
-            events = push(events, frame)
+            event_count = event_count + 1
         } else if frame_type == "result" {
             if type(result) != "null" {
                 return client_failure(request, "PROTOCOL_VIOLATION", "adapter emitted multiple results", false)
@@ -197,7 +201,7 @@ export func parse_backend_frames(request, output, bounds) {
     if type(stdout_event) == "dict" {
         stdout_event = redact_value(stdout_event, secrets)
         stdout_event["sequence"] = len(sanitized_events)
-        stdout_event["bytes_base64"] = encode_base64(redact(stdout_text, secrets))
+        stdout_event["bytes_base64"] = encode_base64(redact(join(stdout_parts, ""), secrets))
         stdout_event["provider_timestamp"] = null
         stdout_event["ordering"] = "per-stream"
         sanitized_events = push(sanitized_events, stdout_event)
@@ -205,7 +209,7 @@ export func parse_backend_frames(request, output, bounds) {
     if type(stderr_event) == "dict" {
         stderr_event = redact_value(stderr_event, secrets)
         stderr_event["sequence"] = len(sanitized_events)
-        stderr_event["bytes_base64"] = encode_base64(redact(stderr_text, secrets))
+        stderr_event["bytes_base64"] = encode_base64(redact(join(stderr_parts, ""), secrets))
         stderr_event["provider_timestamp"] = null
         stderr_event["ordering"] = "per-stream"
         sanitized_events = push(sanitized_events, stderr_event)
@@ -224,7 +228,7 @@ export func invoke_backend(executable, request, options) {
     }
     encoded := to_json(request) + "\n"
     request_limit := get_or(options, "request_bytes", 1048576)
-    if len(encoded) > request_limit {
+    if byte_length(encoded) > request_limit {
         return client_failure(request, "PROTOCOL_VIOLATION", "backend request exceeded bound", false)
     }
     request_path := request_temp_path()

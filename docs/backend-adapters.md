@@ -24,7 +24,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-Versions are pinned by `npm-shrinkwrap.json`. E2B uses `e2b` 2.50.0, Vercel uses `@vercel/sandbox` 3.2.1, and Daytona uses `@daytona/sdk` 0.207.1. Live-provider API drift is not covered by offline fixture success.
+Versions are pinned by `npm-shrinkwrap.json`. E2B uses `e2b` 2.66.0, Vercel uses `@vercel/sandbox` 3.2.1, and Daytona uses `@daytona/sdk` 0.214.0. Live-provider API drift is not covered by offline fixture success.
 
 ## Definition and host profile
 
@@ -107,7 +107,7 @@ The receipt control ledger records:
 
 Remote input is a one-commit shallow clone of a clean Git source. Workcell removes the remote, disables hooks and credential helpers, rejects submodules and Git LFS pointer-only inputs, hashes every file, and bounds files, expanded bytes, and depth. It never uploads a dirty ambient directory by default.
 
-Adapters export a tar containing only declared paths. Workcell treats the download as untrusted: it rejects traversal and non-regular entry types, extracts into run-owned staging, re-exports through local declaration/extension/size/secret policy, computes a fresh manifest and SHA-256 digest, and removes staging. Entire-workspace download is not supported.
+Adapters export a tar containing only declared paths. Workcell treats the download as untrusted: it rejects traversal, non-regular entries, duplicate names, incomplete listings, and archives over the expanded byte budget before extraction into run-owned staging, re-exports through local declaration/extension/size/secret policy, computes a fresh manifest and SHA-256 digest, and removes staging. Entire-workspace download is not supported.
 
 JSONL events preserve per-stream order only. Receipt v2 says `buffered-protocol`; it does not claim global stdout/stderr ordering or provider timestamps. Provider adapters must not advertise real-time streaming until the core transport exposes it.
 

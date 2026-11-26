@@ -41,7 +41,7 @@ test('every bundled Braces copy is the guarded fork and redirect transport is pa
   }
   inspect(path.join(root, 'node_modules'));
   assert.ok(copies > 0, 'the guarded fork must be bundled as real files');
-  assert.equal(require('follow-redirects/package.json').version, '1.16.1');
+  assert.equal(require('follow-redirects/package.json').version, '1.16.3');
 });
 
 test('deep braces, parentheses and unclosed patterns fail before stack exhaustion', () => {

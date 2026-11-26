@@ -2,7 +2,7 @@
 
 ## Exact identity and setup
 
-The official candidate pins adapter and SDK version `0.207.1`, manifest schema
+The official candidate pins adapter and SDK version `0.214.0`, manifest schema
 `workcell-backend-manifest/v1`, protocol `workcell-backend/v1alpha1`, and profile
 schema `workcell-daytona-profile/v1alpha1`. Install it through
 [Official adapter distribution](../official-adapter-distribution.md). The profile

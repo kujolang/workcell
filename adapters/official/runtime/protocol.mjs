@@ -5,9 +5,9 @@ import path from 'node:path';
 
 export const CONTRACT = 'workcell-backend/v1alpha1';
 const PROVIDERS = {
-  e2b: { version: '2.50.0', api: 'e2b-sdk/2.50.0', substrate: 'provider-claimed-firecracker', credential: 'E2B_API_KEY', costClass: 'per-second-compute' },
+  e2b: { version: '2.66.0', api: 'e2b-sdk/2.66.0', substrate: 'provider-claimed-firecracker', credential: 'E2B_API_KEY', costClass: 'per-second-compute' },
   'vercel-sandbox': { version: '3.2.1', api: '@vercel/sandbox/3.2.1', substrate: 'provider-claimed-firecracker', credential: 'VERCEL_OIDC_TOKEN', costClass: 'composite-platform' },
-  daytona: { version: '0.207.1', api: '@daytonaio/sdk/0.207.1', substrate: 'provider-reported-sandbox-class', credential: 'DAYTONA_API_KEY', costClass: 'provisioned-compute' }
+  daytona: { version: '0.214.0', api: '@daytona/sdk/0.214.0', substrate: 'provider-reported-sandbox-class', credential: 'DAYTONA_API_KEY', costClass: 'provisioned-compute' }
 };
 
 export function envelope(req, ok, data = {}, error = undefined, status = ok ? 'ok' : 'failed') {

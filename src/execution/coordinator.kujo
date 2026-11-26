@@ -352,7 +352,8 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
     if workspace_safe == false {
         receipt = add_error(receipt, "collecting", workspace_scan["error"])
     }
-    change_details_result := change_details(workspace)
+    mut change_details_result := {"ok": false, "error": "workspace scan did not permit Git evidence collection"}
+    if workspace_safe {change_details_result = change_details(workspace)}
     files := changed_files_from_details(change_details_result)
     changed := []
     if files["ok"] {
@@ -361,7 +362,8 @@ export func run_workcell(definition_path, repo_path, requested_output, flags) {
         receipt = add_error(receipt, "collecting", files["error"])
     }
     patch_path := output_dir + "/changes.patch"
-    patch := make_patch(workspace, patch_path, definition["secrets"], get_or(definition["artifacts"], "secret_action", "allow"))
+    mut patch := {"ok": false, "error": "workspace scan did not permit Git patch collection"}
+    if workspace_safe {patch = make_patch(workspace, patch_path, definition["secrets"], get_or(definition["artifacts"], "secret_action", "allow"))}
     if patch["ok"] == false {
         receipt = add_error(receipt, "collecting", patch["error"])
         patch_path = null

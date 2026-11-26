@@ -79,6 +79,21 @@ if cleanup_strategy_workspace["ok"] {
 } else {
     expect("workspace for cleanup strategy contract created", false)
 }
+private_clone := create_workspace(repo, "isolated-clone", run_id())
+if private_clone["ok"] {
+    clone_path := private_clone["workspace_path"]
+    evidence_dir := private_clone["host_git_dir"]
+    expect("isolated clone keeps evidence metadata beside the mounted workspace", evidence_dir == clone_path + ".git-evidence"&&path_is_dir(evidence_dir))
+    write_file_atomic(clone_path + "/workload.txt", "local work\n", true)
+    committed := run_argv(["git", "-C", clone_path, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "add", "--", "workload.txt"], 30000)
+    expect("isolated clone retains ordinary workload Git", process_ok(committed))
+    details := change_details(private_clone)
+    expect("host evidence uses the pinned clean source and sees workload files", details["ok"]&&details["summary"]["total_files"] == 1&&details["files"][0]["path"] == "workload.txt")
+    removed_clone := cleanup_workspace(private_clone, false)
+    expect("isolated clone cleanup removes its host evidence metadata", removed_clone["ok"]&&path_is_dir(evidence_dir) == false)
+} else {
+    expect("isolated clone for private evidence created", false)
+}
 if workspace["ok"] {
     clean_details := change_details(workspace)
     expect("a clean worktree reports no changed files", clean_details["ok"]&&clean_details["summary"]["total_files"] == 0)

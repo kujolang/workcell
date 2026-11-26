@@ -8,7 +8,7 @@ Workcell assumes an agent workload may be buggy, over-broad, or actively attempt
 
 - Dirty source repositories are rejected; user changes are not silently copied or discarded.
 - The source repository is never the writable container directory.
-- Only a temporary Git worktree or isolated clone is mounted.
+- Only a temporary Git worktree or isolated clone is mounted. Workcell collects changes with host-side Git metadata outside that mount. An isolated clone keeps its own Git metadata for the workload while Workcell uses a private evidence index.
 - Network defaults to `none`; `default` and pre-created `custom` networks require explicit configuration.
 - `--privileged`, Docker socket mounts, host root/home/SSH/cloud credential mounts, host namespaces, devices, and unbounded resources are not represented by the policy builder.
 - Containers run as the invoking non-root host UID/GID by default, or an explicit non-root fixed UID/GID when host ownership assignment succeeds, with `--init`, private IPC, `no-new-privileges`, all capabilities dropped, bounded CPU/memory/PIDs/output, and a timeout. Timeout cleanup first attempts graceful stop and then force-removes only the labeled container.

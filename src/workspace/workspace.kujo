@@ -1,6 +1,6 @@
 # Disposable Git workspace management.
 
-from src.util import base_of, ensure_dir, env_secret_values, get_or, has_key_safe, lines_of, path_has_symlink, process_error, process_ok, read_text, redact, resolve_run_as, run_argv, save_json, valid_run_id
+from src.util import base_of, ensure_dir, env_secret_values, get_or, has_key_safe, lines_of, path_has_symlink, path_within, process_error, process_ok, read_text, redact, resolve_run_as, run_argv, run_argv_options, save_json, valid_run_id
 
 export func temp_root() {
     candidate := env("TMPDIR")
@@ -19,6 +19,48 @@ export func temp_root() {
 
 func git_result(args, timeout_ms) {
     return run_argv(args, timeout_ms)
+}
+
+func host_git_options(timeout_ms, input) {
+    return {"inherit_env": false, "env_allow": ["PATH"], "env": {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}, "stdin": input, "timeout_ms": timeout_ms, "max_output_bytes": 4000000}
+}
+
+func evidence_git(workspace, args, input, timeout_ms) {
+    known_git_dir := get_or(workspace, "host_git_dir", "")
+    mut argv := ["git", "--no-replace-objects", "--literal-pathspecs", "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"]
+    if known_git_dir == "" {
+        # Existing host-only library callers may name their own Git checkout.
+        argv = concat(argv, ["-C", workspace["workspace_path"]])
+    } else {
+        argv = concat(argv, ["--git-dir=" + known_git_dir, "--work-tree=" + workspace["workspace_path"]])
+    }
+    return run_argv_options(concat(argv, args), host_git_options(timeout_ms, input))
+}
+
+func git_output_complete(result) {
+    return process_ok(result)&&result.stdout_truncated == false
+}
+
+func create_host_git(workspace_path, source_root, source_commit, strategy) {
+    if strategy == "git-worktree" {
+        result := git_result(["git", "-C", workspace_path, "rev-parse", "--absolute-git-dir"], 10000)
+        if git_output_complete(result) == false {return {"ok": false, "error": "could not bind the host Git metadata"}}
+        directory := trim(result.stdout)
+        if path_is_dir(directory) == false||path_has_symlink(directory)||path_within(workspace_path, directory) {
+            return {"ok": false, "error": "worktree Git metadata must be outside the mounted workspace"}
+        }
+        return {"ok": true, "path": directory}
+    }
+    # The isolated clone keeps its normal Git metadata for the workload.
+    # Evidence uses a private bare repository with read-only source object access.
+    directory := workspace_path + ".git-evidence"
+    made := run_argv(["mkdir", "-m", "700", directory], 5000)
+    if process_ok(made) == false {return {"ok": false, "error": "could not create the host Git evidence directory"}}
+    cloned := run_argv_options(["git", "-c", "core.hooksPath=/dev/null", "clone", "--bare", "--shared", "--", source_root, directory], host_git_options(60000, ""))
+    if process_ok(cloned) == false {return {"ok": false, "error": process_error(cloned, "prepare private Git evidence metadata"), "owned_path": directory}}
+    seeded := evidence_git({"host_git_dir": directory, "workspace_path": workspace_path}, ["read-tree", source_commit], "", 30000)
+    if process_ok(seeded) == false {return {"ok": false, "error": process_error(seeded, "initialize private Git evidence index"), "owned_path": directory}}
+    return {"ok": true, "path": directory}
 }
 
 func nul_separator() {
@@ -192,6 +234,11 @@ export func create_workspace_for_user(repo_path, strategy, run_identifier, run_a
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
         return {"ok": false, "stage": "preparing", "error": "could not write disposable workspace ownership marker"}
     }
+    host_git := create_host_git(path, root, inspected["commit"], strategy)
+    if host_git["ok"] == false {
+        cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy, "host_git_dir": get_or(host_git, "owned_path", "")}, false)
+        return {"ok": false, "stage": "preparing", "error": host_git["error"]}
+    }
     symlinks := find_symlink(path)
     if symlinks["ok"] == false {
         cleanup_workspace({"workspace_path": path, "source_root": root, "strategy": strategy}, false)
@@ -219,6 +266,7 @@ export func create_workspace_for_user(repo_path, strategy, run_identifier, run_a
         "source_root": root,
         "source_commit": inspected["commit"],
         "workspace_path": path,
+        "host_git_dir": host_git["path"],
         "strategy": strategy,
         "source_clean": true
     }
@@ -320,6 +368,12 @@ func workspace_input_check(workspace, require_commit) {
     if require_commit&&get_or(workspace, "source_commit", "") == "" {
         return {"ok": false, "error": "workspace input is missing source_commit"}
     }
+    if require_commit&&has_key_safe(workspace, "strategy") {
+        directory := get_or(workspace, "host_git_dir", "")
+        if type(directory) != "string"||directory == ""||path_has_symlink(directory)||path_is_dir(directory) == false||path_within(workspace["workspace_path"], directory) {
+            return {"ok": false, "error": "trusted Git metadata is unavailable"}
+        }
+    }
     return {"ok": true}
 }
 
@@ -343,7 +397,7 @@ func change_details_check(details) {
 
 func tracked_binary_paths(workspace, nul) {
     mut binary_paths := {}
-    numstat_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--numstat", "-z", workspace["source_commit"]], 30000)
+    numstat_result := evidence_git(workspace, ["diff", "--no-ext-diff", "--no-textconv", "--numstat", "-z", workspace["source_commit"]], "", 30000)
     if process_ok(numstat_result) == false {
         return binary_paths
     }
@@ -375,13 +429,20 @@ export func change_details(workspace) {
         return workspace_check
     }
     workspace_path := workspace["workspace_path"]
-    status_result := git_result(["git", "-C", workspace_path, "diff", "--name-status", "-z", workspace["source_commit"]], 30000)
-    if process_ok(status_result) == false {
+    if get_or(workspace, "strategy", "") == "isolated-clone" {
+        marked := mark_untracked_for_evidence(workspace)
+        if marked["ok"] == false {return marked}
+    }
+    status_result := evidence_git(workspace, ["diff", "--no-ext-diff", "--no-textconv", "--name-status", "-z", workspace["source_commit"]], "", 30000)
+    if git_output_complete(status_result) == false {
         return {"ok": false, "error": process_error(status_result, "collect changed files")}
     }
     nul := nul_separator()
     records := split(status_result.stdout, nul)
-    untracked_result := git_result(["git", "-C", workspace_path, "ls-files", "--others", "--exclude-standard", "-z"], 30000)
+    untracked_result := evidence_git(workspace, ["ls-files", "--others", "--exclude-standard", "-z"], "", 30000)
+    if git_output_complete(untracked_result) == false {
+        return {"ok": false, "error": "could not collect complete untracked file evidence"}
+    }
     mut tracked_binary := {}
     if status_result.stdout != "" {
         tracked_binary = tracked_binary_paths(workspace, nul)
@@ -472,6 +533,19 @@ export func write_change_report_from_details(workspace, output_path, patch_bytes
     return {"ok": true, "path": output_path, "files": details["files"]}
 }
 
+func mark_untracked_for_evidence(workspace) {
+    untracked := evidence_git(workspace, ["ls-files", "--others", "--exclude-standard", "-z"], "", 30000)
+    if git_output_complete(untracked) == false {
+        return {"ok": false, "error": "could not collect complete untracked file evidence"}
+    }
+    if untracked.stdout == "" {return {"ok": true}}
+    marked := evidence_git(workspace, ["add", "--intent-to-add", "--pathspec-from-file=-", "--pathspec-file-nul"], untracked.stdout, 60000)
+    if process_ok(marked) == false {
+        return {"ok": false, "error": process_error(marked, "stage untracked files for patch metadata")}
+    }
+    return {"ok": true}
+}
+
 export func make_patch(workspace, patch_path, secrets, secret_action) {
     workspace_check := workspace_input_check(workspace, true)
     if workspace_check["ok"] == false {
@@ -486,34 +560,13 @@ export func make_patch(workspace, patch_path, secrets, secret_action) {
     if type(secret_action) != "string"||(secret_action != "allow"&&secret_action != "reject"&&secret_action != "redact") {
         return {"ok": false, "error": "patch secret action is invalid"}
     }
-    result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
-    if process_ok(result) == false {
-        return {"ok": false, "error": process_error(result, "generate Git patch")}
+    marked := mark_untracked_for_evidence(workspace)
+    if marked["ok"] == false {return marked}
+    result := evidence_git(workspace, ["diff", "--no-ext-diff", "--no-textconv", "--binary", workspace["source_commit"]], "", 60000)
+    if git_output_complete(result) == false {
+        return {"ok": false, "error": "could not generate complete Git patch evidence"}
     }
     mut patch_text := result.stdout
-    untracked_result := git_result(["git", "-C", workspace["workspace_path"], "ls-files", "--others", "--exclude-standard", "-z"], 30000)
-    if process_ok(untracked_result) == false {
-        return {"ok": false, "error": process_error(untracked_result, "collect untracked files for Git patch")}
-    }
-    nul := nul_separator()
-    untracked := split(untracked_result.stdout, nul)
-    if untracked_result.stdout != "" {
-        # Drop Git's trailing NUL record. A capped stream may end mid-record.
-        mut untracked_paths := untracked
-        if untracked[len(untracked) - 1] == "" {
-            untracked_paths = slice(untracked, 0, len(untracked) - 1)
-        }
-        add_args := concat(["git", "-C", workspace["workspace_path"], "add", "--intent-to-add", "--"], untracked_paths)
-        intent_result := git_result(add_args, 60000)
-        if process_ok(intent_result) == false {
-            return {"ok": false, "error": process_error(intent_result, "stage untracked files for patch metadata")}
-        }
-        patch_result := git_result(["git", "-C", workspace["workspace_path"], "diff", "--binary", workspace["source_commit"]], 60000)
-        if process_ok(patch_result) == false {
-            return {"ok": false, "error": process_error(patch_result, "generate Git patch including untracked files")}
-        }
-        patch_text = patch_result.stdout
-    }
     patch_secret_values := env_secret_values(secrets)
     patch_redacted := redact(patch_text, patch_secret_values)
     patch_holds_secret := patch_redacted != patch_text
@@ -571,6 +624,12 @@ export func cleanup_workspace(workspace, preserve) {
     if process_ok(result) == false&&(path_is_dir(path)||file_exists(path)) {
         return {"ok": false, "error": process_error(result, "clean disposable workspace")}
     }
+    if strategy == "isolated-clone"&&get_or(workspace, "host_git_dir", path + ".git-evidence") == path + ".git-evidence" {
+        evidence_result := run_argv(["rm", "-rf", path + ".git-evidence"], 60000)
+        if process_ok(evidence_result) == false {
+            return {"ok": false, "error": process_error(evidence_result, "clean private Git evidence metadata")}
+        }
+    }
     owner_result := run_argv(["rm", "-f", owner_path], 30000)
     if process_ok(owner_result) == false {
         return {"ok": false, "error": process_error(owner_result, "remove Workcell ownership marker")}
@@ -595,7 +654,7 @@ export func clean_stale_workspaces(active_run_ids) {
     mut i := 0
     while i < len(entries) {
         name := to_string(entries[i])
-        if starts_with(name, "kujo-workcell-")&&ends_with(name, ".owner") == false {
+        if starts_with(name, "kujo-workcell-")&&ends_with(name, ".owner") == false&&ends_with(name, ".git-evidence") == false {
             path := root + "/" + name
             owner_path := path + ".owner"
             run_prefix := "kujo-workcell-"
@@ -610,7 +669,7 @@ export func clean_stale_workspaces(active_run_ids) {
                 if owner["ok"] == false||owner["text"] != expected_owner {
                     skipped = push(skipped, path + ": ownership marker does not match run ID")
                 } else {
-                    result := run_argv(["rm", "-rf", path], 60000)
+                    result := run_argv(["rm", "-rf", path, path + ".git-evidence"], 60000)
                     if process_ok(result) {
                         run_argv(["rm", "-f", owner_path], 30000)
                         removed = push(removed, path)
@@ -659,7 +718,7 @@ export func workspace_inventory() {
     mut i := 0
     while i < len(entries) {
         name := to_string(entries[i])
-        if starts_with(name, "kujo-workcell-")&&ends_with(name, ".owner") == false {
+        if starts_with(name, "kujo-workcell-")&&ends_with(name, ".owner") == false&&ends_with(name, ".git-evidence") == false {
             path := root + "/" + name
             owner_path := path + ".owner"
             run_prefix := "kujo-workcell-"

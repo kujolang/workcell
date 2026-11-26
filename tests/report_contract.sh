@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
-TMP_DIR="$(mktemp -d)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
 cd "$ROOT"
 

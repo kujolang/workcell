@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-TMP_REPO="$(mktemp -d)"
-OUT_ROOT="$(mktemp -d)"
-SPACE_ROOT="$(mktemp -d)/output with spaces"
+TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
+OUT_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
+SPACE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")/output with spaces"
 mkdir -p "$SPACE_ROOT"
 trap 'rm -rf "$TMP_REPO" "$OUT_ROOT" "${SPACE_ROOT%/*}"' EXIT
 

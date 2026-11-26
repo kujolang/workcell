@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 for provider in e2b vercel-sandbox daytona; do

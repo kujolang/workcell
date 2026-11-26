@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-MARKER_DIR="$(mktemp -d)"
+MARKER_DIR="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$MARKER_DIR"' EXIT
 
 PATH="$ROOT/tests/fixtures/verification-cleanup:$PATH" \

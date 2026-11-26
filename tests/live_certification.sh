@@ -62,7 +62,7 @@ if [ "$fixture" = false ]; then
 fi
 
 evidence_dir="${WORKCELL_LIVE_EVIDENCE_DIR:-}"
-if [ -z "$evidence_dir" ]; then evidence_dir="$(mktemp -d)/workcell-live-fixture-$PROVIDER"; fi
+if [ -z "$evidence_dir" ]; then evidence_dir="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")/workcell-live-fixture-$PROVIDER"; fi
 case "$evidence_dir" in /*) ;; *) echo "WORKCELL_LIVE_EVIDENCE_DIR must be absolute" >&2; exit 2 ;; esac
 case "$evidence_dir/" in "$ROOT/"*) echo "live evidence must stay outside the WorkCell checkout" >&2; exit 2 ;; esac
 if [ -L "$evidence_dir" ]; then echo "live evidence directory must not be a symlink" >&2; exit 2; fi
@@ -72,7 +72,7 @@ chmod 700 "$evidence_dir"
 source_repo="${WORKCELL_LIVE_SOURCE_REPO:-}"
 source_temp=""
 if [ -z "$source_repo" ]; then
-  source_temp="$(mktemp -d)"
+  source_temp="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
   source_repo="$source_temp/source"
   trap 'if [ -n "$source_temp" ]; then rm -rf "$source_temp"; fi' EXIT
   mkdir -p "$source_repo"

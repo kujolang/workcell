@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-MARKER_DIR="$(mktemp -d)"
-TMP_REPO="$(mktemp -d)"
-OUTPUT_DIR="$(mktemp -d)"
+MARKER_DIR="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
+TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
+OUTPUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$MARKER_DIR" "$TMP_REPO" "$OUTPUT_DIR"' EXIT
 
 chmod +x "$ROOT/tests/fixtures/startup-failure/docker"

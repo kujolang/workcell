@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 repo="$TMP/repo"
 mkdir -p "$repo"

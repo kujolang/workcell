@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 npm ci --ignore-scripts --prefix "$ROOT/adapters/official"
 archive="$("$ROOT/adapters/official/scripts/release-candidate.sh" "$TMP/dist" | tail -1)"

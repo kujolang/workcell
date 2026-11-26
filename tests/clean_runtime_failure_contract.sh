@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
-TEMP_BASE="$(mktemp -d)"
+TEMP_BASE="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 OUTPUT="$(mktemp)"
 RUN_ID="wc-0123456789abcdef0123456789abcdef"
 WORKSPACE="$TEMP_BASE/kujo-workcell-$RUN_ID"

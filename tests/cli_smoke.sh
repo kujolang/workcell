@@ -4,10 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KUJO="${KUJO:-kujo}"
 export KUJO
-TMP_DIR="$(mktemp -d)"
-MISSING_OUTPUT="$(mktemp -d)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
+MISSING_OUTPUT="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 PODMAN_DEFINITION="$(mktemp)"
-FAKE_BIN="$(mktemp -d)"
+FAKE_BIN="$(mktemp -d "${TMPDIR:-/tmp}/workcell-test.XXXXXX")"
 trap 'rm -rf "$TMP_DIR" "$MISSING_OUTPUT" "$PODMAN_DEFINITION" "$FAKE_BIN"' EXIT
 
 "$KUJO" run "$ROOT/main.kujo" -- init --file "$TMP_DIR/workcell.json"
